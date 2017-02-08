@@ -1,5 +1,6 @@
 module JuliaDB
 
-# package code goes here
+include("dtable.jl")
+include("load.jl")
 
 end # module
