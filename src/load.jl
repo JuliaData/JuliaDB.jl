@@ -52,17 +52,6 @@ function cached_loadNDSparse(file, delim=','; kwargs...)
     end
 end
 
-# Get the ChunkInfo from a filename and the data in it
-# this is run on the workers
-function chunkinfo(file::String, data::NDSparse)
-    ChunkInfo(file,
-              typeof(data),
-              length(data),
-              domain(data))
-end
-
-comp(f,g) = (x...) -> f(g(x...))
-
 function load(files::AbstractVector; opts...)
     # Give an idea of what we're up against, we should probably also show a
     # progress meter.
@@ -82,5 +71,7 @@ function load(files::AbstractVector; opts...)
 end
 
 let
+    path = joinpath(dirname(@__FILE__), "..","test","fxsample", "*.csv")
+    files = glob(path[2:end], "/")
     load(glob("../test/fxsample/*.csv"), header_exists=false, type_detect_rows=4)
 end
