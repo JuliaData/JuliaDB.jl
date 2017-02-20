@@ -2,7 +2,7 @@ using TextParse
 using IndexedTables
 using Glob
 
-export @dateformat_str, load, loadNDSparse, glob
+export @dateformat_str, load, csvread, loadNDSparse, glob
 
 function getsubset(cols, subcols)
     idx = length(subcols) > 1 ?
@@ -19,7 +19,7 @@ specifies which columns form the index of the data, `datacols`
 `agg`, `presorted`, `copy` options are passed on to `NDSparse`
 constructor, any other keyword argument is passed on to `readcsv`
 """
-function loadNDSparse(file::AbstractString;
+function loadNDSparse(file::AbstractString, delim=',';
                       indexcols=Int[],
                       datacols=-1,
                       agg=nothing,
@@ -28,7 +28,7 @@ function loadNDSparse(file::AbstractString;
                       kwargs...)
 
     println("LOADING ", file)
-    cols,header = csvread(file; kwargs...)
+    cols,header = csvread(file, delim; kwargs...)
     if datacols == -1
         # last column
         datacols = length(cols)
@@ -40,6 +40,16 @@ function loadNDSparse(file::AbstractString;
     end
 
     NDSparse(getsubset(cols, indexcols), getsubset(cols, datacols))
+end
+
+const cache = Dict()
+function cached_loadNDSparse(file, delim=','; kwargs...)
+    f = abspath(file)
+    if haskey(cache, f)
+        cache[f]
+    else
+        cache[f] = loadNDSparse(file, delim; kwargs...)
+    end
 end
 
 immutable ChunkInfo
@@ -76,7 +86,7 @@ end
 
 function load(files::AbstractVector; opts...)
     # Load the data first into memory
-    data = map(tothunk(f -> loadNDSparse(f; opts...), persist=true), files)
+    data = map(tothunk(f -> cached_loadNDSparse(f; opts...), persist=true), files)
 
     # create ChunkInfo from the data
     metadata = map(tothunk(chunkinfo), files, data)
@@ -94,6 +104,7 @@ function load(files::AbstractVector; opts...)
     table_domain = combine_domains(map(x->x.domain, chunks_meta))
 
     # TODO: this should be read in from Parquet files (saved from step 1)
+    # right now we are just caching it in memory...
     data_saved = data # for now
 
     DTable(Cat(table_type, table_domain, data_saved))
