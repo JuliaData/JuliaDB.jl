@@ -58,7 +58,7 @@ end
 """
 Create an `NDSparse` lookup table from a bunch of `TableDomain`s
 """
-function lookup_table(subdomains, chunks, lengths)
+function chunks_index(subdomains, chunks, lengths)
     index = Columns(map(x->Array{Interval{typeof(x)}}(0), first(subdomains[1].interval))...)
     for subd in subdomains
         int=subd.interval
@@ -72,7 +72,7 @@ function _DTable(chunks::AbstractArray)
     DTable(Cat(promote_type(map(chunktype, chunks)...),
         reduce(merge, subdomains),
         nothing,
-        lookup_table(subdomains, chunks, map(nrows, subdomains)),
+        chunks_index(subdomains, chunks, map(nrows, subdomains)),
        )
      )
 end
@@ -109,7 +109,7 @@ function distribute(nds::NDSparse, rowgroups::AbstractArray)
     subdomains = map(r -> subdomain(nds, r), ranges)
 
     chunks = map(r->tochunk(subtable(nds, r)), ranges)
-    chunkmap = lookup_table(subdomains, chunks, nrows.(domain.(chunks)))
+    chunkmap = chunks_index(subdomains, chunks, nrows.(domain.(chunks)))
 
     DTable(Cat(typeof(nds), domain(nds), nothing, chunkmap))
 end
