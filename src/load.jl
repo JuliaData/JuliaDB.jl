@@ -52,13 +52,6 @@ function cached_loadNDSparse(file, delim=','; kwargs...)
     end
 end
 
-immutable ChunkInfo
-    filename::String
-    typeof::Type
-    length::Int
-    domain::TableDomain
-end
-
 # Get the ChunkInfo from a filename and the data in it
 # this is run on the workers
 function chunkinfo(file::String, data::NDSparse)
@@ -70,42 +63,24 @@ end
 
 comp(f,g) = (x...) -> f(g(x...))
 
-# Input: a vector of `TableDomain`s
-# Output: a DomainSplit with the TableDomains
-function combine_domains(ds)
-    # Overall domain of combined chunks:
-    fst = minimum(map(x->first(x.interval), ds))
-    lst = maximum(map(x->last(x.interval), ds))
-    head = TableDomain(fst, lst)
-
-    # Domains of each part in an IntervalTree
-    #parts = TableDomainSet(ds)
-
-    DomainSplit(head, ds)
-end
-
 function load(files::AbstractVector; opts...)
-    # Load the data first into memory
-    data = map(tothunk(f -> cached_loadNDSparse(f; opts...), persist=true), files)
-
-    # create ChunkInfo from the data
-    metadata = map(tothunk(chunkinfo), files, data)
-
     # Give an idea of what we're up against, we should probably also show a
     # progress meter.
     sz = sum(map(filesize, files))
-    println("Loading $(length(files)) csv files totalling $(round(sz/2^20)) MB...")
+    println("Loading $(length(files)) csv files totalling $(round(sz/2^10)) kB...")
 
-    # Gather ChunkInfo for each chunk
-    chunks_meta = gather(Dagger.treereduce(tothunk(vcat), metadata))
+    # Load the data first into memory
+    data = map(tothunk(f -> loadNDSparse(f; opts...), persist=true), files)
 
-    # TODO: make this work when the types are different.
-    table_type = reduce(promote_type, map(x->x.typeof, chunks_meta))
-    table_domain = combine_domains(map(x->x.domain, chunks_meta))
+    chunks = compute(Thunk(data; meta=true) do cs...
+            # TODO: this should be read in from Parquet files (saved from step 1)
+            # right now we are just caching it in memory...
+            [cs...]
+        end)
 
-    # TODO: this should be read in from Parquet files (saved from step 1)
-    # right now we are just caching it in memory...
-    data_saved = data # for now
+    _DTable(chunks)
+end
 
-    DTable(Cat(table_type, table_domain, data_saved))
+let
+    load(glob("../test/fxsample/*.csv"), header_exists=false, type_detect_rows=4)
 end
