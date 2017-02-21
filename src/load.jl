@@ -73,5 +73,5 @@ end
 let
     path = joinpath(dirname(@__FILE__), "..","test","fxsample", "*.csv")
     files = glob(path[2:end], "/")
-    load(glob("../test/fxsample/*.csv"), header_exists=false, type_detect_rows=4)
+    load(files, header_exists=false, type_detect_rows=4)
 end
