@@ -59,9 +59,9 @@ function load(files::AbstractVector; opts...)
     println("Loading $(length(files)) csv files totalling $(round(sz/2^10)) kB...")
 
     # Load the data first into memory
-    data = map(tothunk(f -> loadNDSparse(f; opts...), persist=true), files)
+    data = map(file -> Thunk(f -> loadNDSparse(f; opts...), file, persist=true), files)
 
-    chunks = compute(Thunk(data; meta=true) do cs...
+    chunks = compute(Thunk(data...; meta=true) do cs...
             # TODO: this should be read in from Parquet files (saved from step 1)
             # right now we are just caching it in memory...
             [cs...]
