@@ -1,57 +1,18 @@
-using TextParse
-using IndexedTables
-using Glob
-
-export @dateformat_str, load, csvread, loadNDSparse, glob
-
-function getsubset(cols, subcols)
-    idx = length(subcols) > 1 ?
-        Columns(map(i -> cols[i], subcols)...) : Columns(cols[subcols[1]])
-end
-
 """
-    loadNDSparse(file::AbstractString;
-                 indexcols, datacols, agg, presorted, copy, kwargs...)
+    load(files::AbstractVector;
+          indexcols=Int[],
+          datacols=Int[],
+          agg=nothing,
+          presorted=false,
+          copy=false,
+          csvopts...)
 
-Load a CSV file into an NDSparse data. `indexcols` (AbstractArray)
-specifies which columns form the index of the data, `datacols`
-(AbstractArray) specifies which columns are to be used as the data.
-`agg`, `presorted`, `copy` options are passed on to `NDSparse`
-constructor, any other keyword argument is passed on to `readcsv`
+Load a bunch of CSV `files` into a DTable. `indexcols` is a vector of column
+indices to be used as the index, and `datacols` is a vector of column indices
+to be used as the data for the resulting table. `agg`, `presorted` and `copy`
+are the corresponding keyword arguments passed to `NDSparse` constructor.
+The rest of the keyword arguments (`csvopts`) will be passed on to `TextParse.csvread`
 """
-function loadNDSparse(file::AbstractString, delim=',';
-                      indexcols=Int[],
-                      datacols=-1,
-                      agg=nothing,
-                      presorted=false,
-                      copy=false,
-                      kwargs...)
-
-    println("LOADING ", file)
-    cols,header = csvread(file, delim; kwargs...)
-    if datacols == -1
-        # last column
-        datacols = length(cols)
-    end
-
-    if isempty(indexcols)
-        # all columns that aren't data
-        indexcols = [x for x in 1:length(cols) if !(x in datacols)]
-    end
-
-    NDSparse(getsubset(cols, indexcols), getsubset(cols, datacols))
-end
-
-const cache = Dict()
-function cached_loadNDSparse(file, delim=','; kwargs...)
-    f = abspath(file)
-    if haskey(cache, f)
-        cache[f]
-    else
-        cache[f] = loadNDSparse(file, delim; kwargs...)
-    end
-end
-
 function load(files::AbstractVector; opts...)
     # Give an idea of what we're up against, we should probably also show a
     # progress meter.
@@ -67,7 +28,7 @@ function load(files::AbstractVector; opts...)
             [cs...]
         end)
 
-    _DTable(chunks)
+    fromchunks(chunks)
 end
 
 let
