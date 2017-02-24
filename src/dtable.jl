@@ -1,10 +1,9 @@
-using IndexedTables, NamedTuples, Dagger
-
 import Dagger: Domain, AbstractChunk, Thunk, chunktype,
                domain, domainchunks, tochunk, chunks, Cat
 
-# reexport the essentials
-export NDSparse, compute, gather
+
+# re-export the essentials
+export distribute, chunks, compute, gather
 
 immutable DTable
     dag::AbstractChunk
@@ -13,10 +12,10 @@ end
 Dagger.compute(ctx, dt::DTable) = compute(ctx, dt.dag)
 Dagger.compute(dt::DTable) = compute(Context(), dt)
 Dagger.chunks(dt::DTable) = chunks(dt.dag)
+index(dt::DTable) = index(chunks(dt.dag))
+
 
 typealias IndexTuple Union{Tuple, NamedTuple}
-
-include("interval.jl")
 
 """
 `TableDomain(interval, nrows)`
@@ -40,7 +39,7 @@ function Dagger.domain(nd::NDSparse)
     TableDomain(first(nd.index), last(nd.index), Nullable{Int}(length(nd)))
 end
 
-# all methods of NDSparse that only need the info in TableDomain
+# many methods of NDSparse that only need the info in a TableDomain
 Base.eltype{T}(::TableDomain{T}) = T
 nrows(td::TableDomain) = td.nrows
 Base.length(td::TableDomain) = get(td.nrows) # well when it works
@@ -50,7 +49,7 @@ Base.ndims(td::TableDomain)  = length(first(td))
 function Base.merge(d1::TableDomain, d2::TableDomain, collisions=false)
     n = collisions || isnull(d1.nrows) || isnull(d2.nrows) ?
         Nullable{Int}() :
-        Nullable(get(d1.nrows)+get(d2.nrows))
+        Nullable(get(d1.nrows) + get(d2.nrows))
     TableDomain(min(first(d1), first(d2)), max(last(d1), last(d2)), n)
 end
 
@@ -59,7 +58,8 @@ end
 Create an `NDSparse` lookup table from a bunch of `TableDomain`s
 """
 function chunks_index(subdomains, chunks, lengths)
-    index = Columns(map(x->Array{Interval{typeof(x)}}(0), first(subdomains[1].interval))...)
+    index = Columns(map(x->Array{Interval{typeof(x)}}(0),
+                        first(subdomains[1].interval))...)
     for subd in subdomains
         int=subd.interval
         push!(index, map(Interval, first(int), last(int)))
@@ -67,7 +67,13 @@ function chunks_index(subdomains, chunks, lengths)
     NDSparse(index, Columns(chunks, lengths, names=[:chunk, :length]))
 end
 
-function _DTable(chunks::AbstractArray)
+"""
+`fromchunks(chunks::AbstractArray)`
+
+Convenience function to create a DTable from an array of chunks.
+The chunks must be non-Thunks.
+"""
+function fromchunks(chunks::AbstractArray)
     subdomains = map(domain, chunks)
     DTable(Cat(promote_type(map(chunktype, chunks)...),
         reduce(merge, subdomains),
@@ -77,17 +83,7 @@ function _DTable(chunks::AbstractArray)
      )
 end
 
-export distribute
-
-function subdomain(nds, r)
-    TableDomain(nds.index[first(r)],
-                nds.index[last(r)],
-                Nullable(length(nds.index[r])))
-end
-
-function subtable(nds, r)
-    NDSparse(nds.index[r], nds.data[r])
-end
+### Distribute a NDSparse into a DTable
 
 """
 `distribute(nds::NDSparse, rowgroups::AbstractArray)`
@@ -127,4 +123,11 @@ function distribute(nds::NDSparse, nchunks=nworkers())
     nrows = vcat(collect(repeated(q, nchunks)))
     nrows[end] += r
     distribute(nds, nrows)
+end
+
+# util
+function subdomain(nds, r)
+    TableDomain(nds.index[first(r)],
+                nds.index[last(r)],
+                Nullable(length(nds.index[r])))
 end
