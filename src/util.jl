@@ -13,7 +13,6 @@ end
 
 # Data loading utilities
 using TextParse
-using IndexedTables
 using Glob
 
 export @dateformat_str, load, csvread, loadNDSparse, glob
@@ -34,6 +33,7 @@ function loadNDSparse(file::AbstractString, delim=',';
                       agg=nothing,
                       presorted=false,
                       copy=false,
+                      csvread=TextParse.csvread,
                       kwargs...)
 
     #println("LOADING ", file)

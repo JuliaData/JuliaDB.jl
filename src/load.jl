@@ -30,9 +30,3 @@ function load(files::AbstractVector; opts...)
 
     fromchunks(chunks)
 end
-
-let
-    path = joinpath(dirname(@__FILE__), "..","test","fxsample", "*.csv")
-    files = glob(path[2:end], "/")
-    load(files, header_exists=false, type_detect_rows=4)
-end
