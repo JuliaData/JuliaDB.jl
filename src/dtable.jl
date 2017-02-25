@@ -151,6 +151,11 @@ function subdomain(nds, r)
                 Nullable(length(nds.index[r])))
 end
 
+function withchunksindex(f, dt::DTable)
+    cs = f(chunks(dt))
+    DTable(Cat(chunktype(dt.dag), domain(dt.dag), nothing, cs))
+end
+
 """
 `mapchunks(f, nds::NDSparse; keeplengths=true)`
 
@@ -175,8 +180,9 @@ Returns a new DTable. if `keeplength` is false, the output
 lengths will all be Nullable{Int}
 """
 function mapchunks(f, dt::DTable; keeplengths=true)
-    cs = mapchunks(f, chunks(dt); keeplengths=keeplengths)
-    DTable(Cat(chunktype(dt.dag), domain(dt.dag), nothing, cs))
+    withchunksindex(dt) do cs
+        mapchunks(f, cs, keeplengths=keeplengths)
+    end
 end
 
 import Dagger: thunkize, istask
