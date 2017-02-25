@@ -5,14 +5,14 @@ import Dagger: Domain, AbstractChunk, Thunk, chunktype,
 # re-export the essentials
 export distribute, chunks, compute, gather
 
-immutable DTable
-    dag::AbstractChunk
+immutable DTable{T}
+    dag::Cat{T}
 end
 
 Dagger.compute(ctx, dt::DTable) = compute(ctx, dt.dag)
 Dagger.compute(dt::DTable) = compute(Context(), dt)
 Dagger.chunks(dt::DTable) = chunks(dt.dag)
-index(dt::DTable) = index(chunks(dt.dag))
+index(dt::DTable) = chunks(dt.dag).index
 
 
 typealias IndexTuple Union{Tuple, NamedTuple}
@@ -31,27 +31,43 @@ immutable TableDomain{T<:IndexTuple} <: Domain
     nrows::Nullable{Int}
 end
 
+immutable EmptyDomain{T} <: Domain
+end
+
 function TableDomain(x::IndexTuple, y::IndexTuple, nrows=Nullable{Int}())
     TableDomain(Interval(x,y), nrows)
 end
 
 function Dagger.domain(nd::NDSparse)
-    TableDomain(first(nd.index), last(nd.index), Nullable{Int}(length(nd)))
+    if !isempty(nd)
+        TableDomain(first(nd.index), last(nd.index), Nullable{Int}(length(nd)))
+    else
+        EmptyDomain{eltype(nd.index)}()
+    end
 end
 
 # many methods of NDSparse that only need the info in a TableDomain
 Base.eltype{T}(::TableDomain{T}) = T
+Base.eltype{T}(::EmptyDomain{T}) = T
+Base.isempty(::EmptyDomain) = true
+Base.isempty(::TableDomain) = false
 nrows(td::TableDomain) = td.nrows
+nrows(td::EmptyDomain) = Nullable(0)
 Base.length(td::TableDomain) = get(td.nrows) # well when it works
+Base.length(td::EmptyDomain) = 0
+Base.ndims{T}(::TableDomain{T})  = nfields(T)
+Base.ndims{T}(::EmptyDomain{T})  = nfields(T)
 Base.first(td::TableDomain) = first(td.interval)
 Base.last(td::TableDomain) = last(td.interval)
-Base.ndims(td::TableDomain)  = length(first(td))
 function Base.merge(d1::TableDomain, d2::TableDomain, collisions=false)
     n = collisions || isnull(d1.nrows) || isnull(d2.nrows) ?
         Nullable{Int}() :
         Nullable(get(d1.nrows) + get(d2.nrows))
     TableDomain(min(first(d1), first(d2)), max(last(d1), last(d2)), n)
 end
+
+Base.merge(d1::TableDomain, d2::EmptyDomain) = d1
+Base.merge(d1::EmptyDomain, d2::Union{TableDomain, EmptyDomain}) = d2
 
 
 """
@@ -71,10 +87,13 @@ end
 `fromchunks(chunks::AbstractArray)`
 
 Convenience function to create a DTable from an array of chunks.
-The chunks must be non-Thunks.
+The chunks must be non-Thunks. Omits empty chunks in the output.
 """
 function fromchunks(chunks::AbstractArray)
     subdomains = map(domain, chunks)
+    nzidxs = find(x->!isempty(x), subdomains)
+    subdomains = subdomains[nzidxs]
+    chunks = chunks[nzidxs]
     DTable(Cat(promote_type(map(chunktype, chunks)...),
         reduce(merge, subdomains),
         nothing,
@@ -130,4 +149,55 @@ function subdomain(nds, r)
     TableDomain(nds.index[first(r)],
                 nds.index[last(r)],
                 Nullable(length(nds.index[r])))
+end
+
+"""
+`mapchunks(f, nds::NDSparse; keeplengths=true)`
+
+Apply a function to the chunk objects in an index.
+Returns an NDSparse. if `keeplength` is false, the output
+lengths will all be Nullable{Int}
+"""
+function mapchunks(f, nds::NDSparse; keeplengths=true)
+    cols = astuple(nds.data.columns)
+    outchunks = map(f, cols[1])
+    outlengths = keeplengths ? cols[2] : Array{Nullable{Int}}(length(cols[2]))
+    NDSparse(nds.index,
+             Columns(outchunks, outlengths, names=[:chunk, :length]))
+end
+
+
+"""
+`mapchunks(f, nds::NDSparse; keeplengths=true)`
+
+Apply a function to the chunk objects in the index of a DTable.
+Returns a new DTable. if `keeplength` is false, the output
+lengths will all be Nullable{Int}
+"""
+function mapchunks(f, dt::DTable; keeplengths=true)
+    cs = mapchunks(f, chunks(dt); keeplengths=keeplengths)
+    DTable(Cat(chunktype(dt.dag), domain(dt.dag), nothing, cs))
+end
+
+import Dagger: thunkize, istask
+# Teach dagger how to turn a Cat of NDSparse thunks into
+# a single thunk for scheduler execution
+function thunkize{S<:NDSparse}(ctx, c::Cat{S})
+    if any(istask, chunks(c).data.columns.chunk)
+        thunks = map(x -> thunkize(ctx, x), chunks(c).data.columns.chunk)
+        Thunk(thunks...; meta=true) do results...
+            fromchunks([results...])
+        end
+    else
+        c
+    end
+end
+
+function Dagger.gather{S<:NDSparse}(ctx, chunk::Cat{S})
+    ps_input = chunks(chunk).data.columns.chunk
+    ps = Array{chunktype(chunk)}(size(ps_input))
+    @sync for i in 1:length(ps_input)
+        @async ps[i] = gather(ctx, ps_input[i])
+    end
+    reduce(merge, ps)
 end
