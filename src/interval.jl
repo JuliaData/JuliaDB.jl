@@ -14,12 +14,6 @@ function Base.isless(t1::NamedTuple, t2::NamedTuple)
     return n1 < n2
 end
 
-let
-    @test @NT(x=>1, y=>2) <  @NT(x=>1, y=>2.5)
-    @test @NT(x=>1, y=>2) >= @NT(x=>1, y=>2)
-    @test @NT(x=>1, y=>2) <  @NT(x=>1, y=>2, z=>3)
-end
-
 @generated function Base.map(f, nts::NamedTuple...)
     fields = fieldnames(nts[1])
     if !all(map(x->isequal(fieldnames(x), fields), nts[2:end]))
@@ -32,9 +26,6 @@ end
     :(@NT($(args...)))
 end
 
-let
-    @test map(round, @NT(x=>1//3, y=>Int), @NT(x=>3, y=>2//3)) == @NT(x=>0.333, y=>1)
-end
 
 immutable Interval{T}
     first::T
@@ -73,18 +64,3 @@ function Base.intersect(i1::Interval, i2::Interval)
     Interval(max(first(i1), first(i2)), min(last(i1), last(i2)))
 end
 
-let
-    @test hasoverlap(Interval(0,2), Interval(1,2))
-    @test !(hasoverlap(Interval(2,1), Interval(1,2)))
-    @test hasoverlap(Interval(0,2), Interval(0,2))
-    @test hasoverlap(Interval(0,2), Interval(-1,2))
-    @test hasoverlap(Interval(0,2), Interval(2,3))
-    @test !hasoverlap(Interval(0,2), Interval(4,5))
-end
-
-let
-    @test 1 in Interval(0, 2)
-    @test !(1 in Interval(2, 1))
-    @test !(3 in Interval(0, 2))
-    @test !(-1 in Interval(0, 2))
-end
