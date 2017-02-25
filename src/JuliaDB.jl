@@ -10,4 +10,6 @@ include("interval.jl")
 include("dtable.jl")
 include("load.jl")
 
+include("indexing.jl")
+
 end # module
