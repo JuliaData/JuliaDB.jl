@@ -40,22 +40,31 @@ immutable Interval{T}
     first::T
     last::T
 end
-# convert a thing to an interval of its own
 Base.eltype{T}(int::Interval{T}) = T
 Base.first(int::Interval) = int.first
 Base.last(int::Interval) = int.last
 Base.in(x, int::Interval) = first(int) <= x <= last(int)
+Base.in(x::Range, int::Interval) = first(x) in int || last(x) in int
+Base.in(x::AbstractArray, int::Interval) = any(a in int for a in x)
+Base.in(x::Colon, int::Interval) = any(a in int for a in x)
 Base.isempty(int::Interval) = first(int) > last(int)
 Base.isless(x::Interval, y::Interval) = x.last < y.first
 
 function hasoverlap(i1::Interval, i2::Interval)
     (isempty(i1) || isempty(i2)) && return false
+
     (first(i2) <= last(i1) && first(i1) <= last(i2)) ||
     (first(i1) <= last(i2) && first(i2) <= last(i1))
 end
 
-# HACK: Interval of Intervals - used for indexing into a table of Intervals
+# KIND OF A HACK: Interval of Intervals - used for indexing into a table of Intervals
+
+# convert a thing to an interval of its own
 Interval(x) = Interval(x,x)
+
+# An interval of intervals can be used to do binary search on
+# a sorted list of intervals. If you just give an interval, NDSparse is going
+# to think you are doing scalar indexing.
 IntervalInterval(x, y) = Interval(Interval(x), Interval(y))
 Base.in{T}(x::Interval{T}, y::Interval{T}) = hasoverlap(x,y)
 Base.in{T}(x::Interval{T}, y::Interval{Interval{T}}) = x in Interval(first(first(y)),last(last(y)))
