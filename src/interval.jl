@@ -37,7 +37,7 @@ Base.last(int::Interval) = int.last
 Base.in(x, int::Interval) = first(int) <= x <= last(int)
 Base.in(x::Range, int::Interval) = first(x) in int || last(x) in int
 Base.in(x::AbstractArray, int::Interval) = any(a in int for a in x)
-Base.in(x::Colon, int::Interval) = any(a in int for a in x)
+Base.in(x::Colon, int::Interval) = true
 Base.isempty(int::Interval) = first(int) > last(int)
 Base.isless(x::Interval, y::Interval) = x.last < y.first
 

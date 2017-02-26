@@ -2,8 +2,13 @@ import IndexedTables: astuple
 
 Base.getindex(t::DTable, idxs...) = _getindex(t, idxs)
 
-function _getindex{D,I}(t::DTable{NDSparse{D,I}}, idxs::I)
+function _getindex{D,I,A,B}(t::DTable{NDSparse{D,I,A,B}}, idxs::I)
     # scalar getindex
+    t1 = withchunksindex(t) do nds
+        subchunk_idxs = find(c->any(map(in, idxs, c)), nds.index)
+        NDSparse(nds.index[subchunk_idxs], nds.data[subchunk_idxs])
+    end
+    gather(t1)[idxs...]
 end
 
 function _getindex(t::DTable, idxs)

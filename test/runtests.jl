@@ -51,11 +51,26 @@ end
                  type_detect_rows=4,
                  header_exists=false)
     @test gather(dt) == nds
+    #@test gather(dt[["USD/EUR"], :,:]) == nds
+    @test gather(dt[["USD/JPY"], :,:]) == nds[["USD/JPY"], :, :]
+    @test gather(dt) == nds
 end
 
 @testset "Getindex" begin
-    nds = NDSparse(Columns(rand(["X","Y"], 100), rand(1:20, 100)), rand(100), agg=+)
-    dt = distribute(nds, 10)
-    @test gather(dt[["X", "Y"], 2:8]) == nds[["X", "Y"], 2:8]
+    idx = Columns(rand(["X","Y","Z"], 1000),
+                  vcat(rand(1:12, 250), rand(10:20, 250),
+                       rand(15:30, 250), rand(23:43, 250)))
+
+    nds = NDSparse(idx, rand(1000), agg=+)
+
+    dt = distribute(nds, 43)
+    @test gather(dt[:, 2:8]) == nds[:, 2:8]
+
+    I = rand(1:length(nds), 43)
+
+    for i in I
+        idx = nds.index[i]
+        @test dt[idx...] == nds[idx...]
+    end
 end
 
