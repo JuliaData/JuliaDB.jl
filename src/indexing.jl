@@ -5,7 +5,7 @@ Base.getindex(t::DTable, idxs...) = _getindex(t, idxs)
 function _getindex{D,I,A,B}(t::DTable{NDSparse{D,I,A,B}}, idxs::I)
     # scalar getindex
     t1 = withchunksindex(t) do nds
-        subchunk_idxs = find(c->any(map(in, idxs, c)), nds.index)
+        subchunk_idxs = find(c->all(map(in, idxs, c)), nds.data.columns.bounding_box)
         NDSparse(nds.index[subchunk_idxs], nds.data[subchunk_idxs])
     end
     gather(t1)[idxs...]
@@ -22,10 +22,9 @@ function _getindex(t::DTable, idxs)
     end
 
     # Subset the chunks
-    # this is quite dumb at the moment, - only looks at the first dimension
-    # really
+    # this is currently a linear search
     t = withchunksindex(t) do nds
-        subchunk_idxs = find(c->any(map(in, idxs, c)), nds.index)
+        subchunk_idxs = find(c->all(map(in, idxs, c)), nds.data.columns.bounding_box)
         NDSparse(nds.index[subchunk_idxs], nds.data[subchunk_idxs])
     end
 
@@ -34,5 +33,3 @@ function _getindex(t::DTable, idxs)
     end
 end
 
-function where{N}(d::DTable, idxs::Vararg{Any,N})
-end

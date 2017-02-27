@@ -93,13 +93,17 @@ function chunks_index(subdomains, chunks, lengths)
 
     index = Columns(map(x->Array{Interval{typeof(x)}}(0),
                         first(subdomains[1].interval))...)
+    bounding_boxes = Columns(map(x->Array{Interval{typeof(x)}}(0),
+                             first(subdomains[1].interval))...)
 
     for subd in subdomains
-        int=subd.interval
-        push!(index, map(Interval, first(int), last(int)))
+        push!(index, map(Interval, first(subd), last(subd)))
+        push!(bounding_boxes, map(Interval, mins(subd), maxes(subd)))
     end
 
-    NDSparse(index, Columns(chunks, lengths, names=[:chunk, :length]))
+    NDSparse(index, Columns(bounding_boxes,
+                            chunks, lengths,
+                            names=[:bounding_box, :chunk, :length]))
 end
 
 """
@@ -184,11 +188,13 @@ Returns an NDSparse. if `keeplength` is false, the output
 lengths will all be Nullable{Int}
 """
 function mapchunks(f, nds::NDSparse; keeplengths=true)
-    cols = astuple(nds.data.columns)
-    outchunks = map(f, cols[1])
-    outlengths = keeplengths ? cols[2] : Array{Nullable{Int}}(length(cols[2]))
+    cols = nds.data.columns
+    outchunks = map(f, cols.chunk)
+    outlengths = keeplengths ? cols.length : Array{Nullable{Int}}(length(cols.length))
     NDSparse(nds.index,
-             Columns(outchunks, outlengths, names=[:chunk, :length]))
+             Columns(nds.data.columns.bounding_box,
+                     outchunks, outlengths,
+                     names=[:bounding_box, :chunk, :length]))
 end
 
 
