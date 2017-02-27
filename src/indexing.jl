@@ -12,7 +12,7 @@ function _getindex{D,I,A,B}(t::DTable{NDSparse{D,I,A,B}}, idxs::I)
 end
 
 function _getindex(t::DTable, idxs)
-    I = index(t)
+    I = chunks(t).index
     cs = astuple(I.columns)
     if length(idxs) != length(I.columns)
         error("wrong number of indices")

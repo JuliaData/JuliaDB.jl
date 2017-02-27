@@ -6,16 +6,15 @@ import Dagger: Domain, AbstractChunk, Thunk, chunktype,
 export distribute, chunks, compute, gather
 
 immutable DTable{T}
-    dag::Cat{T}
+    dag::Cat{T}    # A concatenation of chunks
 end
 
 Dagger.compute(ctx, dt::DTable) = compute(ctx, dt.dag)
 Dagger.compute(dt::DTable) = compute(Context(), dt)
 Dagger.chunks(dt::DTable) = chunks(dt.dag)
-index(dt::DTable) = chunks(dt.dag).index
 
 
-typealias IndexTuple Union{Tuple, NamedTuple}
+const IndexTuple = Union{Tuple, NamedTuple}
 
 """
 `TableDomain(interval, nrows)`
@@ -35,25 +34,20 @@ immutable TableDomain{T<:IndexTuple} <: Domain
     nrows::Nullable{Int}
 end
 
-immutable EmptyDomain{T} <: Domain
-end
-
-function TableDomain(x::IndexTuple, y::IndexTuple, nrows=Nullable{Int}())
-    TableDomain(Interval(x,y), nrows)
-end
+immutable EmptyDomain{T} <: Domain end
 
 # Teach dagger how to automatically figure out the
 # metadata about an NDSparse chunk.
 function Dagger.domain(nd::NDSparse)
-    if !isempty(nd)
-        interval = Interval(first(nd.index), last(nd.index))
-        cs = astuple(nd.index.columns)
-        extr = map(extrema, cs)
-        boundingrect = Interval(map(first, extr), map(last, extr))
-        TableDomain(interval, boundingrect, Nullable{Int}(length(nd)))
-    else
-        EmptyDomain{eltype(nd.index)}()
+    if isempty(nd)
+        return EmptyDomain{eltype(nd.index)}()
     end
+
+    interval = Interval(first(nd.index), last(nd.index))
+    cs = astuple(nd.index.columns)
+    extr = map(extrema, cs)
+    boundingrect = Interval(map(first, extr), map(last, extr))
+    return TableDomain(interval, boundingrect, Nullable{Int}(length(nd)))
 end
 
 Base.eltype{T}(::TableDomain{T}) = T
@@ -92,14 +86,23 @@ function Base.intersect(d1::TableDomain, d2::TableDomain)
     TableDomain(interval, boundingrect, Nullable{Int}())
 end
 
+function Base.intersect(d1::EmptyDomain, d2::Union{TableDomain,EmptyDomain})
+    d1
+end
+
 """
+`chunks_index(subdomains, chunks, lengths)`
+
+- `subdomains`: a vector of subdomains
+- `chunks`: a vector of chunks for those corresponding subdomains
+- `lengths`: a vector of nullable Int
+
 Create an lookup table from a bunch of `TableDomain`s
 This lookup table is itself an NDSparse object indexed by the
 first and last indices in the chunks. We enforce the constraint
 that the chunks must be disjoint to make such an arrangement
 possible. But this is kind of silly though since all the lookups
 are best done on the bounding boxes. So,
-
 TODO: use an RTree of bounding boxes here.
 """
 function chunks_index(subdomains, chunks, lengths)
@@ -134,7 +137,7 @@ function fromchunks(chunks::AbstractArray)
 
     DTable(Cat(promote_type(map(chunktype, chunks)...),
             reduce(merge, subdomains),
-            nothing,
+            nothing, # We in JuliaDB don't make use of this domainchunks field
             chunks_index(subdomains, chunks, map(nrows, subdomains)),
         )
     )
@@ -205,7 +208,7 @@ function mapchunks(f, nds::NDSparse; keeplengths=true)
     outchunks = map(f, cols.chunk)
     outlengths = keeplengths ? cols.length : Array{Nullable{Int}}(length(cols.length))
     NDSparse(nds.index,
-             Columns(nds.data.columns.boundingrect,
+             Columns(cols.boundingrect,
                      outchunks, outlengths,
                      names=[:boundingrect, :chunk, :length]))
 end
@@ -241,6 +244,7 @@ end
 function Dagger.gather{S<:NDSparse}(ctx, chunk::Cat{S})
     ps_input = chunks(chunk).data.columns.chunk
     ps = Array{chunktype(chunk)}(size(ps_input))
+
     @sync for i in 1:length(ps_input)
         @async ps[i] = gather(ctx, ps_input[i])
     end
