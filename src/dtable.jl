@@ -245,8 +245,5 @@ function Dagger.gather{S<:NDSparse}(ctx, chunk::Cat{S})
     ps_input = chunks(chunk).data.columns.chunk
     ps = Array{chunktype(chunk)}(size(ps_input))
 
-    @sync for i in 1:length(ps_input)
-        @async ps[i] = gather(ctx, ps_input[i])
-    end
-    reduce(merge, ps)
+    gather(Dagger.treereduce((x,y)->Thunk(merge, x, y), ps_input))
 end
