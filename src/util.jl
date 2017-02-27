@@ -1,4 +1,29 @@
 
+using NamedTuples
+
+function Base.isless(t1::NamedTuple, t2::NamedTuple)
+    n1, n2 = length(t1), length(t2)
+    for i = 1:min(n1, n2)
+        a, b = t1[i], t2[i]
+        if !isequal(a, b)
+            return isless(a, b)
+        end
+    end
+    return n1 < n2
+end
+
+@generated function Base.map(f, nts::NamedTuple...)
+    fields = fieldnames(nts[1])
+    if !all(map(x->isequal(fieldnames(x), fields), nts[2:end]))
+        throw(ArgumentError("All NamedTuple inputs to map must have the same fields"))
+    end
+    N = length(fields)
+    args = ntuple(N) do i
+        :($(fields[i]) => f(map(t->t[$i], nts)...))
+    end
+    :(@NT($(args...)))
+end
+
 function subtable(nds, r)
     NDSparse(nds.index[r], nds.data[r])
 end
