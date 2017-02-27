@@ -1,36 +1,16 @@
-using NamedTuples
-using Compat
-
 using Base.Test
 
-function Base.isless(t1::NamedTuple, t2::NamedTuple)
-    n1, n2 = length(t1), length(t2)
-    for i = 1:min(n1, n2)
-        a, b = t1[i], t2[i]
-        if !isequal(a, b)
-            return isless(a, b)
-        end
-    end
-    return n1 < n2
-end
-
-@generated function Base.map(f, nts::NamedTuple...)
-    fields = fieldnames(nts[1])
-    if !all(map(x->isequal(fieldnames(x), fields), nts[2:end]))
-        throw(ArgumentError("All NamedTuple inputs to map must have the same fields"))
-    end
-    N = length(fields)
-    args = ntuple(N) do i
-        :($(fields[i]) => f(map(t->t[$i], nts)...))
-    end
-    :(@NT($(args...)))
-end
-
-
+"""
+An interval type tailored specifically to store intervals of
+indices of an NDSparse object. Some of the operations on this
+like `in` or `<` may be controversial for a generic Interval type.
+"""
 immutable Interval{T}
     first::T
     last::T
 end
+
+# desired properties:
 Base.eltype{T}(int::Interval{T}) = T
 Base.first(int::Interval) = int.first
 Base.last(int::Interval) = int.last
@@ -63,5 +43,8 @@ Base.in{T}(x::Interval{T}, y::Interval{Interval{T}}) = x in Interval(first(first
 
 function Base.intersect(i1::Interval, i2::Interval)
     Interval(max(first(i1), first(i2)), min(last(i1), last(i2)))
+end
+function Base.merge(i1::Interval, i2::Interval)
+    Interval(min(first(i1), first(i2)), max(last(i1), last(i2)))
 end
 

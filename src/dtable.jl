@@ -20,9 +20,12 @@ typealias IndexTuple Union{Tuple, NamedTuple}
 """
 `TableDomain(interval, nrows)`
 
-metadata about an NDSparse chunk
+metadata about an NDSparse chunk. When storing metadata about a chunk we must be
+conservative about what we store. i.e. it is ok to store that a chunk has more
+indices than what it actually contains.
 
-- `interval`: An `Interval` object with the lowest and the highest index tuples.
+- `interval`: An `Interval` object with the first and the last index tuples.
+- `boundingrect`: An `Interval` object with the lowest and the highest indices as tuples.
 - `nrows`: A `Nullable{Int}` of number of rows in the NDSparse, if knowable
            (See design doc section on "Knowability of chunk size")
 """
@@ -39,6 +42,8 @@ function TableDomain(x::IndexTuple, y::IndexTuple, nrows=Nullable{Int}())
     TableDomain(Interval(x,y), nrows)
 end
 
+# Teach dagger how to automatically figure out the
+# metadata about an NDSparse chunk.
 function Dagger.domain(nd::NDSparse)
     if !isempty(nd)
         interval = Interval(first(nd.index), last(nd.index))
@@ -51,7 +56,6 @@ function Dagger.domain(nd::NDSparse)
     end
 end
 
-# many methods of NDSparse that only need the info in a TableDomain
 Base.eltype{T}(::TableDomain{T}) = T
 Base.eltype{T}(::EmptyDomain{T}) = T
 
@@ -60,9 +64,6 @@ Base.isempty(::TableDomain) = false
 
 nrows(td::TableDomain) = td.nrows
 nrows(td::EmptyDomain) = Nullable(0)
-
-Base.length(td::TableDomain) = get(td.nrows) # well when it works
-Base.length(td::EmptyDomain) = 0
 
 Base.ndims{T}(::TableDomain{T})  = nfields(T)
 Base.ndims{T}(::EmptyDomain{T})  = nfields(T)
@@ -73,37 +74,49 @@ Base.last(td::TableDomain) = last(td.interval)
 mins(td::TableDomain) = first(td.boundingrect)
 maxes(td::TableDomain) = last(td.boundingrect)
 
-function Base.merge(d1::TableDomain, d2::TableDomain, collisions=false)
+function Base.merge(d1::TableDomain, d2::TableDomain, collisions=true)
     n = collisions || isnull(d1.nrows) || isnull(d2.nrows) ?
         Nullable{Int}() :
         Nullable(get(d1.nrows) + get(d2.nrows))
 
-    interval = Interval(min(first(d1), first(d2)), max(last(d1), last(d2)))
-    boundingrect = Interval(map(min, mins(d1), mins(d2)), map(max, maxes(d1), maxes(d2)))
+    interval = merge(d1.interval, d2.interval)
+    boundingrect = merge(d1.boundingrect, d2.boundingrect)
     TableDomain(interval, boundingrect, n)
 end
 Base.merge(d1::TableDomain, d2::EmptyDomain) = d1
 Base.merge(d1::EmptyDomain, d2::Union{TableDomain, EmptyDomain}) = d2
 
+function Base.intersect(d1::TableDomain, d2::TableDomain)
+    interval = intersect(d1.interval, d2.interval)
+    boundingrect = intersect(d1.boundingrect, d2.boundingrect)
+    TableDomain(interval, boundingrect, Nullable{Int}())
+end
 
 """
-Create an `NDSparse` lookup table from a bunch of `TableDomain`s
+Create an lookup table from a bunch of `TableDomain`s
+This lookup table is itself an NDSparse object indexed by the
+first and last indices in the chunks. We enforce the constraint
+that the chunks must be disjoint to make such an arrangement
+possible. But this is kind of silly though since all the lookups
+are best done on the bounding boxes. So,
+
+TODO: use an RTree of bounding boxes here.
 """
 function chunks_index(subdomains, chunks, lengths)
 
     index = Columns(map(x->Array{Interval{typeof(x)}}(0),
                         first(subdomains[1].interval))...)
-    bounding_boxes = Columns(map(x->Array{Interval{typeof(x)}}(0),
+    boundingrects = Columns(map(x->Array{Interval{typeof(x)}}(0),
                              first(subdomains[1].interval))...)
 
     for subd in subdomains
         push!(index, map(Interval, first(subd), last(subd)))
-        push!(bounding_boxes, map(Interval, mins(subd), maxes(subd)))
+        push!(boundingrects, map(Interval, mins(subd), maxes(subd)))
     end
 
-    NDSparse(index, Columns(bounding_boxes,
+    NDSparse(index, Columns(boundingrects,
                             chunks, lengths,
-                            names=[:bounding_box, :chunk, :length]))
+                            names=[:boundingrect, :chunk, :length]))
 end
 
 """
@@ -169,7 +182,7 @@ function distribute(nds::NDSparse, nchunks=nworkers())
     distribute(nds, nrows)
 end
 
-# util
+# DTable utilities
 function subdomain(nds, r)
     # TODO: speed it up
     domain(subtable(nds, r))
@@ -192,9 +205,9 @@ function mapchunks(f, nds::NDSparse; keeplengths=true)
     outchunks = map(f, cols.chunk)
     outlengths = keeplengths ? cols.length : Array{Nullable{Int}}(length(cols.length))
     NDSparse(nds.index,
-             Columns(nds.data.columns.bounding_box,
+             Columns(nds.data.columns.boundingrect,
                      outchunks, outlengths,
-                     names=[:bounding_box, :chunk, :length]))
+                     names=[:boundingrect, :chunk, :length]))
 end
 
 
