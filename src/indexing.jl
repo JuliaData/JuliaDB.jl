@@ -29,7 +29,7 @@ function _getindex(t::DTable, idxs)
     end
 
     mapchunks(t, keeplengths=false) do chunk
-        Thunk(x -> x[idxs...], chunk)
+        delayed(getindex)(chunk, idxs...)
     end
 end
 

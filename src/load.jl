@@ -13,20 +13,42 @@ to be used as the data for the resulting table. `agg`, `presorted` and `copy`
 are the corresponding keyword arguments passed to `NDSparse` constructor.
 The rest of the keyword arguments (`csvopts`) will be passed on to `TextParse.csvread`
 """
-function load(files::AbstractVector; opts...)
+function load(files::AbstractVector, delim=','; opts...)
     # Give an idea of what we're up against, we should probably also show a
     # progress meter.
     sz = sum(map(filesize, files))
     println("Loading $(length(files)) csv files totalling $(round(sz/2^10)) kB...")
 
     # Load the data first into memory
-    data = map(file -> Thunk(f -> loadNDSparse(f; opts...), file, persist=true), files)
+    load_f(f) = makecsvchunk(f, delim; opts...)
+    data = map(delayed(load_f), files)
 
-    chunks = compute(Thunk(data...; meta=true) do cs...
-            # TODO: this should be read in from Parquet files (saved from step 1)
-            # right now we are just caching it in memory...
-            [cs...]
-        end)
+    chunkrefs = gather(delayed(vcat)(data...))
+    fromchunks(chunkrefs)
+end
 
-    fromchunks(chunks)
+## TODO: Can make this an LRU cache
+const _read_cache = WeakKeyDict()
+
+type CSVChunk <: Dagger.ChunkIO
+    filename::String
+    cache::Bool
+    delim::Char
+    opts::Dict
+end
+
+function Dagger.gather(ctx, csv::CSVChunk)
+    if csv.cache && haskey(_read_cache, csv)
+        _read_cache[csv]
+    else
+        _read_cache[csv] = loadNDSparse(csv.filename, csv.delim; csv.opts...)
+    end
+end
+
+function makecsvchunk(file, delim; cache=true, opts...)
+    handle = CSVChunk(file, cache, delim, Dict(opts))
+    # We need to actually load the data to get things like
+    # the type and Domain. It will get cached if cache is true
+    nds = gather(Context(), handle)
+    Dagger.Chunk(typeof(nds), domain(nds), handle, false)
 end

@@ -1,4 +1,4 @@
-import Dagger: Domain, AbstractChunk, Thunk, chunktype,
+import Dagger: Domain, AbstractChunk, chunktype,
                domain, domainchunks, tochunk, chunks, Cat
 
 
@@ -233,17 +233,15 @@ import Dagger: thunkize, istask
 function thunkize{S<:NDSparse}(ctx, c::Cat{S})
     if any(istask, chunks(c).data.columns.chunk)
         thunks = map(x -> thunkize(ctx, x), chunks(c).data.columns.chunk)
-        Thunk(thunks...; meta=true) do results...
-            fromchunks([results...])
-        end
+        # we need to splat `thunks` so that Dagger knows the inputs
+        # are thunks and they need to be staged for scheduling
+        delayed((results...) -> fromchunks([results...]); meta=true)(thunks...)
     else
         c
     end
 end
 
-function Dagger.gather{S<:NDSparse}(ctx, chunk::Cat{S})
-    ps_input = chunks(chunk).data.columns.chunk
-    ps = Array{chunktype(chunk)}(size(ps_input))
-
-    gather(Dagger.treereduce((x,y)->Thunk(merge, x, y), ps_input))
+function Dagger.gather{S<:NDSparse}(ctx, c::Cat{S})
+    ps_input = chunks(c).data.columns.chunk
+    gather(Dagger.treereduce(delayed(merge), ps_input))
 end
