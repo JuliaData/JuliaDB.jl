@@ -30,7 +30,7 @@ end
 ## TODO: Can make this an LRU cache
 const _read_cache = WeakKeyDict()
 
-type CSVChunk <: Dagger.ChunkIO
+type CSVChunk
     filename::String
     cache::Bool
     delim::Char
