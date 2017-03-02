@@ -35,15 +35,20 @@ function load(files::AbstractVector, delim=','; opts...)
     unknown = files
     validcache = []
     metadata = nothing
+
+    # there can be multiple NDSparse possible in the same file
+    # we hope that each one has a unique hash:
+    opthash = hash(Dict(opts))
     # Read metadata about a subset of files if safe to
     metafile = joinpath(JULIADB_CACHEDIR, JULIADB_FILECACHE)
     if isfile(metafile)
         metadata = open(deserialize, metafile, "r")
-        known = metadata.index.columns.filename
+        knownmeta = metadata[files, opthash]
+        known = knownmeta.index.columns.filename
 
         # only those with the same mtime
-        valid = metadata.data.columns.mtime .== mtime.(known)
-        validcache = metadata.data.columns.metadata[valid]
+        valid = knownmeta.data.columns.mtime .== mtime.(known)
+        validcache = knownmeta.data.columns.metadata[valid]
         unknown = setdiff(files, known[valid])
     end
 
@@ -65,8 +70,8 @@ function load(files::AbstractVector, delim=','; opts...)
 
     chunkrefs = gather(delayed(vcat)(data...))
     # store this back in cache
-    cache = NDSparse(Columns(unknown, names=[:filename]),
-                     Columns(mtime.(unknown), chunkrefs, names=[:mtime, :metadata]))
+    cache = NDSparse(Columns(unknown, fill(opthash, length(unknown)), names=[:filename, :opthash]),
+                     Columns(mtime.(unknown), Dagger.Chunk[chunkrefs...], names=[:mtime, :metadata]))
 
     if metadata != nothing
         cache = merge(metadata, cache)

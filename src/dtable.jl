@@ -12,8 +12,8 @@ immutable DTable{T,I} # T<:NDSparse
     chunks::NDSparse
 end
 
-function DTable{T<:NDSparse, I}(::Type{T}, index_space::I, chunks)
-    DTable{T,I}(index_space,chunks)
+function DTable{T<:NDSparse, I}(::Type{T}, index_space::I, cs)
+    DTable{T,I}(index_space, cs)
 end
 
 chunks(dt::DTable) = dt.chunks
@@ -30,8 +30,9 @@ enumerating processes where any unevaluated chunks must be computed
 TODO: Spill to disk
 """
 function compute(ctx, t::DTable)
-    if any(Dagger.istask, chunks(t).data.columns.chunk)
-        thunks = chunks(t).data.columns.chunk
+    chunkcol = chunks(t).data.columns.chunk
+    if any(Dagger.istask, )
+        thunks = chunkcol
         # we need to splat `thunks` so that Dagger knows the inputs
         # are thunks and they need to be staged for scheduling
         vec_thunk = delayed((refs...) -> [refs...]; meta=true)(thunks...)
