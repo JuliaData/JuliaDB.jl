@@ -1,3 +1,6 @@
+const JULIADB_CACHEDIR = ".juliadb_cache"
+const JULIADB_FILECACHE = "filemeta.dat"
+
 """
     load(files::AbstractVector;
           indexcols=Int[],
@@ -14,17 +17,65 @@ are the corresponding keyword arguments passed to `NDSparse` constructor.
 The rest of the keyword arguments (`csvopts`) will be passed on to `TextParse.csvread`
 """
 function load(files::AbstractVector, delim=','; opts...)
+
+    if isempty(files)
+        throw(ArgumentError("Specify at least one file to load."))
+    end
+
+    for file in files
+        if !isfile(file)
+            throw(ArgumentError("No file named $file"))
+        end
+    end
+
+    if !isdir(JULIADB_CACHEDIR)
+        mkdir(JULIADB_CACHEDIR)
+    end
+
+    unknown = files
+    validcache = []
+    metadata = nothing
+    # Read metadata about a subset of files if safe to
+    metafile = joinpath(JULIADB_CACHEDIR, JULIADB_FILECACHE)
+    if isfile(metafile)
+        metadata = open(deserialize, metafile, "r")
+        known = metadata.index.columns.filename
+
+        # only those with the same mtime
+        valid = metadata.data.columns.mtime .== mtime.(known)
+        validcache = metadata.data.columns.metadata[valid]
+        unknown = setdiff(files, known[valid])
+    end
+
     # Give an idea of what we're up against, we should probably also show a
     # progress meter.
-    sz = sum(map(filesize, files))
-    println("Loading $(length(files)) csv files totalling $(round(sz/2^10)) kB...")
+    println("Metadata for ", length(files)-length(unknown), " / ",
+            length(files), " files can be loaded from cache.")
 
+    if isempty(unknown)
+        # we read all required metadata from cache
+        return fromchunks(validcache)
+    end
+
+    sz = sum(map(filesize, unknown))
+    println("Reading $(length(unknown)) csv files totalling $(round(sz/2^10)) kB...")
     # Load the data first into memory
     load_f(f) = makecsvchunk(f, delim; opts...)
-    data = map(delayed(load_f), files)
+    data = map(delayed(load_f), unknown)
 
     chunkrefs = gather(delayed(vcat)(data...))
-    fromchunks(chunkrefs)
+    # store this back in cache
+    cache = NDSparse(Columns(unknown, names=[:filename]),
+                     Columns(mtime.(unknown), chunkrefs, names=[:mtime, :metadata]))
+
+    if metadata != nothing
+        cache = merge(metadata, cache)
+    end
+    open(metafile, "w") do io
+        serialize(io, cache)
+    end
+
+    fromchunks(vcat(validcache, chunkrefs))
 end
 
 ## TODO: Can make this an LRU cache
@@ -37,7 +88,7 @@ type CSVChunk
     opts::Dict
 end
 
-function Dagger.gather(ctx, csv::CSVChunk)
+function gather(ctx, csv::CSVChunk)
     if csv.cache && haskey(_read_cache, csv)
         _read_cache[csv]
     else
