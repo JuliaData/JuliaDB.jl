@@ -1,23 +1,74 @@
-import Dagger: Domain, AbstractChunk, chunktype,
-               domain, domainchunks, tochunk, chunks, Cat
+import Dagger: Domain, chunktype, domain, tochunk,
+               chunks, compute, gather
 
 
 # re-export the essentials
 export distribute, chunks, compute, gather
 
-immutable DTable{T}
-    dag::Cat{T}    # A concatenation of chunks
-end
-
-Dagger.compute(ctx, dt::DTable) = compute(ctx, dt.dag)
-Dagger.compute(dt::DTable) = compute(Context(), dt)
-Dagger.chunks(dt::DTable) = chunks(dt.dag)
-
-
 const IndexTuple = Union{Tuple, NamedTuple}
 
+immutable DTable{T,I} # T<:NDSparse
+    index_space::I
+    chunks::NDSparse
+end
+
+function DTable{T<:NDSparse, I}(::Type{T}, index_space::I, chunks)
+    DTable{T,I}(index_space,chunks)
+end
+
+chunks(dt::DTable) = dt.chunks
+tabletype{T}(dt::DTable{T}) = T
+
 """
-`TableDomain(interval, nrows)`
+Compute any delayed-evaluation in the distributed table.
+
+The computed data is left on the worker processes.
+
+The first ctx is an optional Dagger.Context object
+enumerating processes where any unevaluated chunks must be computed
+
+TODO: Spill to disk
+"""
+function compute(ctx, t::DTable)
+    if any(Dagger.istask, chunks(t).data.columns.chunk)
+        thunks = chunks(t).data.columns.chunk
+        # we need to splat `thunks` so that Dagger knows the inputs
+        # are thunks and they need to be staged for scheduling
+        vec_thunk = delayed((refs...) -> [refs...]; meta=true)(thunks...)
+        chunks = compute(ctx, vec_thunk) # returns a vector of Chunk objects
+        fromchunks(chunks)
+    else
+        t
+    end
+end
+
+"""
+Gather data in a DTable into an NDSparse object
+
+The first ctx is an optional Dagger.Context object
+enumerating processes where any unevaluated chunks must be computed
+"""
+function gather(ctx, c::DTable)
+    ps_input = chunks(c).data.columns.chunk
+    gather(ctx, Dagger.treereduce(delayed(merge), ps_input))
+end
+
+
+"""
+`mapchunks(f, nds::NDSparse; keeplengths=true)`
+
+Delayed application of a function to each chunk in an DTable.
+Returns a new DTable. if `keeplength` is false, the output
+lengths will all be `Nullable{Int}()`
+"""
+function mapchunks(f, dt::DTable; keeplengths=true)
+    withchunksindex(dt) do cs
+        mapchunks(f, cs, keeplengths=keeplengths)
+    end
+end
+
+"""
+`IndexSpace(interval, boundingrect, nrows)`
 
 metadata about an NDSparse chunk. When storing metadata about a chunk we must be
 conservative about what we store. i.e. it is ok to store that a chunk has more
@@ -28,65 +79,65 @@ indices than what it actually contains.
 - `nrows`: A `Nullable{Int}` of number of rows in the NDSparse, if knowable
            (See design doc section on "Knowability of chunk size")
 """
-immutable TableDomain{T<:IndexTuple} <: Domain
+immutable IndexSpace{T<:IndexTuple}
     interval::Interval{T}
     boundingrect::Interval{T}
     nrows::Nullable{Int}
 end
 
-immutable EmptyDomain{T} <: Domain end
+immutable EmptySpace{T} <: Domain end
 
 # Teach dagger how to automatically figure out the
-# metadata about an NDSparse chunk.
+# metadata (in dagger parlance "domain") about an NDSparse chunk.
 function Dagger.domain(nd::NDSparse)
     if isempty(nd)
-        return EmptyDomain{eltype(nd.index)}()
+        return EmptySpace{eltype(nd.index)}()
     end
 
     interval = Interval(first(nd.index), last(nd.index))
     cs = astuple(nd.index.columns)
     extr = map(extrema, cs)
     boundingrect = Interval(map(first, extr), map(last, extr))
-    return TableDomain(interval, boundingrect, Nullable{Int}(length(nd)))
+    return IndexSpace(interval, boundingrect, Nullable{Int}(length(nd)))
 end
 
-Base.eltype{T}(::TableDomain{T}) = T
-Base.eltype{T}(::EmptyDomain{T}) = T
+Base.eltype{T}(::IndexSpace{T}) = T
+Base.eltype{T}(::EmptySpace{T}) = T
 
-Base.isempty(::EmptyDomain) = true
-Base.isempty(::TableDomain) = false
+Base.isempty(::EmptySpace) = true
+Base.isempty(::IndexSpace) = false
 
-nrows(td::TableDomain) = td.nrows
-nrows(td::EmptyDomain) = Nullable(0)
+nrows(td::IndexSpace) = td.nrows
+nrows(td::EmptySpace) = Nullable(0)
 
-Base.ndims{T}(::TableDomain{T})  = nfields(T)
-Base.ndims{T}(::EmptyDomain{T})  = nfields(T)
+Base.ndims{T}(::IndexSpace{T})  = nfields(T)
+Base.ndims{T}(::EmptySpace{T})  = nfields(T)
 
-Base.first(td::TableDomain) = first(td.interval)
-Base.last(td::TableDomain) = last(td.interval)
+Base.first(td::IndexSpace) = first(td.interval)
+Base.last(td::IndexSpace) = last(td.interval)
 
-mins(td::TableDomain) = first(td.boundingrect)
-maxes(td::TableDomain) = last(td.boundingrect)
+mins(td::IndexSpace) = first(td.boundingrect)
+maxes(td::IndexSpace) = last(td.boundingrect)
 
-function Base.merge(d1::TableDomain, d2::TableDomain, collisions=true)
+function Base.merge(d1::IndexSpace, d2::IndexSpace, collisions=true)
     n = collisions || isnull(d1.nrows) || isnull(d2.nrows) ?
         Nullable{Int}() :
         Nullable(get(d1.nrows) + get(d2.nrows))
 
     interval = merge(d1.interval, d2.interval)
     boundingrect = merge(d1.boundingrect, d2.boundingrect)
-    TableDomain(interval, boundingrect, n)
+    IndexSpace(interval, boundingrect, n)
 end
-Base.merge(d1::TableDomain, d2::EmptyDomain) = d1
-Base.merge(d1::EmptyDomain, d2::Union{TableDomain, EmptyDomain}) = d2
+Base.merge(d1::IndexSpace, d2::EmptySpace) = d1
+Base.merge(d1::EmptySpace, d2::Union{IndexSpace, EmptySpace}) = d2
 
-function Base.intersect(d1::TableDomain, d2::TableDomain)
+function Base.intersect(d1::IndexSpace, d2::IndexSpace)
     interval = intersect(d1.interval, d2.interval)
     boundingrect = intersect(d1.boundingrect, d2.boundingrect)
-    TableDomain(interval, boundingrect, Nullable{Int}())
+    IndexSpace(interval, boundingrect, Nullable{Int}())
 end
 
-function Base.intersect(d1::EmptyDomain, d2::Union{TableDomain,EmptyDomain})
+function Base.intersect(d1::EmptySpace, d2::Union{IndexSpace,EmptySpace})
     d1
 end
 
@@ -97,7 +148,7 @@ end
 - `chunks`: a vector of chunks for those corresponding subdomains
 - `lengths`: a vector of nullable Int
 
-Create an lookup table from a bunch of `TableDomain`s
+Create an lookup table from a bunch of `IndexSpace`s
 This lookup table is itself an NDSparse object indexed by the
 first and last indices in the chunks. We enforce the constraint
 that the chunks must be disjoint to make such an arrangement
@@ -133,14 +184,11 @@ function fromchunks(chunks::AbstractArray)
     subdomains = map(domain, chunks)
     nzidxs = find(x->!isempty(x), subdomains)
     subdomains = subdomains[nzidxs]
-    chunks = chunks[nzidxs]
+    typ = promote_type(map(chunktype, chunks)...)
 
-    DTable(Cat(promote_type(map(chunktype, chunks)...),
-            reduce(merge, subdomains),
-            nothing, # We in JuliaDB don't make use of this domainchunks field
-            chunks_index(subdomains, chunks, map(nrows, subdomains)),
-        )
-    )
+    idxs = reduce(merge, subdomains)
+    DTable(typ, idxs,
+           chunks_index(subdomains, chunks[nzidxs], map(nrows, subdomains)))
 end
 
 ### Distribute a NDSparse into a DTable
@@ -162,12 +210,9 @@ function distribute(nds::NDSparse, rowgroups::AbstractArray)
     end
 
     ranges = map(UnitRange, splits[1:end-1].+1, splits[2:end])
-    subdomains = map(r -> subdomain(nds, r), ranges)
 
     chunks = map(r->tochunk(subtable(nds, r)), ranges)
-    chunkmap = chunks_index(subdomains, chunks, nrows.(domain.(chunks)))
-
-    DTable(Cat(typeof(nds), domain(nds), nothing, chunkmap))
+    fromchunks(chunks)
 end
 
 """
@@ -193,7 +238,7 @@ end
 
 function withchunksindex(f, dt::DTable)
     cs = f(chunks(dt))
-    DTable(Cat(chunktype(dt.dag), domain(dt.dag), nothing, cs))
+    DTable(tabletype(dt), dt.index_space, cs)
 end
 
 """
@@ -213,35 +258,3 @@ function mapchunks(f, nds::NDSparse; keeplengths=true)
                      names=[:boundingrect, :chunk, :length]))
 end
 
-
-"""
-`mapchunks(f, nds::NDSparse; keeplengths=true)`
-
-Apply a function to the chunk objects in the index of a DTable.
-Returns a new DTable. if `keeplength` is false, the output
-lengths will all be Nullable{Int}
-"""
-function mapchunks(f, dt::DTable; keeplengths=true)
-    withchunksindex(dt) do cs
-        mapchunks(f, cs, keeplengths=keeplengths)
-    end
-end
-
-import Dagger: thunkize, istask
-# Teach dagger how to turn a Cat of NDSparse thunks into
-# a single thunk for scheduler execution
-function thunkize{S<:NDSparse}(ctx, c::Cat{S})
-    if any(istask, chunks(c).data.columns.chunk)
-        thunks = map(x -> thunkize(ctx, x), chunks(c).data.columns.chunk)
-        # we need to splat `thunks` so that Dagger knows the inputs
-        # are thunks and they need to be staged for scheduling
-        delayed((results...) -> fromchunks([results...]); meta=true)(thunks...)
-    else
-        c
-    end
-end
-
-function Dagger.gather{S<:NDSparse}(ctx, c::Cat{S})
-    ps_input = chunks(c).data.columns.chunk
-    gather(Dagger.treereduce(delayed(merge), ps_input))
-end
