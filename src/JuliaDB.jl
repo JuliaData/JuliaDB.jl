@@ -11,5 +11,6 @@ include("dtable.jl")
 include("load.jl")
 
 include("indexing.jl")
+include("query.jl")
 
 end # module
