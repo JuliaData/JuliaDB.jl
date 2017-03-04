@@ -43,3 +43,16 @@ To turn the `DTable` object into an `NDSparse` object with all the data merged t
 **Currently functional API**
 
 - `getindex`: Scalar getindex returns the value, getindex with a range returns a `DTable` object.
+
+- `select(arr::DTable, conditions::Pair...)`
+
+Filter based on index columns. Conditions are accepted as column-function pairs.
+
+Example: `select(arr, 1 => x->x>10, 3 => x->x!=10 ...)`, returns a `DTable`
+
+- `convertdim(x::DTable, d::DimName, xlate; agg::Function, name)`
+
+Apply function or dictionary `xlate` to each index in the specified dimension.
+If the mapping is many-to-one, `agg` is used to aggregate the results.
+`name` optionally specifies a name for the new dimension. `xlate` must be
+a monotonically increasing function.

@@ -48,3 +48,13 @@ function Base.merge(i1::Interval, i2::Interval)
     Interval(min(first(i1), first(i2)), max(last(i1), last(i2)))
 end
 
+function _map(f, i::Interval)
+    fst, lst = f(first(i)), f(last(i))
+    if lst < fst
+        throw(ArgumentError(
+            "map on $(typeof(i)) is only allowed on monotonically increasing functions"
+           )
+        )
+    end
+    Interval(fst, lst)
+end
