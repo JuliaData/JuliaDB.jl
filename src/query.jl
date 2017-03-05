@@ -64,7 +64,7 @@ function convertdim(t::DTable, d::DimName, xlat; agg=nothing, vecagg=nothing, na
     end
 
     # Collapse overlapping chunks:
-    t2 = withchunksindex(t2) do cs
+    withchunksindex(t2) do cs
         _aggregate_chunks(cs, (x,y)->convertdim(merge(x,y), d, xlat;
                                                 agg=agg, vecagg=vecagg, name=nothing))
     end

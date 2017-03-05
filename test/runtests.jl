@@ -55,6 +55,26 @@ const fxdata = loadNDSparse(allcsv;
     @test gather(fxdata_dist) == fxdata
     @test gather(fxdata_dist) == fxdata
     #@test gather(dt[["blah"], :,:]) == fxdata
+    function common_test1(dt)
+        nds=gather(dt)
+        @test !isempty(nds.index.columns.symbol)
+        @test !isempty(nds.index.columns.time)
+        @test length(nds.index.columns) == 2
+        @test !isempty(nds.data.columns.open)
+        @test !isempty(nds.data.columns.close)
+        @test length(nds.data.columns) == 2
+    end
+    dt = load(files, colnames=["symbol", "time", "open", "close"], indexcols=["symbol", "time"])
+    common_test1(dt)
+    dt = load(files, colnames=["symbol", "time", "open", "close"], datacols=["open", "close"])
+    common_test1(dt)
+    dt = load(files, colnames=["symbol", "time", "open", "close"], datacols=["open", "close"], indexcols=["symbol", "time"])
+    common_test1(dt)
+    dt = load(files, colnames=["symbol", "time", "open", "close"])
+    nds = gather(dt)
+    @test length(nds.data.columns) == 1
+    @test !isempty(nds.data.columns.close)
+    @test length(nds.index.columns) == 3
 end
 
 @testset "Getindex" begin
