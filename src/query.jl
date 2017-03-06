@@ -15,17 +15,17 @@ end
 
 
 # Merge two data-rows in the metadata table
-function merge_metadata(m1, m2, chunk_merge=merge)
-    @NT(chunk=delayed(chunk_merge)(m1.chunk, m2.chunk),
-        length=Nullable{Int}(),
-        boundingrect=merge(m1.boundingrect, m2.boundingrect))
+function merge_metadata(m1, m2, chunk_merge=merge, boundingrect_merge=merge)
+    # Order of args is significant!!
+    @NT(boundingrect=boundingrect_merge(m1.boundingrect, m2.boundingrect),
+        chunk=delayed(chunk_merge)(m1.chunk, m2.chunk),
+        length=Nullable{Int}())
 end
 
-function _aggregate_chunks(cs::NDSparse, f)
-    merge_chunks(x, y) = merge_metadata(x, y, f)
+function _aggregate_chunks(cs::NDSparse, f, boundingf=merge)
     merged_data = aggregate_to(cs.index, cs.data) do x, y
         # TODO: aggregate_vec then treereduce
-        merge_metadata(x, y, f)
+        merge_metadata(x, y, f, boundingf)
     end |> last
     # merge index-rows
     merged_index = aggregate_to(cs.index, cs.index) do x, y
@@ -37,9 +37,7 @@ end
 
 # Filter on data field
 function Base.filter(fn::Function, t::DTable)
-    mapchunks(delayed(x -> filter(fn, x)), t, keeplengths=false) do chunk
-        
-    end
+    mapchunks(delayed(x -> filter(fn, x)), t, keeplengths=false)
 end
 
 import IndexedTables: DimName
@@ -61,11 +59,25 @@ function convertdim(t::DTable, d::DimName, xlat; agg=nothing, vecagg=nothing, na
     # First, apply the same convertdim on the index
     t2 = withchunksindex(t1) do cs
         convertdim(cs, d, x->_map(xlat,x), name=name)
+        # apply xlat to bounding rectangles
+        newrects = map(cs.data.columns.boundingrect) do box
+            # box is an Interval of tuples
+            # xlat the (d)th element of tuple
+            tuplesetindex(box, _map(xlat, box[d]), d)
+        end
+        newcols = tuplesetindex(cs.data.columns, newrects, :boundingrect)
+        NDSparse(cs.index, Columns(newcols..., names=fieldnames(newcols)))
     end
 
+    function merge_boundingrect(a, b)
+        a_convdim = _map(xlat, a[d])
+        b_convdim = _map(xlat, b[d])
+        map(merge, tuplesetindex(a, a_convdim, d), tuplesetindex(b, a_convdim, d))
+    end
     # Collapse overlapping chunks:
     withchunksindex(t2) do cs
         _aggregate_chunks(cs, (x,y)->convertdim(merge(x,y), d, xlat;
-                                                agg=agg, vecagg=vecagg, name=nothing))
+                                                agg=agg, vecagg=vecagg, name=nothing),
+                         merge_boundingrect)
     end
 end

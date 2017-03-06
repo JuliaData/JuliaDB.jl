@@ -97,7 +97,8 @@ end
 end
 
 @testset "Select" begin
-    query = (1=>x->startswith(x,"USD") || endswith(x, "USD"), 2=>x->Base.Dates.month(x)==3)
+    involving(sym, x) = startswith(x, sym) || endswith(x, sym)
+    query = (1=>x-> involving("USD", x) || involving("AUD", x), 2=>x->Base.Dates.month(x)==3)
     @test select(fxdata, query...) == gather(select(fxdata_dist, query...))
 end
 
@@ -110,6 +111,8 @@ end
     chain = convertdim(convertdim(fxdata_dist, 1, x->x[1:3]; agg=_plus), 2, Date, agg=_plus)
     @test convertdim(step1, 2, Date; agg=_plus) == gather(chain)
     chainvec = convertdim(convertdim(fxdata_dist, 1, x->x[1:3]; agg=_plus), 2, Date, vecagg=length)
-    @test convertdim(step1, 2, Date; vecagg=length) == gather(chainvec)
+    step2 = convertdim(step1, 2, Date; vecagg=length)
+    @test step2 == gather(chainvec)
+    @test gather(chainvec[["AUD", "USD"], :]) == step2[["AUD", "USD"], :]
 end
 

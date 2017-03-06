@@ -1,6 +1,22 @@
 
 using NamedTuples
 
+function tuplesetindex{N}(x::Tuple{Vararg{Any,N}}, v, i)
+    ntuple(Val{N}) do j
+        i == j ? v : x[j]
+    end
+end
+
+@generated function tuplesetindex(x::NamedTuple, v, i::Symbol)
+    fields = fieldnames(x)
+    :(@NT($(fields...))(tuplesetindex((x...,), v, findfirst($fields, i))...))
+end
+
+@generated function tuplesetindex(x::NamedTuple, v, i::Int)
+    fields = fieldnames(x)
+    :(@NT($(fields...))(tuplesetindex((x...,), v, i)...))
+end
+
 function Base.isless(t1::NamedTuple, t2::NamedTuple)
     n1, n2 = length(t1), length(t2)
     for i = 1:min(n1, n2)
@@ -11,6 +27,15 @@ function Base.isless(t1::NamedTuple, t2::NamedTuple)
     end
     return n1 < n2
 end
+
+function treereduce(f, xs, v0=xs[1])
+    length(xs) == 0 && return v0
+    length(xs) == 1 && return xs[1]
+    l = length(xs)
+    m = div(l, 2)
+    f(treereduce(f, xs[1:m]), treereduce(f, xs[m+1:end]))
+end
+
 
 @generated function Base.map(f, nts::NamedTuple...)
     fields = fieldnames(nts[1])
