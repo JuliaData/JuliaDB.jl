@@ -19,7 +19,7 @@ end
     end
     N = length(fields)
     args = ntuple(N) do i
-        :($(fields[i]) => f(map(t->t[$i], nts)...))
+        Expr(:kw, fields[i], :(f(map(t->t[$i], nts)...)))
     end
     :(@NT($(args...)))
 end
