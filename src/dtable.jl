@@ -48,11 +48,14 @@ Gather data in a DTable into an NDSparse object
 The first ctx is an optional Dagger.Context object
 enumerating processes where any unevaluated chunks must be computed
 """
-function gather(ctx, c::DTable)
-    ps_input = chunks(c).data.columns.chunk
-    gather(ctx, Dagger.treereduce(delayed(merge), ps_input))
+function gather{T}(ctx, dt::DTable{T})
+    cs = chunks(dt).data.columns.chunk
+    if length(cs) > 0
+        gather(ctx, treereduce(delayed(merge), cs))
+    else
+        error("Empty table")
+    end
 end
-
 
 """
 `mapchunks(f, nds::NDSparse; keeplengths=true)`
@@ -185,9 +188,18 @@ function fromchunks(chunks::AbstractArray)
     nzidxs = find(x->!isempty(x), subdomains)
     subdomains = subdomains[nzidxs]
     typ = promote_type(map(chunktype, chunks)...)
+    if typ != chunktype(chunks[1])
+        warn("The chunks don't have the same type.
+             Will be unable to do some operations.
+             Do the CSV files have the same headers?
+             If not, explicitly specify headers in `load`
+             with `colnames` argument. Or specify `header_exists=false`
+             to not use named columns. If columns are of different
+             types specify a common type using `coltypes` option.")
+    end
 
     idxs = reduce(merge, subdomains)
-    DTable(typ, idxs,
+    DTable(chunktype(chunks[1]), idxs,
            chunks_index(subdomains, chunks[nzidxs], map(nrows, subdomains)))
 end
 
