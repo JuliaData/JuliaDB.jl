@@ -31,13 +31,12 @@ TODO: Spill to disk
 """
 function compute(ctx, t::DTable)
     chunkcol = chunks(t).data.columns.chunk
-    if any(Dagger.istask, )
-        thunks = chunkcol
+    if any(Dagger.istask, chunkcol)
         # we need to splat `thunks` so that Dagger knows the inputs
         # are thunks and they need to be staged for scheduling
-        vec_thunk = delayed((refs...) -> [refs...]; meta=true)(thunks...)
-        chunks = compute(ctx, vec_thunk) # returns a vector of Chunk objects
-        fromchunks(chunks)
+        vec_thunk = delayed((refs...) -> [refs...]; meta=true)(chunkcol...)
+        cs = compute(ctx, vec_thunk) # returns a vector of Chunk objects
+        fromchunks(cs)
     else
         t
     end
