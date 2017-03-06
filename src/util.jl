@@ -19,7 +19,7 @@ end
     end
     N = length(fields)
     args = ntuple(N) do i
-        :($(fields[i]) => f(map(t->t[$i], nts)...))
+        Expr(:kw, fields[i], :(f(map(t->t[$i], nts)...)))
     end
     :(@NT($(args...)))
 end
@@ -28,12 +28,28 @@ function subtable(nds, r)
     NDSparse(nds.index[r], nds.data[r])
 end
 
+getbyheader(cols, header, i::Int) = cols[i]
+getbyheader(cols, header, i::Symbol) = getcol(cols, header, string(i))
+function getbyheader(cols, header, i::AbstractString)
+    if !(i in header)
+        throw(ArgumentError("Unknown column $i"))
+    end
+    getbyheader(cols, header, findfirst(header, i))
+end
+
 """
 get a subset of vectors wrapped in Columns from a tuple of vectors
 """
-function getcolsubset(cols, subcols)
-    idx = length(subcols) > 1 ?
-        Columns(map(i -> cols[i], subcols)...) : Columns(cols[subcols[1]])
+function getcolsubset(cols, header, subcols)
+    colnames = !isempty(header) ?
+        vcat(map(i -> Symbol(getbyheader(header, header, i)), subcols)) :
+        nothing
+
+    if length(subcols) > 1
+        Columns(map(i -> getbyheader(cols, header, i), subcols)...; names=colnames)
+    else
+        Columns(getbyheader(cols, header, subcols[1]); names=colnames)
+    end
 end
 
 # Data loading utilities
@@ -54,7 +70,7 @@ constructor, any other keyword argument is passed on to `readcsv`
 """
 function loadNDSparse(file::AbstractString, delim=',';
                       indexcols=Int[],
-                      datacols=-1,
+                      datacols=Int[],
                       agg=nothing,
                       presorted=false,
                       copy=false,
@@ -63,15 +79,25 @@ function loadNDSparse(file::AbstractString, delim=',';
 
     #println("LOADING ", file)
     cols,header = csvread(file, delim; kwargs...)
-    if datacols == -1
-        # last column
-        datacols = length(cols)
+
+    if isempty(indexcols) && isempty(datacols)
+        indexcols = 1:(length(cols)-1)
+        datacols  = [length(cols)]
     end
 
     if isempty(indexcols)
         # all columns that aren't data
-        indexcols = [x for x in 1:length(cols) if !(x in datacols)]
+        _datacols = map(i->getbyheader(1:length(cols), header, i), datacols)
+        indexcols = [x for x in 1:length(cols) if !(x in _datacols)]
     end
 
-    NDSparse(getcolsubset(cols, indexcols), getcolsubset(cols, datacols))
+    if isempty(datacols)
+        # all columns that aren't index
+        _indexcols = map(i->getbyheader(1:length(cols), header, i), indexcols)
+        datacols = [x for x in 1:length(cols) if !(x in _indexcols)]
+    end
+
+    index = getcolsubset(cols, header, indexcols)
+    data = getcolsubset(cols, header, datacols)
+    NDSparse(index, data)
 end

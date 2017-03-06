@@ -7,15 +7,15 @@ using NamedTuples
 @testset "Utilities" begin
 
     @testset "NamedTuples isless" begin
-        @test @NT(x=>1, y=>2) <  @NT(x=>1, y=>2.5)
-        @test @NT(x=>1, y=>2) >= @NT(x=>1, y=>2)
-        @test @NT(x=>1, y=>2) <  @NT(x=>1, y=>2, z=>3)
+        @test @NT(x=1, y=2) <  @NT(x=1, y=2.5)
+        @test @NT(x=1, y=2) >= @NT(x=1, y=2)
+        @test @NT(x=1, y=2) <  @NT(x=1, y=2, z=3)
     end
 
     @testset "NamedTuples map" begin
         @test map(round,
-                  @NT(x=>1//3, y=>Int),
-                  @NT(x=>3, y=>2//3)) == @NT(x=>0.333, y=>1)
+                  @NT(x=1//3, y=Int),
+                  @NT(x=3, y=2//3)) == @NT(x=0.333, y=1)
     end
 end
 
@@ -55,6 +55,26 @@ const fxdata = loadNDSparse(allcsv;
     @test gather(fxdata_dist) == fxdata
     @test gather(fxdata_dist) == fxdata
     #@test gather(dt[["blah"], :,:]) == fxdata
+    function common_test1(dt)
+        nds=gather(dt)
+        @test !isempty(nds.index.columns.symbol)
+        @test !isempty(nds.index.columns.time)
+        @test length(nds.index.columns) == 2
+        @test !isempty(nds.data.columns.open)
+        @test !isempty(nds.data.columns.close)
+        @test length(nds.data.columns) == 2
+    end
+    dt = load(files, colnames=["symbol", "time", "open", "close"], indexcols=["symbol", "time"])
+    common_test1(dt)
+    dt = load(files, colnames=["symbol", "time", "open", "close"], datacols=["open", "close"])
+    common_test1(dt)
+    dt = load(files, colnames=["symbol", "time", "open", "close"], datacols=["open", "close"], indexcols=["symbol", "time"])
+    common_test1(dt)
+    dt = load(files, colnames=["symbol", "time", "open", "close"])
+    nds = gather(dt)
+    @test length(nds.data.columns) == 1
+    @test !isempty(nds.data.columns.close)
+    @test length(nds.index.columns) == 3
 end
 
 @testset "Getindex" begin

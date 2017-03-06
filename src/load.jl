@@ -42,7 +42,13 @@ function load(files::AbstractVector, delim=','; opts...)
     # Read metadata about a subset of files if safe to
     metafile = joinpath(JULIADB_CACHEDIR, JULIADB_FILECACHE)
     if isfile(metafile)
-        metadata = open(deserialize, metafile, "r")
+        try
+            metadata = open(deserialize, metafile, "r")
+        catch err
+            # error reading metadata
+            warn("Cached metadata file is corrupt. Not using cache.")
+            @goto readunknown
+        end
         knownmeta = metadata[files, opthash]
         known = knownmeta.index.columns.filename
 
@@ -51,6 +57,7 @@ function load(files::AbstractVector, delim=','; opts...)
         validcache = knownmeta.data.columns.metadata[valid]
         unknown = setdiff(files, known[valid])
     end
+    @label readunknown
 
     # Give an idea of what we're up against, we should probably also show a
     # progress meter.
