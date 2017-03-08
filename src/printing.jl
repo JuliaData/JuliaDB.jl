@@ -12,8 +12,14 @@ end
 function Base.show(io::IO, t::DTable)
     # we fetch at most 21 elements and let NDSparse
     # display it.
+    parts = Any[nothing, nothing]
+    @sync begin
+        @async parts[1] = take_n(t, 11)
+        @async parts[2] = take_n(t, 10, -1)
+    end
+
     if !isempty(t.chunks)
-        show(io, merge(take_n(t, 11), take_n(t, 10, -1)))
+        show(io, merge(parts...))
     else
         println(io, "an empty table")
     end
