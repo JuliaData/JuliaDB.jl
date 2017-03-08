@@ -1,4 +1,3 @@
-const TextMIME = Union{MIME"text/plain", MIME"text/html"}
 function take_n(t::DTable, n, dir=1)
     i = dir == -1 ? length(t.chunks) : 1
     chunkcol = chunks(t).data.columns.chunk
