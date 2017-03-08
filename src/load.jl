@@ -91,7 +91,7 @@ function load(files::AbstractVector, delim=','; opts...)
 end
 
 ## TODO: Can make this an LRU cache
-const _read_cache = WeakKeyDict()
+const _read_cache = Dict{String, Any}()
 
 type CSVChunk
     filename::String
@@ -101,10 +101,10 @@ type CSVChunk
 end
 
 function gather(ctx, csv::CSVChunk)
-    if csv.cache && haskey(_read_cache, csv)
-        _read_cache[csv]
+    if csv.cache && haskey(_read_cache, csv.filename)
+        _read_cache[csv.filename]
     else
-        _read_cache[csv] = loadNDSparse(csv.filename, csv.delim; csv.opts...)
+        _read_cache[csv.filename] = loadNDSparse(csv.filename, csv.delim; csv.opts...)
     end
 end
 
@@ -112,6 +112,6 @@ function makecsvchunk(file, delim; cache=true, opts...)
     handle = CSVChunk(file, cache, delim, Dict(opts))
     # We need to actually load the data to get things like
     # the type and Domain. It will get cached if cache is true
-    nds = gather(Context(), handle)
+    nds = gather(Dagger.Context(), handle)
     Dagger.Chunk(typeof(nds), domain(nds), handle, false)
 end
