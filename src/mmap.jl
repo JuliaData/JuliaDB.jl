@@ -11,6 +11,7 @@ end
 @inline Base.size(arr::MmappableArray) = arr.size
 @inline Base.getindex(arr::MmappableArray, idx...) = arr.data[idx...]
 Base.linearindexing(arr::MmappableArray) = Base.linearindexing(arr.data)
+Base.copy(mm::MmappableArray) = copy(mm.data) # it's no more useful to carry around the wrapper
 
 function Base.similar{M<:MmappableArray}(A::M, sz::Int...)
     # this is to keep NDSparse constructor happy
@@ -26,6 +27,7 @@ function MmappableArray{T}(io::IO, file::String, data::Array{T})
     offset = position(io)
     arr = Mmap.mmap(io, typeof(data), size(data), offset)
     copy!(arr, data)
+    Mmap.sync!(arr)
     seek(io, offset+sizeof(data))
     MmappableArray{T, ndims(data), typeof(data)}(file, offset, size(data), arr)
 end
@@ -69,10 +71,11 @@ using IndexedTables
 # assuming we don't use non-bits numbers
 const MmappableTypes = Union{Integer, AbstractFloat, Complex, Char, DateTime, Date}
 
-_mmappable(io, file, arr::PooledArray) = MmappableArray(io, file, arr)
-_mmappable{T<:MmappableTypes}(io, file, arr::Array{T}) = MmappableArray(io, file, arr)
-function _mmappable(io, file, arr::Columns)
-    cs = map(x->_mmappable(io, file, x), arr.columns)
+### Wrap arrays in Mmappable wrapper. Do this before serializing
+wrap_mmap(io, file, arr::PooledArray) = MmappableArray(io, file, arr)
+wrap_mmap{T<:MmappableTypes}(io, file, arr::Array{T}) = MmappableArray(io, file, arr)
+function wrap_mmap(io, file, arr::Columns)
+    cs = map(x->wrap_mmap(io, file, x), arr.columns)
     if all(x->isa(x, Int), fieldnames(cs))
         Columns(cs...)
     else
@@ -80,21 +83,53 @@ function _mmappable(io, file, arr::Columns)
         Columns(cs...; names=fieldnames(cs))
     end
 end
-_mmappable(io, file, arr::AbstractArray) = arr
+wrap_mmap(io, file, arr::AbstractArray) = arr
 
 ## This must be called after sorting and aggregation!
-function MmappableNDSparse(io::IO, file::String, nds::NDSparse)
-    index = _mmappable(io, file, nds.index)
-    data  = _mmappable(io, file, nds.data)
+function wrap_mmap(io::IO, file::String, nds::NDSparse)
+    flush!(nds)
+    index = wrap_mmap(io, file, nds.index)
+    data  = wrap_mmap(io, file, nds.data)
     NDSparse(index, data, copy=false, presorted=true)
 end
 
-function MmappableNDSparse(file::String, data::NDSparse)
-    flush!(data)
+function wrap_mmap(file::String, data::NDSparse)
     open(file, "w+") do io
-        MmappableNDSparse(io, file, data)
+        wrap_mmap(io, file, data)
     end
 end
+
+### Unwrap
+
+# we should unwrap before processing because MmappableArray is
+# not a complete array wrapper. We keep track of which arrays were
+# part of which wrapper. If an array remains unchanged after it is
+# deserialized by a proc, we can wrap it in MmappableArray before sending it
+function unwrap_mmap(arr::MmappableArray)
+    #track[arr.data] = (arr.file, arr.offset, arr.size)
+    arr.data
+end
+
+function unwrap_mmap(arr::PooledArray)
+    refs = unwrap_mmap(arr.refs)
+    PooledArray(PooledArrays.RefArray(refs), arr.pool)
+end
+
+function unwrap_mmap(arr::Columns)
+    cs = map(x->unwrap_mmap(x), arr.columns)
+    if all(x->isa(x, Int), fieldnames(cs))
+        Columns(cs...)
+    else
+        # NamedTuple case
+        Columns(cs...; names=fieldnames(cs))
+    end
+end
+
+function unwrap_mmap(arr::NDSparse)
+    NDSparse(unwrap_mmap(arr.index), unwrap_mmap(arr.data), presorted=true, copy=false)
+end
+
+unwrap_mmap(arr::AbstractArray) = arr
 
 using Base.Test
 @testset "MmappableArray" begin
@@ -107,6 +142,7 @@ using Base.Test
     M2 = open(deserialize, sf)
     @test X == M
     @test M == M2
+
     P = PooledArray(rand(["A", "B"], 10^6))
     P1 = MmappableArray(f, P)
     psf = tempname()
@@ -126,9 +162,13 @@ using Base.Test
 
     nd = NDSparse(Columns(P, T), Columns(rand(10^6), rand(10^6)))
     ndf = tempname()
-    mm = MmappableNDSparse(ndf, nd)
+    mm = wrap_mmap(ndf, nd)
     ndsf = tempname()
     open(io -> serialize(io, mm), ndsf, "w")
     @test filesize(ndsf) < 10^6
     @test open(deserialize, ndsf) == nd
+    nd2 = open(deserialize, ndsf)
+    @test nd == unwrap_mmap(nd2)
+    @test typeof(nd) == typeof(unwrap_mmap(nd2))
 end
+
