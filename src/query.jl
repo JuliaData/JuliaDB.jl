@@ -40,8 +40,6 @@ function Base.filter(fn::Function, t::DTable)
     mapchunks(delayed(x -> filter(fn, x)), t, keeplengths=false)
 end
 
-import IndexedTables: DimName
-
 """
 `convertdim(x::DTable, d::DimName, xlate; agg::Function, name)`
 

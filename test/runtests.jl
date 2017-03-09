@@ -107,6 +107,13 @@ const fxdata = loadNDSparse(allcsv;
 ingest_output = tempname()
 fxdata_ingest = ingest(files, ingest_output, header_exists=false, type_detect_rows=4, indexcols=1:2)
 
+@testset "extractarray" begin
+    @test gather(getindexcol(fxdata_ingest, 1)) == fxdata.index.columns[1]
+    @test gather(getindexcol(fxdata_ingest, 2)) == fxdata.index.columns[2]
+    @test gather(getdatacol(fxdata_ingest, 1)) == fxdata.data.columns[1]
+    @test gather(getdatacol(fxdata_ingest, 2)) == fxdata.data.columns[2]
+end
+
 @testset "Load" begin
     cache = joinpath(JuliaDB.JULIADB_CACHEDIR, JuliaDB.JULIADB_FILECACHE)
     if isfile(cache)
