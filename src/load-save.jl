@@ -48,7 +48,7 @@ function ingest(files::AbstractVector, outputdir::AbstractString; delim = ',', o
 
     function load_and_save(file)
         data = loadNDSparse(file, delim; opts...)
-        save_as_chunk(data, joinpath(outputdir, file))
+        save_as_chunk(data, joinpath(outputdir, normalize_filepath(file)))
     end
 
     saved = map(delayed(load_and_save), files)
@@ -57,6 +57,12 @@ function ingest(files::AbstractVector, outputdir::AbstractString; delim = ',', o
     dtable = fromchunks(chunks)
     open(io -> serialize(io, dtable), joinpath(outputdir, JULIADB_INDEXFILE), "w")
     return dtable
+end
+
+function normalize_filepath(filepath)
+    x = replace(filepath, "/", "_")
+    x = replace(x, "\\", "_")
+    replace(x, ".", "_")
 end
 
 """
