@@ -1,8 +1,11 @@
+export loadfiles
+
 const JULIADB_CACHEDIR = ".juliadb_cache"
 const JULIADB_FILECACHE = "filemeta.dat"
 
 """
-    load(files::AbstractVector;
+    loadfiles(files::AbstractVector;
+          usecache=true,
           indexcols=Int[],
           datacols=Int[],
           agg=nothing,
@@ -16,7 +19,7 @@ to be used as the data for the resulting table. `agg`, `presorted` and `copy`
 are the corresponding keyword arguments passed to `NDSparse` constructor.
 The rest of the keyword arguments (`csvopts`) will be passed on to `TextParse.csvread`
 """
-function load(files::AbstractVector, delim=','; opts...)
+function loadfiles(files::AbstractVector, delim=','; usecache=true, opts...)
 
     if isempty(files)
         throw(ArgumentError("Specify at least one file to load."))
@@ -41,7 +44,7 @@ function load(files::AbstractVector, delim=','; opts...)
     opthash = hash(Dict(opts))
     # Read metadata about a subset of files if safe to
     metafile = joinpath(JULIADB_CACHEDIR, JULIADB_FILECACHE)
-    if isfile(metafile)
+    if usecache && isfile(metafile)
         try
             metadata = open(deserialize, metafile, "r")
         catch err
@@ -91,7 +94,7 @@ function load(files::AbstractVector, delim=','; opts...)
 end
 
 ## TODO: Can make this an LRU cache
-const _read_cache = Dict{String, Any}()
+const _read_cache = WeakKeyDict()
 
 type CSVChunk
     filename::String
@@ -101,10 +104,10 @@ type CSVChunk
 end
 
 function gather(ctx, csv::CSVChunk)
-    if csv.cache && haskey(_read_cache, csv.filename)
-        _read_cache[csv.filename]
+    if csv.cache && haskey(_read_cache, csv)
+        _read_cache[csv]
     else
-        _read_cache[csv.filename] = loadNDSparse(csv.filename, csv.delim; csv.opts...)
+        _read_cache[csv] = loadNDSparse(csv.filename, csv.delim; csv.opts...)
     end
 end
 
@@ -112,6 +115,6 @@ function makecsvchunk(file, delim; cache=true, opts...)
     handle = CSVChunk(file, cache, delim, Dict(opts))
     # We need to actually load the data to get things like
     # the type and Domain. It will get cached if cache is true
-    nds = gather(Dagger.Context(), handle)
+    nds = gather(Context(), handle)
     Dagger.Chunk(typeof(nds), domain(nds), handle, false)
 end
