@@ -1,8 +1,11 @@
+export loadfiles
+
 const JULIADB_CACHEDIR = ".juliadb_cache"
 const JULIADB_FILECACHE = "filemeta.dat"
 
 """
-    load(files::AbstractVector;
+    loadfiles(files::AbstractVector;
+          usecache=true,
           indexcols=Int[],
           datacols=Int[],
           agg=nothing,
@@ -16,7 +19,7 @@ to be used as the data for the resulting table. `agg`, `presorted` and `copy`
 are the corresponding keyword arguments passed to `NDSparse` constructor.
 The rest of the keyword arguments (`csvopts`) will be passed on to `TextParse.csvread`
 """
-function load(files::AbstractVector, delim=','; opts...)
+function loadfiles(files::AbstractVector, delim=','; usecache=true, opts...)
 
     if isempty(files)
         throw(ArgumentError("Specify at least one file to load."))
@@ -41,7 +44,7 @@ function load(files::AbstractVector, delim=','; opts...)
     opthash = hash(Dict(opts))
     # Read metadata about a subset of files if safe to
     metafile = joinpath(JULIADB_CACHEDIR, JULIADB_FILECACHE)
-    if isfile(metafile)
+    if usecache && isfile(metafile)
         try
             metadata = open(deserialize, metafile, "r")
         catch err
