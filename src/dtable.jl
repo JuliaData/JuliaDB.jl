@@ -51,9 +51,21 @@ enumerating processes where any unevaluated chunks must be computed
 function gather{T}(ctx, dt::DTable{T})
     cs = chunks(dt).data.columns.chunk
     if length(cs) > 0
-        gather(ctx, treereduce(delayed(merge), cs))
+        gather(ctx, treereduce(delayed(_merge), cs))
     else
         error("Empty table")
+    end
+end
+
+# Fast-path merge if the data don't overlap
+function _merge(a, b)
+    if last(a.index) < first(b.index)
+        # can hcat
+        NDSparse(vcat(a.index, b.index), vcat(a.data, b.data))
+    elseif last(b.index) < first(a.index)
+        _merge(b, a)
+    else
+        merge(a, b)
     end
 end
 
