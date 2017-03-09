@@ -72,10 +72,10 @@ using IndexedTables
 const MmappableTypes = Union{Integer, AbstractFloat, Complex, Char, DateTime, Date}
 
 ### Wrap arrays in Mmappable wrapper. Do this before serializing
-wrap_mmap(io, file, arr::PooledArray) = MmappableArray(io, file, arr)
-wrap_mmap{T<:MmappableTypes}(io, file, arr::Array{T}) = MmappableArray(io, file, arr)
-function wrap_mmap(io, file, arr::Columns)
-    cs = map(x->wrap_mmap(io, file, x), arr.columns)
+copy_mmap(io, file, arr::PooledArray) = MmappableArray(io, file, arr)
+copy_mmap{T<:MmappableTypes}(io, file, arr::Array{T}) = MmappableArray(io, file, arr)
+function copy_mmap(io, file, arr::Columns)
+    cs = map(x->copy_mmap(io, file, x), arr.columns)
     if all(x->isa(x, Int), fieldnames(cs))
         Columns(cs...)
     else
@@ -83,19 +83,19 @@ function wrap_mmap(io, file, arr::Columns)
         Columns(cs...; names=fieldnames(cs))
     end
 end
-wrap_mmap(io, file, arr::AbstractArray) = arr
+copy_mmap(io, file, arr::AbstractArray) = arr
 
 ## This must be called after sorting and aggregation!
-function wrap_mmap(io::IO, file::String, nds::NDSparse)
+function copy_mmap(io::IO, file::String, nds::NDSparse)
     flush!(nds)
-    index = wrap_mmap(io, file, nds.index)
-    data  = wrap_mmap(io, file, nds.data)
+    index = copy_mmap(io, file, nds.index)
+    data  = copy_mmap(io, file, nds.data)
     NDSparse(index, data, copy=false, presorted=true)
 end
 
-function wrap_mmap(file::String, data::NDSparse)
+function copy_mmap(file::String, data::NDSparse)
     open(file, "w+") do io
-        wrap_mmap(io, file, data)
+        copy_mmap(io, file, data)
     end
 end
 
