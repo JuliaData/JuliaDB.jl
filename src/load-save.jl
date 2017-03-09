@@ -53,7 +53,7 @@ function ingest(files::AbstractVector, outputdir::AbstractString; delim = ',', o
 
     saved = map(delayed(load_and_save), files)
 
-    @time chunks = gather(delayed(vcat)(saved...))
+    chunks = gather(delayed(vcat)(saved...))
     dtable = fromchunks(chunks)
     open(io -> serialize(io, dtable), joinpath(outputdir, JULIADB_INDEXFILE), "w")
     return dtable

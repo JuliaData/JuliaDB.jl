@@ -1,11 +1,13 @@
 const TextMIME = Union{MIME"text/plain", MIME"text/html"}
-function take_n(t::DTable, n, dir=1)
-    i = dir == -1 ? length(t.chunks) : 1
+function take_n(t::DTable, n)
     chunkcol = chunks(t).data.columns.chunk
-    top = gather(chunkcol[i])
+
+    i = 1
+    getter(c) = gather(delayed(x->subtable(x, 1:min(i, length(x))))(c))
+    top = getter(chunkcol[i])
     while length(top) < n && 1 <= i <= length(chunkcol)
-        i += dir
-        top = merge(top, gather(chunkcol[i]))
+        i += 1
+        top = _merge(top, getter(chunkcol[i]))
     end
     return top
 end
@@ -13,15 +15,30 @@ end
 function Base.show(io::IO, t::DTable)
     # we fetch at most 21 elements and let NDSparse
     # display it.
-    parts = Any[nothing, nothing]
-    @sync begin
-        @async parts[1] = take_n(t, 11)
-        @async parts[2] = take_n(t, 10, -1)
+    len = Nullable(0)
+    for l in chunks(t).data.columns.length
+        if !isnull(l)
+            len = Nullable(get(len) + get(l))
+        else
+            len = Nullable{Int}()
+            break
+        end
     end
 
     if !isempty(t.chunks)
-        show(io, merge(parts...))
+        top = take_n(t, 5)
+        nchunks = length(chunks(t))
+        print(io, "DTable with ")
+        if !isnull(len)
+            print(io, "$(get(len)) rows in ")
+        end
+
+        println(io, "$nchunks chunks:")
+        println(io, "")
+        show(io, top)
+        println(io, "")
+        println(io, "...")
     else
-        println(io, "an empty table")
+        println(io, "an empty DTable")
     end
 end
