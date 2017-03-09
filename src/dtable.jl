@@ -59,7 +59,11 @@ end
 
 # Fast-path merge if the data don't overlap
 function _merge(a, b)
-    if last(a.index) < first(b.index)
+    if isempty(a)
+        b
+    elseif isempty(b)
+        a
+    elseif last(a.index) < first(b.index)
         # can hcat
         NDSparse(vcat(a.index, b.index), vcat(a.data, b.data))
     elseif last(b.index) < first(a.index)
