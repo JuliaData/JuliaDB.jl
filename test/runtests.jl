@@ -58,7 +58,7 @@ import JuliaDB: MmappableArray, copy_mmap, unwrap_mmap
             P = PooledArray(rand(["A", "B"], 10^4))
             t = Int(now())
             T = map(DateTime, round(Int, linspace(t-10^4, t, 10^4)) |> collect)
-            nd = NDSparse(Columns(P, T), Columns(rand(10^4), rand(10^4)))
+            nd = NDSparse(Columns(P, T), Columns(rand(10^4), rand(10^4)), copy=false, presorted=true)
             ndf = tempname()
             mm = copy_mmap(ndf, nd)
             ndsf = tempname()

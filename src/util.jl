@@ -157,6 +157,11 @@ function Base.similar{M<:MmappableArray}(A::M, sz::Int...)
     M("__unmmapped__", 0, sz, similar(A.data, sz...))
 end
 
+function Base.similar{T,R,N,M<:MmappableArray}(pa::PooledArray{T,R,N,M}, S::Type, dims::Dims)
+    z = M("__unmmapped__", 0, dims, zeros(R, dims))
+    PooledArray(PooledArrays.RefArray(z), S[])
+end
+
 # construct an MmappableArray from a normal array, writing it to file
 function MmappableArray{T}(io::IO, file::String, data::Array{T})
     if !isbits(T)
@@ -232,7 +237,7 @@ function copy_mmap(io::IO, file::String, nds::NDSparse)
     NDSparse(index, data, copy=false, presorted=true)
 end
 
-function copy_mmap(file::String, data::NDSparse)
+function copy_mmap(file::String, data)
     open(file, "w+") do io
         copy_mmap(io, file, data)
     end
