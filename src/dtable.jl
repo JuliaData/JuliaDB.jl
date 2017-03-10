@@ -279,7 +279,7 @@ lengths will all be Nullable{Int}
 function mapchunks(f, nds::NDSparse; keeplengths=true)
     cols = nds.data.columns
     outchunks = map(f, cols.chunk)
-    outlengths = keeplengths ? cols.length : Array{Nullable{Int}}(length(cols.length))
+    outlengths = keeplengths ? cols.length : fill(Nullable{Int}(), length(cols.length))
     NDSparse(nds.index,
              Columns(cols.boundingrect,
                      outchunks, outlengths,

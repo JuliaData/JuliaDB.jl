@@ -17,7 +17,7 @@ function Base.show(io::IO, t::DTable)
     # display it.
     len = Nullable(0)
     for l in chunks(t).data.columns.length
-        if !isnull(l)
+        if !isnull(l) && !isnull(len)
             len = Nullable(get(len) + get(l))
         else
             len = Nullable{Int}()

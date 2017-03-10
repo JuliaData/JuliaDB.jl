@@ -64,6 +64,7 @@ function convertdim(t::DTable, d::DimName, xlat; agg=nothing, vecagg=nothing, na
             tuplesetindex(box, _map(xlat, box[d]), d)
         end
         newcols = tuplesetindex(cs.data.columns, newrects, :boundingrect)
+        newcols = tuplesetindex(cs.data.columns, fill(Nullable{Int}(), length(newrects)), :length)
         NDSparse(cs.index, Columns(newcols..., names=fieldnames(newcols)))
     end
 
