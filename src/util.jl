@@ -9,12 +9,16 @@ end
 
 @generated function tuplesetindex(x::NamedTuple, v, i::Symbol)
     fields = fieldnames(x)
-    :(@NT($(fields...))(tuplesetindex((x...,), v, findfirst($fields, i))...))
+    :(@NT($(fields...))(tuplesetindex(x, v, findfirst($fields, i))...))
 end
 
 @generated function tuplesetindex(x::NamedTuple, v, i::Int)
     fields = fieldnames(x)
-    :(@NT($(fields...))(tuplesetindex((x...,), v, i)...))
+    N = length(fields)
+    quote
+        tup = Base.@ntuple $N j -> i == j ? v : x[j]
+        @NT($(fields...))(tuplesetindex(tup, v, i)...)
+    end
 end
 
 function Base.isless(t1::NamedTuple, t2::NamedTuple)
