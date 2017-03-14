@@ -39,14 +39,19 @@ end
 
 @generated function Base.map(f, nts::NamedTuple...)
     fields = fieldnames(nts[1])
-    if !all(map(x->isequal(fieldnames(x), fields), nts[2:end]))
-        throw(ArgumentError("All NamedTuple inputs to map must have the same fields"))
+    for x in nts[2:end]
+        if !isequal(fieldnames(x), fields)
+            throw(ArgumentError("All NamedTuple inputs to map must have the same fields"))
+        end
     end
-    N = length(fields)
-    args = ntuple(N) do i
-        Expr(:kw, fields[i], :(f(map(t->t[$i], nts)...)))
+    N = nfields(nts[1])
+    M = length(nts)
+
+    NT = NamedTuples.create_tuple(fields) # This must already exist if this function may be called
+    quote
+        tup = Base.@ntuple $N j -> f((Base.@ntuple $M i -> nts[i][j])...)
+        NamedTuples.$NT(tup...)
     end
-    :(@NT($(args...)))
 end
 
 function subtable(nds, r)
