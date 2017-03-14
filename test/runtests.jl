@@ -5,7 +5,7 @@ using IndexedTables
 using NamedTuples
 using PooledArrays
 
-import JuliaDB: MmappableArray, copy_mmap, unwrap_mmap
+import JuliaDB: MmappableArray, copy_mmap, unwrap_mmap, tuplesetindex
 @testset "Utilities" begin
 
     @testset "NamedTuples isless" begin
@@ -18,6 +18,11 @@ import JuliaDB: MmappableArray, copy_mmap, unwrap_mmap
         @test map(round,
                   @NT(x=1//3, y=Int),
                   @NT(x=3, y=2//3)) == @NT(x=0.333, y=1)
+    end
+    @testset "tuplesetindex" begin
+        @test tuplesetindex((1,2,3), 4, 2) == (1,4,3)
+        @test tuplesetindex(@NT(x=1,y=2,z=3), 4, 2) == @NT(x=1,y=4,z=3)
+        @test tuplesetindex(@NT(x=1,y=2,z=3), 4, :y) == @NT(x=1,y=4,z=3)
     end
     @testset "MmappableArray" begin
         @testset "Array of floats" begin
