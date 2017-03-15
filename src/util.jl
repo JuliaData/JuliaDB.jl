@@ -284,3 +284,19 @@ end
 
 unwrap_mmap(arr::AbstractArray) = arr
 
+
+#### Fix serialization of NamedTuple types ####
+immutable NTType end
+
+function Base.serialize{NT<:NamedTuple}(io::AbstractSerializer, ::Type{NT})
+    Base.serialize_type(io, NTType)
+    serialize(io, fieldnames(NT))
+    serialize(io, NT.parameters)
+end
+
+function Base.deserialize(io::AbstractSerializer, ::Type{NTType})
+   fnames = deserialize(io)
+   ftypes = deserialize(io)
+   NT =  eval(:(NamedTuples.$(NamedTuples.create_tuple(fnames))))
+   NT{ftypes...}
+end
