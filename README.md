@@ -1,5 +1,7 @@
 # JuliaDB
 
+[![JuliaDB](https://juliarun-ci.s3.amazonaws.com/push/JuliaComputing/JuliaDB/julia_0_5.svg)](https://juliarun-ci.s3.amazonaws.com/push/JuliaComputing/JuliaDB/julia_0_5.log) [![JuliaDB](https://juliarun-ci.s3.amazonaws.com/push/JuliaComputing/JuliaDB/julia_0_6.svg)](https://juliarun-ci.s3.amazonaws.com/push/JuliaComputing/JuliaDB/julia_0_6.log)
+
 **Setup:**
 
 ```julia
