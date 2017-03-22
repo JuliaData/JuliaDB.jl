@@ -15,16 +15,7 @@ end
 function Base.show(io::IO, t::DTable)
     # we fetch at most 21 elements and let NDSparse
     # display it.
-    len = Nullable(0)
-    for l in chunks(t).data.columns.length
-        if !isnull(l) && !isnull(len)
-            len = Nullable(get(len) + get(l))
-        else
-            len = Nullable{Int}()
-            break
-        end
-    end
-
+    len = trylength(t)
     if !isempty(t.chunks)
         top = take_n(t, 5)
         nchunks = length(chunks(t))
