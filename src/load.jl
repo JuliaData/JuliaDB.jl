@@ -52,7 +52,7 @@ function loadfiles(files::AbstractVector, delim=','; usecache=true, opts...)
             warn("Cached metadata file is corrupt. Not using cache.")
             @goto readunknown
         end
-        knownmeta = metadata[files, opthash]
+        knownmeta = metadata[sort!(files), opthash]
         known = knownmeta.index.columns.filename
 
         # only those with the same mtime
