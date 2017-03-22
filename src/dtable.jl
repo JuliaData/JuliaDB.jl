@@ -191,6 +191,27 @@ function chunks_index(subdomains, chunks, lengths)
                             names=[:boundingrect, :chunk, :length]))
 end
 
+function trylength(t::DTable)
+    len = Nullable(0)
+    for l in chunks(t).data.columns.length
+        if !isnull(l) && !isnull(len)
+            len = Nullable(get(len) + get(l))
+        else
+            return Nullable{Int}()
+        end
+    end
+    return len
+end
+
+function Base.length(t::DTable)
+    l = trylength(t)
+    if isnull(l)
+        error("The length of the DTable is not yet known since some of its parts are not yet computed. Call `compute` to compute them, and then call `length` on the result of `compute`.")
+    else
+        get(l)
+    end
+end
+
 """
 `fromchunks(chunks::AbstractArray)`
 
