@@ -290,13 +290,23 @@ immutable NTType end
 
 function Base.serialize{NT<:NamedTuple}(io::AbstractSerializer, ::Type{NT})
     Base.serialize_type(io, NTType)
-    serialize(io, fieldnames(NT))
-    serialize(io, NT.parameters)
+    if isa(NT, Union)
+        serialize(io, Union)
+        serialize(io, [NT.types...])
+    else
+        serialize(io, fieldnames(NT))
+        serialize(io, NT.parameters)
+    end
 end
 
 function Base.deserialize(io::AbstractSerializer, ::Type{NTType})
    fnames = deserialize(io)
-   ftypes = deserialize(io)
-   NT =  eval(:(NamedTuples.$(NamedTuples.create_tuple(fnames))))
-   NT{ftypes...}
+   if fnames == Union
+        types = deserialize(io)
+        return Union{types...}
+   else
+       ftypes = deserialize(io)
+       NT =  eval(:(NamedTuples.$(NamedTuples.create_tuple(fnames))))
+       return NT{ftypes...}
+   end
 end
