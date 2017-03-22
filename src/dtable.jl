@@ -7,17 +7,16 @@ export distribute, chunks, compute, gather
 
 const IndexTuple = Union{Tuple, NamedTuple}
 
-immutable DTable{T,I} # T<:NDSparse
+immutable DTable{K,V,I} # T<:NDSparse
     index_space::I
     chunks::NDSparse
 end
 
-function DTable{T<:NDSparse, I}(::Type{T}, index_space::I, cs)
-    DTable{T,I}(index_space, cs)
+function DTable{K,V,I}(::Type{K}, ::Type{V}, index_space::I, cs)
+    DTable{K,V,I}(index_space, cs)
 end
 
 chunks(dt::DTable) = dt.chunks
-tabletype{T}(dt::DTable{T}) = T
 
 """
 Compute any delayed-evaluation in the distributed table.
@@ -203,20 +202,20 @@ function fromchunks(chunks::AbstractArray)
     subdomains = map(domain, chunks)
     nzidxs = find(x->!isempty(x), subdomains)
     subdomains = subdomains[nzidxs]
-    typ = promote_type(map(chunktype, chunks)...)
-    if typ != chunktype(chunks[1])
-        warn("The chunks don't have the same type.
-             Will be unable to do some operations.
-             Do the CSV files have the same headers?
-             If not, explicitly specify headers in `load`
-             with `colnames` argument. Or specify `header_exists=false`
-             to not use named columns. If columns are of different
-             types specify a common type using `coltypes` option.")
+    kvtypes = getkvtypes.(chunktype.(chunks))
+    K, V = kvtypes[1]
+    for (Tk, Tv) in kvtypes[2:end]
+        K = promote_type(Tk, K)
+        V = promote_type(Tv, V)
     end
 
     idxs = reduce(merge, subdomains)
-    DTable(chunktype(chunks[1]), idxs,
+    DTable(K, V, idxs,
            chunks_index(subdomains, chunks[nzidxs], map(nrows, subdomains)))
+end
+
+function getkvtypes{N<:NDSparse}(::Type{N})
+    N.parameters[2], N.parameters[1]
 end
 
 ### Distribute a NDSparse into a DTable
@@ -264,9 +263,9 @@ function subdomain(nds, r)
     domain(subtable(nds, r))
 end
 
-function withchunksindex(f, dt::DTable)
+function withchunksindex{K,V}(f, dt::DTable{K,V})
     cs = f(chunks(dt))
-    DTable(tabletype(dt), dt.index_space, cs)
+    DTable(K, V, dt.index_space, cs)
 end
 
 """
