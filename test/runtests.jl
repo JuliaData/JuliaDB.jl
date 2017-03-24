@@ -196,3 +196,24 @@ end
     @test gather(chainvec[["AUD", "USD"], :]) == step2[["AUD", "USD"], :]
 end
 
+@testset "join" begin
+    t1 = IndexedTable(Columns([1,1,2,2], [1,2,1,2]), [1,2,3,4])
+    t2 = IndexedTable(Columns([0,2,2,3], [1,1,2,2]), [1,2,3,4])
+
+    j1 = innerjoin(t1,t2)
+    j2 = innerjoin(t1,t2,+)
+
+    lj1 = leftjoin(t1,t2)
+    lj2 = leftjoin(t1,t2,+)
+    for n=1:5
+        d1 = distribute(t1, n)
+        for n2 = 1:5
+            d2 = distribute(t2, n2)
+            @test gather(innerjoin(d1, d2)) == j1
+            @test gather(innerjoin(d1, d2, +)) == j2
+
+            @test gather(leftjoin(d1, d2)) == lj1
+            @test gather(leftjoin(d1, d2, +)) == lj2
+        end
+    end
+end
