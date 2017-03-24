@@ -119,6 +119,17 @@ fxdata_ingest = ingest(files, ingest_output, header_exists=false, type_detect_ro
     @test gather(getdatacol(fxdata_ingest, 2)) == fxdata.data.columns[2]
 end
 
+@testset  "printing" begin
+    x = distribute(IndexedTable([1], [1]), 1)
+    @test sprint(io -> show(io, x)) == """
+    DTable with 1 rows in 1 chunks:
+
+    ──┬──
+    1 │ 1
+    ..."""
+end
+
+
 @testset "Load" begin
     cache = joinpath(JuliaDB.JULIADB_CACHEDIR, JuliaDB.JULIADB_FILECACHE)
     if isfile(cache)
