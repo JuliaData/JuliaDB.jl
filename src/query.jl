@@ -22,7 +22,7 @@ function merge_metadata(m1, m2, chunk_merge=merge, boundingrect_merge=merge)
         length=Nullable{Int}())
 end
 
-function _aggregate_chunks(cs::NDSparse, f, boundingf=merge)
+function _aggregate_chunks(cs::Table, f, boundingf=merge)
     merged_data = aggregate_to(cs.index, cs.data) do x, y
         # TODO: aggregate_vec then treereduce
         merge_metadata(x, y, f, boundingf)
@@ -31,7 +31,7 @@ function _aggregate_chunks(cs::NDSparse, f, boundingf=merge)
     merged_index = aggregate_to(cs.index, cs.index) do x, y
         map(merge, x, y)
     end |> last
-    NDSparse(merged_index, merged_data)
+    Table(merged_index, merged_data)
 end
 
 
@@ -65,7 +65,7 @@ function convertdim(t::DTable, d::DimName, xlat; agg=nothing, vecagg=nothing, na
         end
         newcols = tuplesetindex(cs.data.columns, newrects, :boundingrect)
         newcols = tuplesetindex(cs.data.columns, fill(Nullable{Int}(), length(newrects)), :length)
-        NDSparse(cs.index, Columns(newcols..., names=fieldnames(newcols)))
+        Table(cs.index, Columns(newcols..., names=fieldnames(newcols)))
     end
 
     function merge_boundingrect(a, b)

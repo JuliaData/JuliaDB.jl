@@ -59,7 +59,7 @@ end
 end
 
 function subtable(nds, r)
-    NDSparse(nds.index[r], nds.data[r])
+    Table(nds.index[r], nds.data[r])
 end
 
 getbyheader(cols, header, i::Int) = cols[i]
@@ -90,19 +90,19 @@ end
 using TextParse
 using Glob
 
-export @dateformat_str, load, csvread, loadNDSparse, glob
+export @dateformat_str, load, csvread, loadTable, glob
 
 """
-    loadNDSparse(file::AbstractString;
+    loadTable(file::AbstractString;
                  indexcols, datacols, agg, presorted, copy, kwargs...)
 
-Load a CSV file into an NDSparse data. `indexcols` (AbstractArray)
+Load a CSV file into an Table data. `indexcols` (AbstractArray)
 specifies which columns form the index of the data, `datacols`
 (AbstractArray) specifies which columns are to be used as the data.
-`agg`, `presorted`, `copy` options are passed on to `NDSparse`
+`agg`, `presorted`, `copy` options are passed on to `Table`
 constructor, any other keyword argument is passed on to `readcsv`
 """
-function loadNDSparse(file::AbstractString, delim=',';
+function loadTable(file::AbstractString, delim=',';
                       indexcols=Int[],
                       datacols=Int[],
                       agg=nothing,
@@ -133,7 +133,7 @@ function loadNDSparse(file::AbstractString, delim=',';
 
     index = getcolsubset(cols, header, indexcols)
     data = getcolsubset(cols, header, datacols)
-    NDSparse(index, data)
+    Table(index, data)
 end
 
 
@@ -162,7 +162,7 @@ end
 Base.linearindexing(arr::MmappableArray) = Base.linearindexing(arr.data)
 
 function Base.similar{M<:MmappableArray}(A::M, sz::Int...)
-    # this is to keep NDSparse constructor happy
+    # this is to keep Table constructor happy
     M("__unmmapped__", 0, sz, similar(A.data, sz...))
 end
 
@@ -239,11 +239,11 @@ end
 copy_mmap(io, file, arr::AbstractArray) = arr
 
 ## This must be called after sorting and aggregation!
-function copy_mmap(io::IO, file::String, nds::NDSparse)
+function copy_mmap(io::IO, file::String, nds::Table)
     flush!(nds)
     index = copy_mmap(io, file, nds.index)
     data  = copy_mmap(io, file, nds.data)
-    NDSparse(index, data, copy=false, presorted=true)
+    Table(index, data, copy=false, presorted=true)
 end
 
 function copy_mmap(file::String, data)
@@ -278,8 +278,8 @@ function unwrap_mmap(arr::Columns)
     end
 end
 
-function unwrap_mmap(arr::NDSparse)
-    NDSparse(unwrap_mmap(arr.index), unwrap_mmap(arr.data), presorted=true, copy=false)
+function unwrap_mmap(arr::Table)
+    Table(unwrap_mmap(arr.index), unwrap_mmap(arr.data), presorted=true, copy=false)
 end
 
 unwrap_mmap(arr::AbstractArray) = arr

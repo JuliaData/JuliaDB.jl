@@ -2,8 +2,10 @@ module JuliaDB
 
 using IndexedTables, Dagger, NamedTuples
 
+import IndexedTables: Table
+
 # re-export
-export NDSparse, Columns
+export IndexedTable, Columns
 
 include("util.jl")
 include("interval.jl")

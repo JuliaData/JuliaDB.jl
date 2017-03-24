@@ -47,7 +47,7 @@ function ingest(files::AbstractVector, outputdir::AbstractString; delim = ',', o
     println("Reading $(length(files)) csv files totalling $(round(sz/2^20)) MB...")
 
     function load_and_save(file)
-        data = loadNDSparse(file, delim; opts...)
+        data = loadTable(file, delim; opts...)
         save_as_chunk(data, joinpath(outputdir, normalize_filepath(file)))
     end
 
@@ -95,7 +95,7 @@ function save(t::DTable, outputdir::AbstractString)
             fn = joinpath(outputdir, lpad(idx, 5, "0"))
             delayed(save_as_chunk; get_result=true)(chunk, fn)
         end for (idx, chunk) in enumerate(datacols.chunk)]
-        NDSparse(c.index,
+        Table(c.index,
                  Columns(datacols.boundingrect,
                          chunkscol,
                          datacols.length,
@@ -130,7 +130,7 @@ function save_as_chunk(data, filename_base; cache=true)
     Dagger.Chunk(typeof(data), domain(data), OnDisk(jlsfile, cache), false)
 end
 
-function save_table(data::NDSparse, file, mmap_file = file * ".mmap")
+function save_table(data::Table, file, mmap_file = file * ".mmap")
     ondiskdata = copy_mmap(mmap_file, data)
     open(io -> serialize(io, ondiskdata), file, "w")
 end

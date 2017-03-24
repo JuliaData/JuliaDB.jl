@@ -6,7 +6,7 @@ function _getindex{I}(t::DTable{I}, idxs::I)
     # scalar getindex
     t1 = withchunksindex(t) do nds
         subchunk_idxs = find(c->all(map(in, idxs, c)), nds.data.columns.boundingrect)
-        NDSparse(nds.index[subchunk_idxs], nds.data[subchunk_idxs])
+        Table(nds.index[subchunk_idxs], nds.data[subchunk_idxs])
     end
     gather(t1)[idxs...]
 end
@@ -25,7 +25,7 @@ function _getindex(t::DTable, idxs)
     # this is currently a linear search
     t = withchunksindex(t) do nds
         subchunk_idxs = find(c->all(map(in, idxs, c)), nds.data.columns.boundingrect)
-        NDSparse(nds.index[subchunk_idxs], nds.data[subchunk_idxs])
+        Table(nds.index[subchunk_idxs], nds.data[subchunk_idxs])
     end
 
     mapchunks(t, keeplengths=false) do chunk

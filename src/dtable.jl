@@ -7,9 +7,9 @@ export distribute, chunks, compute, gather
 
 const IndexTuple = Union{Tuple, NamedTuple}
 
-immutable DTable{K,V,I} # T<:NDSparse
+immutable DTable{K,V,I} # T<:Table
     index_space::I
-    chunks::NDSparse
+    chunks::Table
 end
 
 function DTable{K,V,I}(::Type{K}, ::Type{V}, index_space::I, cs)
@@ -42,7 +42,7 @@ function compute(ctx, t::DTable)
 end
 
 """
-Gather data in a DTable into an NDSparse object
+Gather data in a DTable into an Table object
 
 The first ctx is an optional Dagger.Context object
 enumerating processes where any unevaluated chunks must be computed
@@ -64,7 +64,7 @@ function _merge(a, b)
         a
     elseif last(a.index) < first(b.index)
         # can hcat
-        NDSparse(vcat(a.index, b.index), vcat(a.data, b.data))
+        Table(vcat(a.index, b.index), vcat(a.data, b.data))
     elseif last(b.index) < first(a.index)
         _merge(b, a)
     else
@@ -73,7 +73,7 @@ function _merge(a, b)
 end
 
 """
-`mapchunks(f, nds::NDSparse; keeplengths=true)`
+`mapchunks(f, nds::Table; keeplengths=true)`
 
 Delayed application of a function to each chunk in an DTable.
 Returns a new DTable. if `keeplength` is false, the output
@@ -88,13 +88,13 @@ end
 """
 `IndexSpace(interval, boundingrect, nrows)`
 
-metadata about an NDSparse chunk. When storing metadata about a chunk we must be
+metadata about an Table chunk. When storing metadata about a chunk we must be
 conservative about what we store. i.e. it is ok to store that a chunk has more
 indices than what it actually contains.
 
 - `interval`: An `Interval` object with the first and the last index tuples.
 - `boundingrect`: An `Interval` object with the lowest and the highest indices as tuples.
-- `nrows`: A `Nullable{Int}` of number of rows in the NDSparse, if knowable
+- `nrows`: A `Nullable{Int}` of number of rows in the Table, if knowable
            (See design doc section on "Knowability of chunk size")
 """
 immutable IndexSpace{T<:IndexTuple}
@@ -106,8 +106,8 @@ end
 immutable EmptySpace{T} <: Domain end
 
 # Teach dagger how to automatically figure out the
-# metadata (in dagger parlance "domain") about an NDSparse chunk.
-function Dagger.domain(nd::NDSparse)
+# metadata (in dagger parlance "domain") about an Table chunk.
+function Dagger.domain(nd::Table)
     if isempty(nd)
         return EmptySpace{eltype(nd.index)}()
     end
@@ -167,7 +167,7 @@ end
 - `lengths`: a vector of nullable Int
 
 Create an lookup table from a bunch of `IndexSpace`s
-This lookup table is itself an NDSparse object indexed by the
+This lookup table is itself an Table object indexed by the
 first and last indices in the chunks. We enforce the constraint
 that the chunks must be disjoint to make such an arrangement
 possible. But this is kind of silly though since all the lookups
@@ -186,7 +186,7 @@ function chunks_index(subdomains, chunks, lengths)
         push!(boundingrects, map(Interval, mins(subd), maxes(subd)))
     end
 
-    NDSparse(index, Columns(boundingrects,
+    Table(index, Columns(boundingrects,
                             chunks, lengths,
                             names=[:boundingrect, :chunk, :length]))
 end
@@ -235,22 +235,22 @@ function fromchunks(chunks::AbstractArray)
            chunks_index(subdomains, chunks[nzidxs], map(nrows, subdomains)))
 end
 
-function getkvtypes{N<:NDSparse}(::Type{N})
+function getkvtypes{N<:Table}(::Type{N})
     N.parameters[2], N.parameters[1]
 end
 
-### Distribute a NDSparse into a DTable
+### Distribute a Table into a DTable
 
 """
-`distribute(nds::NDSparse, rowgroups::AbstractArray)`
+`distribute(nds::Table, rowgroups::AbstractArray)`
 
-Distribute an NDSparse object into chunks of number of
+Distribute an Table object into chunks of number of
 rows specified by `rowgroups`. `rowgroups` is a vector specifying the number of
 rows in the respective chunk.
 
 Returns a `DTable`.
 """
-function distribute(nds::NDSparse, rowgroups::AbstractArray)
+function distribute(nds::Table, rowgroups::AbstractArray)
     splits = cumsum([0, rowgroups;])
 
     if splits[end] != length(nds)
@@ -264,13 +264,13 @@ function distribute(nds::NDSparse, rowgroups::AbstractArray)
 end
 
 """
-`distribute(nds::NDSparse, nchunks::Int=nworkers())`
+`distribute(nds::Table, nchunks::Int=nworkers())`
 
 Distribute an NDSpase object into `nchunks` chunks of equal size.
 
 Returns a `DTable`.
 """
-function distribute(nds::NDSparse, nchunks=nworkers())
+function distribute(nds::Table, nchunks=nworkers())
     N = length(nds)
     q, r = divrem(N, nchunks)
     nrows = vcat(collect(repeated(q, nchunks)))
@@ -290,19 +290,19 @@ function withchunksindex{K,V}(f, dt::DTable{K,V})
 end
 
 """
-`mapchunks(f, nds::NDSparse; keeplengths=true)`
+`mapchunks(f, nds::Table; keeplengths=true)`
 
 Apply a function to the chunk objects in an index.
-Returns an NDSparse. if `keeplength` is false, the output
+Returns an Table. if `keeplength` is false, the output
 lengths will all be Nullable{Int}
 """
-function mapchunks(f, nds::NDSparse; keeplengths=true)
+function mapchunks(f, nds::Table; keeplengths=true)
     cols = nds.data.columns
     outchunks = map(f, cols.chunk)
     outlengths = keeplengths ? cols.length : fill(Nullable{Int}(), length(cols.length))
-    NDSparse(nds.index,
-             Columns(cols.boundingrect,
-                     outchunks, outlengths,
-                     names=[:boundingrect, :chunk, :length]))
+    Table(nds.index,
+          Columns(cols.boundingrect,
+                  outchunks, outlengths,
+                  names=[:boundingrect, :chunk, :length]))
 end
 
