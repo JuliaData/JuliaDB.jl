@@ -17,5 +17,6 @@ include("dcolumns.jl")
 
 include("indexing.jl")
 include("query.jl")
+include("join.jl")
 
 end # module
