@@ -42,7 +42,7 @@ function naturaljoin{I1, I2, D1, D2}(left::DTable{I1,D1},
         # each overlapping chunk from `right` should be joined
         # with the chunk `lchunk`
         joined_chunks = map(overlapping_chunks) do r
-            delayed((x,y) -> _naturaljoin(x,y,op, default_data(x,y)))(lchunk, r)
+            delayed((x,y) -> IndexedTables._naturaljoin(x,y,op, default_data(x,y)))(lchunk, r)
         end
         append!(out_chunks, joined_chunks)
 
@@ -90,11 +90,8 @@ function leftjoin(left::DTable, right::DTable, op = IndexedTables.right)
         end
         overlapping_chunks = rcs.data.columns.chunk[overlapping]
         if !isempty(overlapping_chunks)
-            joined_chunks = map(overlapping_chunks) do rchunk
-                delayed((x,y) -> leftjoin(x,y, op))(lchunk, rchunk)
-            end
-            push!(out_chunks, treereduce(delayed((x,y)->naturaljoin(x,y, op)),
-                                         joined_chunks))
+            push!(out_chunks, reduce(delayed((x,y)->leftjoin(x,y, op)), lchunk,
+                                         overlapping_chunks))
         else
             push!(out_chunks, lchunk)
         end
