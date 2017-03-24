@@ -205,6 +205,7 @@ end
 
     lj1 = leftjoin(t1,t2)
     lj2 = leftjoin(t1,t2,+)
+
     for n=1:5
         d1 = distribute(t1, n)
         for n2 = 1:5
@@ -214,6 +215,20 @@ end
 
             @test gather(leftjoin(d1, d2)) == lj1
             @test gather(leftjoin(d1, d2, +)) == lj2
+
+        end
+    end
+
+    t1 = IndexedTable([:msft,:ibm,:ge], [1,3,4], [100,200,150])
+    t2 = IndexedTable([:ibm,:msft,:msft,:ibm], [0,0,0,2], [100,99,101,98])
+
+    aj = asofjoin(t1,t2)
+
+    for n=1:5
+        d1 = distribute(t1, n)
+        for n2 = 1:5
+            d2 = distribute(t2, n2)
+            @test gather(asofjoin(d1, d2)) == aj
         end
     end
 end
