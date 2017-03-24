@@ -59,11 +59,11 @@ import JuliaDB: MmappableArray, copy_mmap, unwrap_mmap, tuplesetindex
             @test open(deserialize, sf) == T
         end
 
-        @testset "NDSparse" begin
+        @testset "IndexedTable" begin
             P = PooledArray(rand(["A", "B"], 10^4))
             t = Int(now())
             T = map(DateTime, round(Int, linspace(t-10^4, t, 10^4)) |> collect)
-            nd = NDSparse(Columns(P, T), Columns(rand(10^4), rand(10^4)), copy=false, presorted=true)
+            nd = IndexedTable(Columns(P, T), Columns(rand(10^4), rand(10^4)), copy=false, presorted=true)
             ndf = tempname()
             mm = copy_mmap(ndf, nd)
             ndsf = tempname()
@@ -103,7 +103,7 @@ path = joinpath(dirname(@__FILE__), "..","test","fxsample", "*.csv")
 files = glob(path[2:end], "/")
 const fxdata_dist = loadfiles(files, header_exists=false, type_detect_rows=4, indexcols=1:2)
 allcsv = reduce(string, readstring.(files))
-const fxdata = loadNDSparse(allcsv;
+const fxdata = loadTable(allcsv;
              csvread=TextParse._csvread,
              indexcols=1:2,
              type_detect_rows=4,
@@ -156,7 +156,7 @@ end
                   vcat(rand(1:12, 250), rand(10:20, 250),
                        rand(15:30, 250), rand(23:43, 250)))
 
-    nds = NDSparse(idx, rand(1000), agg=+)
+    nds = IndexedTable(idx, rand(1000), agg=+)
 
     dt = distribute(nds, 43)
     @test gather(dt[:, 2:8]) == nds[:, 2:8]

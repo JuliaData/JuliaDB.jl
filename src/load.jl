@@ -16,7 +16,7 @@ const JULIADB_FILECACHE = "filemeta.dat"
 Load a bunch of CSV `files` into a DTable. `indexcols` is a vector of column
 indices to be used as the index, and `datacols` is a vector of column indices
 to be used as the data for the resulting table. `agg`, `presorted` and `copy`
-are the corresponding keyword arguments passed to `NDSparse` constructor.
+are the corresponding keyword arguments passed to `Table` constructor.
 The rest of the keyword arguments (`csvopts`) will be passed on to `TextParse.csvread`
 """
 function loadfiles(files::AbstractVector, delim=','; usecache=true, opts...)
@@ -39,7 +39,7 @@ function loadfiles(files::AbstractVector, delim=','; usecache=true, opts...)
     validcache = []
     metadata = nothing
 
-    # there can be multiple NDSparse possible in the same file
+    # there can be multiple Table possible in the same file
     # we hope that each one has a unique hash:
     opthash = hash(Dict(opts))
     # Read metadata about a subset of files if safe to
@@ -80,7 +80,7 @@ function loadfiles(files::AbstractVector, delim=','; usecache=true, opts...)
 
     chunkrefs = gather(delayed(vcat)(data...))
     # store this back in cache
-    cache = NDSparse(Columns(unknown, fill(opthash, length(unknown)), names=[:filename, :opthash]),
+    cache = Table(Columns(unknown, fill(opthash, length(unknown)), names=[:filename, :opthash]),
                      Columns(mtime.(unknown), Dagger.Chunk[chunkrefs...], names=[:mtime, :metadata]))
 
     if metadata != nothing
@@ -107,7 +107,7 @@ function gather(ctx, csv::CSVChunk)
     if csv.cache && haskey(_read_cache, csv)
         _read_cache[csv]
     else
-        _read_cache[csv] = loadNDSparse(csv.filename, csv.delim; csv.opts...)
+        _read_cache[csv] = loadTable(csv.filename, csv.delim; csv.opts...)
     end
 end
 

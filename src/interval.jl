@@ -2,7 +2,7 @@ using Base.Test
 
 """
 An interval type tailored specifically to store intervals of
-indices of an NDSparse object. Some of the operations on this
+indices of an Table object. Some of the operations on this
 like `in` or `<` may be controversial for a generic Interval type.
 """
 immutable Interval{T}
@@ -35,7 +35,7 @@ end
 Interval(x) = Interval(x,x)
 
 # An interval of intervals can be used to do binary search on
-# a sorted list of intervals. If you just give an interval, NDSparse is going
+# a sorted list of intervals. If you just give an interval, Table is going
 # to think you are doing scalar indexing.
 IntervalInterval(x, y) = Interval(Interval(x), Interval(y))
 Base.in{T}(x::Interval{T}, y::Interval{T}) = hasoverlap(x,y)
