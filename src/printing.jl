@@ -2,12 +2,16 @@ const TextMIME = Union{MIME"text/plain", MIME"text/html"}
 function take_n(t::DTable, n)
     chunkcol = chunks(t).data.columns.chunk
 
+    required = n
+    getter(required, c) = gather(delayed(x->subtable(x, 1:min(required, length(x))))(c))
+
     i = 1
-    getter(c) = gather(delayed(x->subtable(x, 1:min(i, length(x))))(c))
-    top = getter(chunkcol[i])
-    while length(top) < n && 1 <= i <= length(chunkcol)
+    top = getter(required, chunkcol[i])
+    required = n - length(top)
+    while required > 0 && 1 <= i < length(chunkcol)
         i += 1
-        top = _merge(top, getter(chunkcol[i]))
+        required = n - length(top)
+        top = _merge(top, getter(required, chunkcol[i]))
     end
     return top
 end
@@ -28,7 +32,7 @@ function Base.show(io::IO, t::DTable)
         println(io, "")
         show(io, top)
         println(io, "")
-        println(io, "...")
+        print(io, "...")
     else
         println(io, "an empty DTable")
     end
