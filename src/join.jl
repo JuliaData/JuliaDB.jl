@@ -1,6 +1,6 @@
-import IndexedTables: naturaljoin, _naturaljoin, leftjoin, similarz
+import IndexedTables: naturaljoin, _naturaljoin, leftjoin, similarz, asofjoin
 
-export naturaljoin, innerjoin, leftjoin
+export naturaljoin, innerjoin, leftjoin, asofjoin
 
 function naturaljoin{I1, I2, D1, D2}(left::DTable{I1,D1},
                                      right::DTable{I2,D2},
@@ -71,7 +71,10 @@ Base.map{I}(f, x::DTable{I}, y::DTable{I}) = naturaljoin(x, y, f)
 
 # left join
 
-function leftjoin(left::DTable, right::DTable, op = IndexedTables.right)
+function leftjoin(left::DTable, right::DTable,
+                  op = IndexedTables.right,
+                  joinwhen = (lrect, rrect) -> any(map(hasoverlap, lrect, rrect)),
+                  chunkjoin = leftjoin)
 
     lcs = chunks(left)
     rcs = chunks(right)
@@ -85,12 +88,11 @@ function leftjoin(left::DTable, right::DTable, op = IndexedTables.right)
         subdomain = lidx_spaces[i]
         # for each chunk in `left`
         # find all the overlapping chunks from `right`
-        overlapping = map(rcs.data.columns.boundingrect) do rbrect
-            any(map(hasoverlap, lbrect, rbrect))
-        end
+        overlapping = map(rbrect -> joinwhen(lbrect, rbrect),
+                          rcs.data.columns.boundingrect)
         overlapping_chunks = rcs.data.columns.chunk[overlapping]
         if !isempty(overlapping_chunks)
-            push!(out_chunks, reduce(delayed((x,y)->leftjoin(x,y, op)), lchunk,
+            push!(out_chunks, reduce(delayed((x,y)->chunkjoin(x,y, op)), lchunk,
                                          overlapping_chunks))
         else
             push!(out_chunks, lchunk)
@@ -103,4 +105,12 @@ function leftjoin(left::DTable, right::DTable, op = IndexedTables.right)
     end
 end
 
+function asofpred(lbrect, rbrect)
+    any(map(hasoverlap, lbrect, rbrect)) ||
+    (any(map(hasoverlap, lbrect[1:end-1], rbrect[1:end-1])) &&
+     !isless(lbrect[end], rbrect[end]))
+end
 
+function asofjoin(left::DTable, right::DTable)
+    leftjoin(left, right, IndexedTables.right, asofpred, (x,y,op)->asofjoin(x,y))
+end
