@@ -160,11 +160,10 @@ function Base.intersect(d1::EmptySpace, d2::Union{IndexSpace,EmptySpace})
 end
 
 """
-`chunks_index(subdomains, chunks, lengths)`
+`chunks_index(subdomains, chunks)`
 
 - `subdomains`: a vector of subdomains
 - `chunks`: a vector of chunks for those corresponding subdomains
-- `lengths`: a vector of nullable Int
 
 Create an lookup table from a bunch of `IndexSpace`s
 This lookup table is itself an Table object indexed by the
@@ -174,12 +173,12 @@ possible. But this is kind of silly though since all the lookups
 are best done on the bounding boxes. So,
 TODO: use an RTree of bounding boxes here.
 """
-function chunks_index(subdomains, chunks, lengths)
+function chunks_index(subdomains, chunks)
 
     index = Columns(map(x->Array{Interval{typeof(x)}}(0),
                         first(subdomains[1].interval))...)
     boundingrects = Columns(map(x->Array{Interval{typeof(x)}}(0),
-                             first(subdomains[1].interval))...)
+                             first(subdomains[1].boundingrect))...)
 
     for subd in subdomains
         push!(index, map(Interval, first(subd), last(subd)))
@@ -187,8 +186,16 @@ function chunks_index(subdomains, chunks, lengths)
     end
 
     Table(index, Columns(boundingrects,
-                            chunks, lengths,
+                            chunks, map(x->x.nrows, subdomains),
                             names=[:boundingrect, :chunk, :length]))
+end
+
+# given a chunks index constructed above, give an array of
+# index spaces spanned by the chunks in the index
+function index_spaces(t::Table)
+    intervals = map(x-> Interval(map(first, x), map(last, x)), t.index)
+    boundingrects = map(x-> Interval(map(first, x), map(last, x)), t.data.columns.boundingrect)
+    map(IndexSpace, intervals, boundingrects, t.data.columns.length)
 end
 
 function trylength(t::DTable)
@@ -232,7 +239,7 @@ function fromchunks(chunks::AbstractArray)
 
     idxs = reduce(merge, subdomains)
     DTable(K, V, idxs,
-           chunks_index(subdomains, chunks[nzidxs], map(nrows, subdomains)))
+           chunks_index(subdomains, chunks[nzidxs]))
 end
 
 function getkvtypes{N<:Table}(::Type{N})
