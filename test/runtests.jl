@@ -49,8 +49,8 @@ import JuliaDB: MmappableArray, copy_mmap, unwrap_mmap, tuplesetindex
         end
 
         @testset "DataTime Array" begin
-            t = Int(now())
-            T = map(DateTime, round(Int, linspace(t-10^7, t, 10^3)) |> collect)
+            t = Int(Dates.value(now()))
+            T = DateTime.(round.(Int, linspace(t-10^7, t, 10^3) |> collect))
             f = tempname()
             M = MmappableArray(f, T)
             sf = tempname()
@@ -61,8 +61,8 @@ import JuliaDB: MmappableArray, copy_mmap, unwrap_mmap, tuplesetindex
 
         @testset "IndexedTable" begin
             P = PooledArray(rand(["A", "B"], 10^4))
-            t = Int(now())
-            T = map(DateTime, round(Int, linspace(t-10^4, t, 10^4)) |> collect)
+            t = Int(Dates.value(now()))
+            T = DateTime.(round.(Int, linspace(t-10^4, t, 10^4) |> collect))
             nd = IndexedTable(Columns(P, T), Columns(rand(10^4), rand(10^4)), copy=false, presorted=true)
             ndf = tempname()
             mm = copy_mmap(ndf, nd)

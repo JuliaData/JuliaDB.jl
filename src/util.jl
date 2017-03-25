@@ -159,7 +159,11 @@ end
 
 @inline Base.size(arr::MmappableArray) = arr.size
 @inline Base.getindex(arr::MmappableArray, idx...) = arr.data[idx...]
-Base.linearindexing(arr::MmappableArray) = Base.linearindexing(arr.data)
+if VERSION < v"0.6.0-dev"
+    Base.linearindexing(arr::MmappableArray) = Base.linearindexing(arr.data)
+else
+    Base.IndexStyle{T,N,A}(::Type{MmappableArray{T,N,A}}) = Base.IndexStyle(A)
+end
 
 function Base.similar{M<:MmappableArray}(A::M, sz::Int...)
     # this is to keep Table constructor happy
@@ -309,4 +313,14 @@ function Base.deserialize(io::AbstractSerializer, ::Type{NTType})
        NT =  eval(:(NamedTuples.$(NamedTuples.create_tuple(fnames))))
        return NT{ftypes...}
    end
+end
+
+if VERSION < v"0.6.0-dev"
+    function _repeated(x, n)
+        repeated(x, n)
+    end
+else
+    function _repeated(x, n)
+        Iterators.repeated(x,n)
+    end
 end
