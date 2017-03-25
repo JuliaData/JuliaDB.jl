@@ -280,7 +280,7 @@ Returns a `DTable`.
 function distribute(nds::Table, nchunks=nworkers())
     N = length(nds)
     q, r = divrem(N, nchunks)
-    nrows = vcat(collect(repeated(q, nchunks)))
+    nrows = vcat(collect(_repeated(q, nchunks)))
     nrows[end] += r
     distribute(nds, nrows)
 end
