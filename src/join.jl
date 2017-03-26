@@ -35,7 +35,7 @@ function naturaljoin{I1, I2, D1, D2}(left::DTable{I1,D1},
         # for each chunk in `left`
         # find all the overlapping chunks from `right`
         overlapping = map(rcs.data.columns.boundingrect) do rbrect
-            any(map(hasoverlap, lbrect, rbrect))
+            all(map(hasoverlap, lbrect, rbrect))
         end
         overlapping_chunks = rcs.data.columns.chunk[overlapping]
 
@@ -106,8 +106,8 @@ function leftjoin(left::DTable, right::DTable,
 end
 
 function asofpred(lbrect, rbrect)
-    any(map(hasoverlap, lbrect, rbrect)) ||
-    (any(map(hasoverlap, lbrect[1:end-1], rbrect[1:end-1])) &&
+    all(map(hasoverlap, lbrect, rbrect)) ||
+    (all(map(hasoverlap, lbrect[1:end-1], rbrect[1:end-1])) &&
      !isless(lbrect[end], rbrect[end]))
 end
 
