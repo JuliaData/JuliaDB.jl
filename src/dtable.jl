@@ -18,6 +18,10 @@ end
 
 chunks(dt::DTable) = dt.chunks
 
+Base.eltype(dt::DTable) = eltype(chunktype(first(chunks(dt)).chunk))
+IndexedTables.dimlabels(dt::DTable) = dimlabels(chunktype(first(chunks(dt)).chunk))
+Base.ndims(dt::DTable) = ndims(dt.index_space)
+
 """
 Compute any delayed-evaluation in the distributed table.
 
