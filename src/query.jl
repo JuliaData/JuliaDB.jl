@@ -49,7 +49,13 @@ If the mapping is many-to-one, `agg` is used to aggregate the results.
 monotonically increasing function.
 """
 function convertdim(t::DTable, d::DimName, xlat; agg=nothing, vecagg=nothing, name=nothing)
-    cs = chunks(t)
+    if isa(d, Symbol)
+        dn = findfirst(dimlabels(t), d)
+        if dn == 0
+            throw(ArgumentError("table has no dimension \"$d\""))
+        end
+        d = dn
+    end
 
     chunkf(c) = convertdim(c, d, xlat; agg=agg, vecagg=vecagg, name=nothing)
     t1 = mapchunks(delayed(chunkf), t)
