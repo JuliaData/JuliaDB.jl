@@ -1,6 +1,6 @@
-import IndexedTables: naturaljoin, _naturaljoin, leftjoin, similarz, asofjoin
+import IndexedTables: naturaljoin, _naturaljoin, leftjoin, similarz, asofjoin, merge
 
-export naturaljoin, innerjoin, leftjoin, asofjoin
+export naturaljoin, innerjoin, leftjoin, asofjoin, merge
 
 function naturaljoin{I1, I2, D1, D2}(left::DTable{I1,D1},
                                      right::DTable{I2,D2},
@@ -113,4 +113,49 @@ end
 
 function asofjoin(left::DTable, right::DTable)
     leftjoin(left, right, IndexedTables.right, asofpred, (x,y,op)->asofjoin(x,y))
+end
+
+function merge{I1,I2,D1,D2}(left::DTable{I1,D1}, right::DTable{I2,D2})
+    lcs = chunks(left)
+    rcs = chunks(right)
+    lidx_spaces = index_spaces(lcs) # an iterable of subdomains in the chunks table
+    ridx_spaces = index_spaces(rcs)
+    out_subdomains = Any[]
+    out_chunks = Any[]
+    usedup_right = Array{Bool}(length(ridx_spaces))
+
+    I = promote_type(I1, I2)        # output index type
+    D = promote_type(D1, D2)        # output data type
+
+    cols(v) = (v,)
+    cols(v::Columns) = v.columns
+
+    for i in 1:length(lcs)
+        lchunk = lcs.data.columns.chunk[i]
+        lbrect = lcs.data.columns.boundingrect[i]
+        subdomain = lidx_spaces[i]
+        # for each chunk in `left`
+        # find all the overlapping chunks from `right`
+        overlapping = map(rcs.data.columns.boundingrect) do rbrect
+            all(map(hasoverlap, lbrect, rbrect))
+        end
+        overlapping_chunks = rcs.data.columns.chunk[overlapping]
+
+        usedup_right &= overlapping
+
+        # all overlapping chunk from `right` should be merged
+        # with the chunk `lchunk`
+        out_chunk = treereduce(delayed(merge),
+                               [lchunk, overlapping_chunks...], lchunk)
+        push!(out_chunks, out_chunk)
+
+        merged_subdomain = reduce(merge, subdomain, ridx_spaces[overlapping])
+        push!(out_subdomains, merged_subdomain)
+    end
+    leftout_right = !usedup_right
+    out_subdomains = vcat(out_subdomains, ridx_spaces[leftout_right])
+    out_chunks = vcat(out_chunks, rcs.data.columns.chunk[leftout_right])
+
+    idxspace = merge(left.index_space, right.index_space)
+    return DTable(I, D, idxspace, chunks_index(out_subdomains, out_chunks))
 end
