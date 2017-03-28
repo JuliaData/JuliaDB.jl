@@ -207,3 +207,4 @@ end
     @test gather(chainvec[["AUD", "USD"], :]) == step2[["AUD", "USD"], :]
 end
 
+include("join.jl")
