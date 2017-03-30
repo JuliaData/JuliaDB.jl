@@ -152,7 +152,7 @@ function merge{I1,I2,D1,D2}(left::DTable{I1,D1}, right::DTable{I2,D2})
         merged_subdomain = reduce(merge, subdomain, ridx_spaces[overlapping])
         push!(out_subdomains, merged_subdomain)
     end
-    leftout_right = !usedup_right
+    leftout_right = broadcast(!, usedup_right)
     out_subdomains = vcat(out_subdomains, ridx_spaces[leftout_right])
     out_chunks = vcat(out_chunks, rcs.data.columns.chunk[leftout_right])
 

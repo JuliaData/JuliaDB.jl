@@ -131,8 +131,11 @@ end
 
 type OnDisk
     filename::String
+    cached_on::Vector{Int}
     cache::Bool
 end
+
+Dagger.affinity(c::OnDisk) = map(OSProc, c.cached_on)
 
 ## TODO: Can make this an LRU cache
 const _ondisk_cache = Dict{String, Any}()
@@ -141,18 +144,24 @@ function gather(ctx, d::OnDisk)
     if d.cache && haskey(_ondisk_cache, d.filename)
         _ondisk_cache[d.filename]
     else
-        _ondisk_cache[d.filename] = unwrap_mmap(open(deserialize, d.filename))
+        data = unwrap_mmap(open(deserialize, d.filename))
+        if !(myid() in d.cached_on)
+            push!(d.cached_on, myid())
+        end
+        _ondisk_cache[d.filename] = data
     end
 end
 
 function save_as_chunk(data, filename_base; cache=true)
     jlsfile = filename_base * ".jls"
     mmapfile = filename_base * ".mmap"
-    save_table(data, jlsfile, mmapfile)
-    Dagger.Chunk(typeof(data), domain(data), OnDisk(jlsfile, cache), false)
+    mmapped_data = save_table(data, jlsfile, mmapfile)
+    _ondisk_cache[jlsfile] = unwrap_mmap(mmapped_data)
+    Dagger.Chunk(typeof(data), domain(data), OnDisk(jlsfile, Int[myid()], cache), false)
 end
 
 function save_table(data::Table, file, mmap_file = file * ".mmap")
     ondiskdata = copy_mmap(mmap_file, data)
     open(io -> serialize(io, ondiskdata), file, "w")
+    ondiskdata
 end
