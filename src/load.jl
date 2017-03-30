@@ -94,25 +94,41 @@ function loadfiles(files::AbstractVector, delim=','; usecache=true, opts...)
 end
 
 ## TODO: Can make this an LRU cache
-const _read_cache = WeakKeyDict()
+const _read_cache = Dict{String,Any}()
 
 type CSVChunk
     filename::String
     cache::Bool
     delim::Char
+    cached_on::Vector{Int}
     opts::Dict
 end
 
+Dagger.affinity(c::CSVChunk) = map(OSProc, c.cached_on)
+
 function gather(ctx, csv::CSVChunk)
-    if csv.cache && haskey(_read_cache, csv)
-        _read_cache[csv]
+    if csv.cache && haskey(_read_cache, csv.filename)
+        #println("Having to fetch data from $csv.cached_on")
+        _read_cache[csv.filename]
+    elseif csv.cached_on != [myid()] && !isempty(csv.cached_on)
+        # TODO: remove myid() if it's in cached_on
+        pid = first(csv.cached_on)
+        if pid == myid()
+            pid = last(csv.cached_on)
+        end
+        remotecall_fetch(c -> gather(ctx, c), pid, csv)
     else
-        _read_cache[csv] = loadTable(csv.filename, csv.delim; csv.opts...)
+        #println("CACHE MISS $csv")
+        data = loadTable(csv.filename, csv.delim; csv.opts...)
+        if !(myid() in csv.cached_on)
+            push!(csv.cached_on, myid())
+        end
+        _read_cache[csv.filename] = data
     end
 end
 
 function makecsvchunk(file, delim; cache=true, opts...)
-    handle = CSVChunk(file, cache, delim, Dict(opts))
+    handle = CSVChunk(file, cache, delim, Int[], Dict(opts))
     # We need to actually load the data to get things like
     # the type and Domain. It will get cached if cache is true
     nds = gather(Context(), handle)
