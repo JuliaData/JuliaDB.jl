@@ -62,7 +62,7 @@ function convertdim(t::DTable, d::DimName, xlat; agg=nothing, vecagg=nothing, na
 
     # First, apply the same convertdim on the index
     t2 = withchunksindex(t1) do cs
-        convertdim(cs, d, x->_map(xlat,x), name=name)
+        cs1 = convertdim(cs, d, x->_map(xlat,x), name=name)
         # apply xlat to bounding rectangles
         newrects = map(cs.data.columns.boundingrect) do box
             # box is an Interval of tuples
@@ -71,7 +71,7 @@ function convertdim(t::DTable, d::DimName, xlat; agg=nothing, vecagg=nothing, na
         end
         newcols = tuplesetindex(cs.data.columns, newrects, :boundingrect)
         newcols = tuplesetindex(cs.data.columns, fill(Nullable{Int}(), length(newrects)), :length)
-        Table(cs.index, Columns(newcols..., names=fieldnames(newcols)))
+        Table(cs1.index, Columns(newcols..., names=fieldnames(newcols)))
     end
 
     function merge_boundingrect(a, b)
@@ -82,7 +82,7 @@ function convertdim(t::DTable, d::DimName, xlat; agg=nothing, vecagg=nothing, na
     # Collapse overlapping chunks:
     withchunksindex(t2) do cs
         _aggregate_chunks(cs, (x,y)->convertdim(merge(x,y), d, xlat;
-                                                agg=agg, vecagg=vecagg, name=nothing),
-                         merge_boundingrect)
+                          agg=agg, vecagg=vecagg, name=nothing),
+                          merge_boundingrect)
     end
 end
