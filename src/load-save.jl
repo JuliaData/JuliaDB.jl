@@ -6,7 +6,7 @@ const JULIADB_INDEXFILE = "juliadb_index.jls"
     ingest(files::AbstractVector, outputdir::AbstractString; <options>...)
 
 ingests data from CSV files into JuliaDB. Stores the metadata and index
-in a directory `outputdir`.
+in a directory `outputdir`. Creates `outputdir` if it doesn't exist.
 
 # Arguments:
 
@@ -25,6 +25,34 @@ in a directory `outputdir`.
 - All other options are passed on to `TextParse.csvread`
 """
 function ingest(files::AbstractVector, outputdir::AbstractString; delim = ',', opts...)
+    dtable_file = joinpath(outputdir, JULIADB_INDEXFILE)
+    if isfile(dtable_file)
+        error("data already exists in $outputdir, use `ingest!` to append new files. Aborting.")
+    end
+    if !isdir(outputdir)
+        mkdir(outputdir)
+    end
+    ingest!(files, outputdir; delim = delim, opts...)
+end
+
+"""
+    ingest!(files::AbstractVector, outputdir::AbstractString; <options>...)
+
+ingest data from `files` and append into data stored in `outputdir`. Creates `outputdir`
+if it doesn't exist. Arguments are the same as those to [ingest](@ref). The index range of
+data in the new files should not overlap with files previously ingested.
+"""
+function ingest!(files::AbstractVector, outputdir::AbstractString; delim = ',', opts...)
+
+    prev_chunks = []
+    dtable_file = joinpath(outputdir, JULIADB_INDEXFILE)
+
+    if !isdir(outputdir)
+        warn("$outputdir doesn't exist. Creating it")
+        mkdir(outputdir)
+    elseif isfile(dtable_file)
+        prev_chunks = chunks(load(outputdir)).data.columns.chunk
+    end
 
     if isempty(files)
         throw(ArgumentError("Specify at least one file to ingest."))
@@ -36,13 +64,6 @@ function ingest(files::AbstractVector, outputdir::AbstractString; delim = ',', o
         end
     end
 
-    if !isdir(outputdir)
-        mkdir(outputdir)
-    end
-
-    found = []
-    cached_chunks = []
-
     sz = sum(map(filesize, files))
     println("Reading $(length(files)) csv files totalling $(round(sz/2^20)) MB...")
 
@@ -53,10 +74,11 @@ function ingest(files::AbstractVector, outputdir::AbstractString; delim = ',', o
 
     saved = map(delayed(load_and_save), files)
 
-    chunks = gather(delayed(vcat)(saved...))
+    chunks = vcat(prev_chunks, gather(delayed(vcat)(saved...)))
     dtable = fromchunks(chunks)
     open(io -> serialize(io, dtable), joinpath(outputdir, JULIADB_INDEXFILE), "w")
-    return dtable
+    dtable
+
 end
 
 function normalize_filepath(filepath)
