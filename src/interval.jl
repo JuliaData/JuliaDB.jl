@@ -58,3 +58,5 @@ function _map(f, i::Interval)
     end
     Interval(fst, lst)
 end
+
+Base.show(io::IO, i::Interval) = (show(io, i.first); print(io, ".."); show(io, i.last))
