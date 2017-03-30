@@ -89,6 +89,13 @@ function mapchunks(f, dt::DTable; keeplengths=true)
     end
 end
 
+Base.map(f, dt::DTable) = mapchunks(delayed(c->map(f, c)), dt)
+
+function Base.reduce(f, dt::DTable)
+    cs = mapchunks(delayed(c->reduce(f, c)), chunks(dt))
+    mapreduce(gather, f, cs.data.columns.chunk)
+end
+
 """
 `IndexSpace(interval, boundingrect, nrows)`
 
