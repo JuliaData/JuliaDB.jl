@@ -31,8 +31,10 @@ function Base.show(io::IO, t::DTable)
         println(io, "$nchunks chunks:")
         println(io, "")
         show(io, top)
-        println(io, "")
-        print(io, "...")
+        if isnull(len) || get(len) > 5
+            println(io, "")
+            print(io, "...")
+        end
     else
         println(io, "an empty DTable")
     end
