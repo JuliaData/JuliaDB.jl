@@ -223,6 +223,12 @@ function Base.length(t::DTable)
     end
 end
 
+function has_overlaps(subdomains)
+    subdomains = sort(subdomains, by = first)
+    lasts = map(last, subdomains)
+    return any(i->searchsortedfirst(lasts, first(subdomains[i])) != i, 1:length(subdomains))
+end
+
 """
 `fromchunks(chunks::AbstractArray)`
 
@@ -234,6 +240,11 @@ function fromchunks(chunks::AbstractArray)
     subdomains = map(domain, chunks)
     nzidxs = find(x->!isempty(x), subdomains)
     subdomains = subdomains[nzidxs]
+
+    if has_overlaps(subdomains)
+        error("chunks must be non-overlapping")
+    end
+
     kvtypes = getkvtypes.(chunktype.(chunks))
     K, V = kvtypes[1]
     for (Tk, Tv) in kvtypes[2:end]
