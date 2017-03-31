@@ -125,8 +125,7 @@ end
     DTable with 1 rows in 1 chunks:
 
     ──┬──
-    1 │ 1
-    ..."""
+    1 │ 1"""
 end
 
 
