@@ -111,7 +111,7 @@ function loadfiles(files::AbstractVector, delim=','; usecache=true, opts...)
 end
 
 ## TODO: Can make this an LRU cache
-const _read_cache = Dict{String,Any}()
+const _read_cache = Dict{Tuple{String, Dict},Any}()
 
 type CSVChunk
     filename::String
@@ -125,9 +125,9 @@ end
 Dagger.affinity(c::CSVChunk) = map(OSProc, c.cached_on)
 
 function gather(ctx, csv::CSVChunk)
-    if csv.cache && haskey(_read_cache, csv.filename)
+    if csv.cache && haskey(_read_cache, (csv.filename, csv.opts))
         #println("Having to fetch data from $csv.cached_on")
-        data = _read_cache[csv.filename]
+        data = _read_cache[(csv.filename, csv.opts)]
     elseif csv.cached_on != [myid()] && !isempty(csv.cached_on)
         # TODO: remove myid() if it's in cached_on
         pid = first(csv.cached_on)
@@ -146,7 +146,7 @@ function gather(ctx, csv::CSVChunk)
         if !(myid() in csv.cached_on)
             push!(csv.cached_on, myid())
         end
-        _read_cache[csv.filename] = data
+        _read_cache[(csv.filename, csv.opts)] = data
     end
 
     if !isnull(csv.offset) && data.index[1][1] != get(csv.offset)

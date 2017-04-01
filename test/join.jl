@@ -31,7 +31,7 @@ using Base.Test
     end
 
     t1 = IndexedTable([:msft,:ibm,:ge], [1,3,4], [100,200,150])
-    t2 = IndexedTable([:ibm,:msft,:msft,:ibm], [0,0,0,2], [100,99,101,98])
+    t2 = IndexedTable([:ibm,:msft,:aapl,:ibm], [0,0,0,2], [100,99,101,98])
 
     aj = asofjoin(t1,t2)
 

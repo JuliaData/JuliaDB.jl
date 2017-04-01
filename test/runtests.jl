@@ -101,7 +101,7 @@ end
 
 path = joinpath(dirname(@__FILE__), "..","test","fxsample", "*.csv")
 files = glob(path[2:end], "/")
-const fxdata_dist = loadfiles(files, header_exists=false, type_detect_rows=4, indexcols=1:2)
+const fxdata_dist = loadfiles(files, header_exists=false, type_detect_rows=4, indexcols=1:2, usecache=false)
 allcsv = reduce(string, readstring.(files))
 const fxdata, _ = loadTable(allcsv;
                             csvread=TextParse._csvread,
@@ -141,11 +141,11 @@ end
     #@test gather(dt[["blah"], :,:]) == fxdata
     function common_test1(dt)
         nds=gather(dt)
-        @test !isempty(nds.index.columns.symbol)
-        @test !isempty(nds.index.columns.time)
+        @test haskey(nds.index.columns, :symbol)
+        @test haskey(nds.index.columns, :time)
         @test length(nds.index.columns) == 2
-        @test !isempty(nds.data.columns.open)
-        @test !isempty(nds.data.columns.close)
+        @test haskey(nds.data.columns, :open)
+        @test haskey(nds.data.columns, :close)
         @test length(nds.data.columns) == 2
     end
     dt = loadfiles(files, colnames=["symbol", "time", "open", "close"], indexcols=["symbol", "time"], usecache=false)
