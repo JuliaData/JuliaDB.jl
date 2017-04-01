@@ -94,17 +94,22 @@ export @dateformat_str, load, csvread, loadTable, glob
 
 """
     loadTable(file::AbstractString;
-                 indexcols, datacols, agg, presorted, copy, kwargs...)
+              indexcols, datacols, agg, presorted, copy, kwargs...)
 
 Load a CSV file into an Table data. `indexcols` (AbstractArray)
 specifies which columns form the index of the data, `datacols`
 (AbstractArray) specifies which columns are to be used as the data.
 `agg`, `presorted`, `copy` options are passed on to `Table`
 constructor, any other keyword argument is passed on to `readcsv`
+
+Returns `data, implicit_index::Bool`, where the second value
+indicates that a single implicit dimension with values 1:N
+was added (e.g. if `indexcols=[]` is specified, or if the file
+only has one column).
 """
 function loadTable(file::AbstractString, delim=',';
-                      indexcols=Int[],
-                      datacols=Int[],
+                      indexcols=nothing,
+                      datacols=nothing,
                       agg=nothing,
                       presorted=false,
                       copy=false,
@@ -114,26 +119,38 @@ function loadTable(file::AbstractString, delim=',';
     #println("LOADING ", file)
     cols,header = csvread(file, delim; kwargs...)
 
-    if isempty(indexcols) && isempty(datacols)
-        indexcols = 1:(length(cols)-1)
-        datacols  = [length(cols)]
-    end
+    implicitindex = false
 
-    if isempty(indexcols)
+    if datacols === nothing
+        if indexcols === nothing
+            indexcols = 1:(length(cols)-1)
+            datacols  = [length(cols)]
+        else
+            # all columns that aren't index
+            _indexcols = map(i->getbyheader(1:length(cols), header, i), indexcols)
+            datacols = [x for x in 1:length(cols) if !(x in _indexcols)]
+        end
+    elseif indexcols === nothing
         # all columns that aren't data
         _datacols = map(i->getbyheader(1:length(cols), header, i), datacols)
         indexcols = [x for x in 1:length(cols) if !(x in _datacols)]
     end
 
     if isempty(datacols)
-        # all columns that aren't index
-        _indexcols = map(i->getbyheader(1:length(cols), header, i), indexcols)
-        datacols = [x for x in 1:length(cols) if !(x in _indexcols)]
+        error("There must be at least one data column.")
     end
 
-    index = getcolsubset(cols, header, indexcols)
     data = getcolsubset(cols, header, datacols)
-    Table(index, data)
+
+    if isempty(indexcols)
+        # with no indexes, default to 1:n
+        index = [1:length(data);]
+        implicitindex = true
+    else
+        index = getcolsubset(cols, header, indexcols)
+    end
+
+    Table(index, data), implicitindex
 end
 
 
