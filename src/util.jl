@@ -59,7 +59,7 @@ end
 end
 
 function subtable(nds, r)
-    Table(nds.index[r], nds.data[r])
+    Table(nds.index[r], nds.data[r], presorted=true, copy=false)
 end
 
 getbyheader(cols, header, i::Int) = cols[i]

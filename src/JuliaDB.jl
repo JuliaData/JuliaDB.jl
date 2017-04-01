@@ -18,5 +18,6 @@ include("dcolumns.jl")
 include("indexing.jl")
 include("query.jl")
 include("join.jl")
+include("sort.jl")
 
 end # module
