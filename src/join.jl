@@ -141,7 +141,7 @@ function merge{I1,I2,D1,D2}(left::DTable{I1,D1}, right::DTable{I2,D2})
         end
         overlapping_chunks = rcs.data.columns.chunk[overlapping]
 
-        usedup_right &= overlapping
+        broadcast!(&, usedup_right, usedup_right, overlapping)
 
         # all overlapping chunk from `right` should be merged
         # with the chunk `lchunk`
