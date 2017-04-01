@@ -27,19 +27,17 @@ Compute any delayed-evaluation in the distributed table.
 
 The computed data is left on the worker processes.
 
-The first ctx is an optional Dagger.Context object
+The first `ctx` argument is an optional `Dagger.Context` object
 enumerating processes where any unevaluated chunks must be computed
-
-TODO: Spill to disk
 """
-function compute(ctx, t::DTable)
+function compute(ctx, t::DTable, allowoverlap=true)
     chunkcol = chunks(t).data.columns.chunk
     if any(Dagger.istask, chunkcol)
         # we need to splat `thunks` so that Dagger knows the inputs
         # are thunks and they need to be staged for scheduling
         vec_thunk = delayed((refs...) -> [refs...]; meta=true)(chunkcol...)
         cs = compute(ctx, vec_thunk) # returns a vector of Chunk objects
-        fromchunks(cs)
+        fromchunks(cs, allowoverlap)
     else
         t
     end
@@ -247,13 +245,13 @@ end
 Convenience function to create a DTable from an array of chunks.
 The chunks must be non-Thunks. Omits empty chunks in the output.
 """
-function fromchunks(chunks::AbstractArray)
+function fromchunks(chunks::AbstractArray, allowoverlap=true)
 
     subdomains = map(domain, chunks)
     nzidxs = find(x->!isempty(x), subdomains)
     subdomains = subdomains[nzidxs]
 
-    if has_overlaps(subdomains)
+    if !allowoverlap && has_overlaps(subdomains)
         error("chunks must be non-overlapping")
     end
 

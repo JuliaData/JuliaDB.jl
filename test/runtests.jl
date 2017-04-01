@@ -207,7 +207,7 @@ end
 end
 
 @testset "permutedims" begin
-    t = IndexedTable(Columns([1,1,2,2], [1,2,1,2]), [1,2,3,4])
+    t = IndexedTable(Columns([1,1,2,2], ["a","b","a","b"]), [1,2,3,4])
     for n=1:5
         d = distribute(t, n)
         @test gather(permutedims(d, [2,1])) == permutedims(t, [2,1])

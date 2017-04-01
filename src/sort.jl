@@ -6,12 +6,13 @@ function _sort(t::DTable;
                by=identity,
                rev::Bool=false,
                order::Ordering=Forward)
-    computed_t = compute(t)
+
+    ctx = Dagger.Context()
+    computed_t = compute(ctx, t, true) # This might have overlapping chunks
 
     lengths = map(get, chunks(computed_t).data.columns.length)
     splitter_ranks = cumsum(lengths)[1:end-1]  # Get ranks for splitting at
 
-    ctx = Dagger.Context()
     idx = dindex(computed_t).result
     # note: here we assume that each chunk is already sorted.
     splitters = Dagger.select(ctx, idx, splitter_ranks, order)
