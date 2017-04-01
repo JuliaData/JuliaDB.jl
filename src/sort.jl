@@ -23,6 +23,8 @@ function _sort(t::DTable;
     compute(ctx, delayed((x...)->fromchunks([x...]); meta=true)(thunks...))
 end
 
+Dagger.mid(x::NamedTuple, y::NamedTuple) = map(Dagger.mid, x, y)
+
 function merge_thunk(cs, starts, lasts, empty, ord)
     ranges = map(UnitRange, starts, lasts)
     nonempty = find(map(x->!isempty(x), ranges))
