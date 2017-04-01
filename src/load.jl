@@ -69,7 +69,7 @@ function loadfiles(files::AbstractVector, delim=','; usecache=true, opts...)
 
     if isempty(unknown)
         # we read all required metadata from cache
-        return fromchunks(validcache)
+        return fromchunks(validcache, false)
     end
 
     sz = sum(map(filesize, unknown))
@@ -107,7 +107,7 @@ function loadfiles(files::AbstractVector, delim=','; usecache=true, opts...)
         serialize(io, cache)
     end
 
-    fromchunks(vcat(validcache, chunkrefs))
+    fromchunks(vcat(validcache, chunkrefs), false)
 end
 
 ## TODO: Can make this an LRU cache
