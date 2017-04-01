@@ -103,11 +103,11 @@ path = joinpath(dirname(@__FILE__), "..","test","fxsample", "*.csv")
 files = glob(path[2:end], "/")
 const fxdata_dist = loadfiles(files, header_exists=false, type_detect_rows=4, indexcols=1:2)
 allcsv = reduce(string, readstring.(files))
-const fxdata = loadTable(allcsv;
-             csvread=TextParse._csvread,
-             indexcols=1:2,
-             type_detect_rows=4,
-             header_exists=false)
+const fxdata, _ = loadTable(allcsv;
+                            csvread=TextParse._csvread,
+                            indexcols=1:2,
+                            type_detect_rows=4,
+                            header_exists=false)
 
 ingest_output = tempname()
 fxdata_ingest = ingest(files, ingest_output, header_exists=false, type_detect_rows=4, indexcols=1:2)

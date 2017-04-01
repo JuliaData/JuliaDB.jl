@@ -68,7 +68,7 @@ function ingest!(files::AbstractVector, outputdir::AbstractString; delim = ',', 
     println("Reading $(length(files)) csv files totalling $(round(sz/2^20)) MB...")
 
     function load_and_save(file)
-        data = loadTable(file, delim; opts...)
+        data, _ = loadTable(file, delim; opts...)
         save_as_chunk(data, joinpath(outputdir, normalize_filepath(file)))
     end
 
