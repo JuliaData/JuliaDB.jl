@@ -76,6 +76,11 @@ function _merge(a, b)
     end
 end
 
+_merge(x) = x
+function _merge(x, y, ys...)
+    _merge(_merge(x,y), _merge(ys...))
+end
+
 """
 `mapchunks(f, nds::Table; keeplengths=true)`
 
