@@ -3,8 +3,10 @@ export loadfiles
 const JULIADB_CACHEDIR = ".juliadb_cache"
 const JULIADB_FILECACHE = "filemeta.dat"
 
+files_from_dir(dir) = filter(isfile, [ joinpath(dir, f) for f in readdir(dir) ])
+
 """
-    loadfiles(files::AbstractVector;
+    loadfiles(files::Union{AbstractVector,String};
           usecache=true,
           indexcols=Int[],
           datacols=Int[],
@@ -13,26 +15,37 @@ const JULIADB_FILECACHE = "filemeta.dat"
           copy=false,
           csvopts...)
 
-Load a bunch of CSV `files` into a DTable. `indexcols` is a vector of column
-indices to be used as the index, and `datacols` is a vector of column indices
-to be used as the data for the resulting table. `agg`, `presorted` and `copy`
-are the corresponding keyword arguments passed to `Table` constructor.
+Load a collection of CSV `files` into a DTable, where `files` is either a vector
+of file paths, or the path of a directory containing files to load.
+`indexcols` is a vector of column indices to be used as the index, and `datacols`
+is a vector of column indices to be used as the data for the resulting table.
+`agg`, `presorted` and `copy` are the corresponding keyword arguments passed to the
+`Table` constructor.
 The rest of the keyword arguments (`csvopts`) will be passed on to `TextParse.csvread`
 """
-function loadfiles(files::AbstractVector, delim=','; usecache=true, opts...)
+function loadfiles(files::Union{AbstractVector,String}, delim=','; usecache=true, opts...)
+
+    if isa(files, String)
+        if !isdir(files)
+            throw(ArgumentError("Specified path does not refer to an existing directory."))
+        end
+        cachedir = joinpath(files, JULIADB_CACHEDIR)
+        files = files_from_dir(files)
+    else
+        for file in files
+            if !isfile(file)
+                throw(ArgumentError("No file named $file."))
+            end
+        end
+        cachedir = JULIADB_CACHEDIR
+    end
 
     if isempty(files)
         throw(ArgumentError("Specify at least one file to load."))
     end
 
-    for file in files
-        if !isfile(file)
-            throw(ArgumentError("No file named $file"))
-        end
-    end
-
-    if !isdir(JULIADB_CACHEDIR)
-        mkdir(JULIADB_CACHEDIR)
+    if !isdir(cachedir)
+        mkdir(cachedir)
     end
 
     unknown = files
@@ -43,7 +56,7 @@ function loadfiles(files::AbstractVector, delim=','; usecache=true, opts...)
     # we hope that each one has a unique hash:
     opthash = hash(Dict(opts))
     # Read metadata about a subset of files if safe to
-    metafile = joinpath(JULIADB_CACHEDIR, JULIADB_FILECACHE)
+    metafile = joinpath(cachedir, JULIADB_FILECACHE)
     if usecache && isfile(metafile)
         try
             metadata = open(deserialize, metafile, "r")
