@@ -107,7 +107,7 @@ function loadfiles(files::AbstractVector, delim=','; usecache=true, opts...)
         serialize(io, cache)
     end
 
-    fromchunks(vcat(validcache, chunkrefs), false)
+    fromchunks(vcat(validcache, chunkrefs))
 end
 
 ## TODO: Can make this an LRU cache
