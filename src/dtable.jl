@@ -37,6 +37,7 @@ function compute(ctx, t::DTable, allowoverlap=true)
         # are thunks and they need to be staged for scheduling
         vec_thunk = delayed((refs...) -> [refs...]; meta=true)(chunkcol...)
         cs = compute(ctx, vec_thunk) # returns a vector of Chunk objects
+        Base.foreach(Dagger.persist!, cs)
         fromchunks(cs, allowoverlap)
     else
         t

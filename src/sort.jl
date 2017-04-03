@@ -9,8 +9,6 @@ function _sort(t::DTable;
 
     ctx = Dagger.Context()
     computed_t = compute(ctx, t, true) # This might have overlapping chunks
-    mapchunks(Dagger.persist!, computed_t) # we need the chunks for the last step
-                                # ask Dagger not to GC them
 
     lengths = map(get, chunks(computed_t).data.columns.length)
     splitter_ranks = cumsum(lengths)[1:end-1]  # Get ranks for splitting at
