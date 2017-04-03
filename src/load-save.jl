@@ -3,7 +3,7 @@ export ingest, load, save
 const JULIADB_INDEXFILE = "juliadb_index.jls"
 
 """
-    ingest(files::AbstractVector, outputdir::AbstractString; <options>...)
+    ingest(files::Union{AbstractVector,String}, outputdir::AbstractString; <options>...)
 
 ingests data from CSV files into JuliaDB. Stores the metadata and index
 in a directory `outputdir`. Creates `outputdir` if it doesn't exist.
@@ -24,7 +24,7 @@ in a directory `outputdir`. Creates `outputdir` if it doesn't exist.
 - `copy`: whether to copy the data before presorting or aggregating
 - All other options are passed on to `TextParse.csvread`
 """
-function ingest(files::AbstractVector, outputdir::AbstractString; delim = ',', opts...)
+function ingest(files::Union{AbstractVector,String}, outputdir::AbstractString; delim = ',', opts...)
     dtable_file = joinpath(outputdir, JULIADB_INDEXFILE)
     if isfile(dtable_file)
         error("data already exists in $outputdir, use `ingest!` to append new files. Aborting.")
@@ -36,13 +36,13 @@ function ingest(files::AbstractVector, outputdir::AbstractString; delim = ',', o
 end
 
 """
-    ingest!(files::AbstractVector, outputdir::AbstractString; <options>...)
+    ingest!(files::Union{AbstractVector,String}, outputdir::AbstractString; <options>...)
 
 ingest data from `files` and append into data stored in `outputdir`. Creates `outputdir`
 if it doesn't exist. Arguments are the same as those to [ingest](@ref). The index range of
 data in the new files should not overlap with files previously ingested.
 """
-function ingest!(files::AbstractVector, outputdir::AbstractString; delim = ',', opts...)
+function ingest!(files::Union{AbstractVector,String}, outputdir::AbstractString; delim = ',', opts...)
 
     prev_chunks = []
     dtable_file = joinpath(outputdir, JULIADB_INDEXFILE)
@@ -54,14 +54,21 @@ function ingest!(files::AbstractVector, outputdir::AbstractString; delim = ',', 
         prev_chunks = chunks(load(outputdir)).data.columns.chunk
     end
 
-    if isempty(files)
-        throw(ArgumentError("Specify at least one file to ingest."))
+    if isa(files, String)
+        if !isdir(files)
+            throw(ArgumentError("Specified source path does not refer to an existing directory."))
+        end
+        files = files_from_dir(files)
+    else
+        for file in files
+            if !isfile(file)
+                throw(ArgumentError("No file named $file."))
+            end
+        end
     end
 
-    for file in files
-        if !isfile(file)
-            throw(ArgumentError("No file named $file"))
-        end
+    if isempty(files)
+        throw(ArgumentError("Specify at least one file to ingest."))
     end
 
     sz = sum(map(filesize, files))
@@ -78,7 +85,6 @@ function ingest!(files::AbstractVector, outputdir::AbstractString; delim = ',', 
     dtable = fromchunks(chunks)
     open(io -> serialize(io, dtable), joinpath(outputdir, JULIADB_INDEXFILE), "w")
     dtable
-
 end
 
 function normalize_filepath(filepath)
@@ -103,7 +109,7 @@ end
 
 Saves a `DTable` to disk. This function blocks till all
 files data has been computed and saved. Saved data can
-be loaded with `load`
+be loaded with `load`.
 """
 function save(t::DTable, outputdir::AbstractString)
 
