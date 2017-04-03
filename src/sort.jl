@@ -9,7 +9,7 @@ function _sort(t::DTable;
 
     ctx = Dagger.Context()
     computed_t = compute(ctx, t, true) # This might have overlapping chunks
-    Dagger.persist!(computed_t) # we need the chunks for the last step
+    mapchunks(Dagger.persist!, computed_t) # we need the chunks for the last step
                                 # ask Dagger not to GC them
 
     lengths = map(get, chunks(computed_t).data.columns.length)
