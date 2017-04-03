@@ -236,7 +236,15 @@ end
 function has_overlaps(subdomains)
     subdomains = sort(subdomains, by = first)
     lasts = map(last, subdomains)
-    return any(i->searchsortedfirst(lasts, first(subdomains[i])) != i, 1:length(subdomains))
+    for i = 1:length(subdomains)
+        s_i = first(subdomains[i])
+        j = searchsortedfirst(lasts, s_i)
+        # allow repeated indices between chunks
+        if j != i && isless(s_i, lasts[j])
+            return true
+        end
+    end
+    return false
 end
 
 """
@@ -245,15 +253,11 @@ end
 Convenience function to create a DTable from an array of chunks.
 The chunks must be non-Thunks. Omits empty chunks in the output.
 """
-function fromchunks(chunks::AbstractArray, allowoverlap=true)
+function fromchunks(chunks::AbstractArray, allowoverlap=false)
 
     subdomains = map(domain, chunks)
     nzidxs = find(x->!isempty(x), subdomains)
     subdomains = subdomains[nzidxs]
-
-    if !allowoverlap && has_overlaps(subdomains)
-        error("chunks must be non-overlapping")
-    end
 
     kvtypes = getkvtypes.(chunktype.(chunks))
     K, V = kvtypes[1]
@@ -263,8 +267,13 @@ function fromchunks(chunks::AbstractArray, allowoverlap=true)
     end
 
     idxs = reduce(merge, subdomains)
-    DTable(K, V, idxs,
-           chunks_index(subdomains, chunks[nzidxs]))
+    dt = DTable(K, V, idxs,
+                chunks_index(subdomains, chunks[nzidxs]))
+
+    if !allowoverlap && has_overlaps(subdomains)
+        return _sort(dt)
+    end
+    return dt
 end
 
 function getkvtypes{N<:Table}(::Type{N})
