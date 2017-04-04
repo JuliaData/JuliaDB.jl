@@ -82,7 +82,16 @@ function ingest!(files::Union{AbstractVector,String}, outputdir::AbstractString;
     saved = map(delayed(load_and_save), files)
 
     chunks = vcat(prev_chunks, gather(delayed(vcat)(saved...)))
+    filenames1 = map(c -> c.handle.filename, chunks)
     dtable = fromchunks(chunks)
+
+    if any(c->!isa(c.handle, OnDisk), dtable.chunks.data.columns.chunk)
+        # This means `fromchunks` had to re-sort overlapping chunks
+        dtable = save(dtable, outputdir) # write out the sorted version
+        filenames2 = map(c -> c.handle.filename, dtable.chunks.data.columns.chunk)
+        Base.foreach(rm, setdiff(filenames1, filenames2))
+    end
+
     open(io -> serialize(io, dtable), joinpath(outputdir, JULIADB_INDEXFILE), "w")
     dtable
 end
