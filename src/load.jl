@@ -5,6 +5,15 @@ const JULIADB_FILECACHE = "filemeta.dat"
 
 files_from_dir(dir) = filter(isfile, [ joinpath(dir, f) for f in readdir(dir) ])
 
+function format_bytes(nb)
+    bytes, mb = Base.prettyprint_getunits(nb, length(Base._mem_units), Int64(1024))
+    if mb == 1
+        @sprintf("%d %s%s", bytes, Base._mem_units[mb], bytes==1 ? "" : "s")
+    else
+        @sprintf("%.3f %s", bytes, Base._mem_units[mb])
+    end
+end
+
 """
     loadfiles(files::Union{AbstractVector,String};
           usecache=true,
@@ -86,7 +95,7 @@ function loadfiles(files::Union{AbstractVector,String}, delim=','; usecache=true
     end
 
     sz = sum(map(filesize, unknown))
-    println("Reading $(length(unknown)) csv files totalling $(round(sz/2^10)) kB...")
+    println("Reading $(length(unknown)) csv files totalling $(format_bytes(sz))...")
     # Load the data first into memory
     load_f(f) = makecsvchunk(f, delim; opts...)
     data = map(delayed(load_f), unknown)

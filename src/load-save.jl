@@ -72,7 +72,7 @@ function ingest!(files::Union{AbstractVector,String}, outputdir::AbstractString;
     end
 
     sz = sum(map(filesize, files))
-    println("Reading $(length(files)) csv files totalling $(round(sz/2^20)) MB...")
+    println("Reading $(length(files)) csv files totalling $(format_bytes(sz))...")
 
     function load_and_save(file)
         data, _ = loadTable(file, delim; opts...)
