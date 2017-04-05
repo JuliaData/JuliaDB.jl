@@ -1,6 +1,6 @@
 export select, convertdim, aggregate
 
-import IndexedTables: convertdim, aggregate, aggregate_to
+import IndexedTables: convertdim, aggregate, aggregate_to, aggregate_vec
 
 """
 `select(arr::DTable, conditions::Pair...)`
@@ -13,27 +13,20 @@ function Base.select(t::DTable, conditions::Pair...)
     mapchunks(delayed(x -> select(x, conditions...)), t, keeplengths=false)
 end
 
-
-# Merge two data-rows in the metadata table
-function merge_metadata(m1, m2, chunk_merge=merge, boundingrect_merge=merge)
-    # Order of args is significant!!
-    @NT(boundingrect=boundingrect_merge(m1.boundingrect, m2.boundingrect),
-        chunk=delayed(chunk_merge)(m1.chunk, m2.chunk),
-        length=Nullable{Int}())
+function aggregate(f, t::DTable)
+    if has_overlaps(index_spaces(chunks(t)))
+        overlap_merge = (x, y) -> merge(x, y, agg=f)
+        t = _sort(t, merge=(ts...) -> _merge(overlap_merge, ts...), closed=true)
+    end
+    mapchunks(delayed(c->aggregate(f, c)), t, keeplengths=false)
 end
 
-function _aggregate_chunks(cs::Table, f, boundingf=merge)
-    merged_data = aggregate_to(cs.index, cs.data) do x, y
-        # TODO: aggregate_vec then treereduce
-        merge_metadata(x, y, f, boundingf)
-    end |> last
-    # merge index-rows
-    merged_index = aggregate_to(cs.index, cs.index) do x, y
-        map(merge, x, y)
-    end |> last
-    Table(merged_index, merged_data)
+function aggregate_vec(f, t::DTable)
+    if has_overlaps(index_spaces(chunks(t)))
+        t = _sort(t, closed=true) # Do not have chunks that are continuations
+    end
+    mapchunks(delayed(c->aggregate_vec(f, c)), t, keeplengths=false)
 end
-
 
 # Filter on data field
 function Base.filter(fn::Function, t::DTable)
@@ -57,32 +50,33 @@ function convertdim(t::DTable, d::DimName, xlat; agg=nothing, vecagg=nothing, na
         d = dn
     end
 
-    chunkf(c) = convertdim(c, d, xlat; agg=agg, vecagg=vecagg, name=nothing)
+    chunkf(c) = convertdim(c, d, xlat; agg=agg, vecagg=nothing, name=name)
     t1 = mapchunks(delayed(chunkf), t)
 
-    # First, apply the same convertdim on the index
+    # apply the same convertdim on the index
     t2 = withchunksindex(t1) do cs
         cs1 = convertdim(cs, d, x->_map(xlat,x), name=name)
+
         # apply xlat to bounding rectangles
         newrects = map(cs.data.columns.boundingrect) do box
             # box is an Interval of tuples
             # xlat the (d)th element of tuple
             tuplesetindex(box, _map(xlat, box[d]), d)
         end
+
         newcols = tuplesetindex(cs.data.columns, newrects, :boundingrect)
         newcols = tuplesetindex(cs.data.columns, fill(Nullable{Int}(), length(newrects)), :length)
         Table(cs1.index, Columns(newcols..., names=fieldnames(newcols)))
     end
 
-    function merge_boundingrect(a, b)
-        a_convdim = _map(xlat, a[d])
-        b_convdim = _map(xlat, b[d])
-        map(merge, tuplesetindex(a, a_convdim, d), tuplesetindex(b, a_convdim, d))
+    if agg !== nothing
+        overlap_merge = (x, y) -> merge(x, y, agg=agg)
+        t3 = _sort(t2, merge=(ts...) -> _merge(overlap_merge, ts...), closed=true)
+    elseif vecagg != nothing
+        t3 = aggregate_vec(vecagg, t2)
+    else
+        t3 = t2
     end
-    # Collapse overlapping chunks:
-    withchunksindex(t2) do cs
-        _aggregate_chunks(cs, (x,y)->convertdim(merge(x,y), d, xlat;
-                          agg=agg, vecagg=vecagg, name=nothing),
-                          merge_boundingrect)
-    end
+
+    return t3
 end

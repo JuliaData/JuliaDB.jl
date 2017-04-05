@@ -99,7 +99,7 @@ import JuliaDB: Interval, hasoverlap
 
 end
 
-path = joinpath(dirname(@__FILE__), "..","test","fxsample", "*.csv")
+path = joinpath(dirname(@__FILE__), "..","test","fxsample", "[A-Z]*.csv")
 files = glob(path[2:end], "/")
 const fxdata_dist = loadfiles(files, header_exists=false, type_detect_rows=4, indexcols=1:2, usecache=false)
 allcsv = reduce(string, readstring.(files))
@@ -196,12 +196,12 @@ end
         gather(convertdim(fxdata_dist, 1, x->x[1:3]; agg=_plus))
 
     dt = load(ingest_output)
-    chain = convertdim(convertdim(dt, 1, x->x[1:3]; agg=_plus), 2, Date, agg=_plus)
-    @test convertdim(step1, 2, Date; agg=_plus) == gather(chain)
-    @test convertdim(step1, 2, Date; agg=_plus) == gather(save(chain, tempname()))
+    chain = convertdim(convertdim(dt, 1, x->x[1:3]; agg=_plus), 2, x->DateTime(Date(x)), agg=_plus)
+    @test convertdim(step1, 2, x->DateTime(Date(x)); agg=_plus) == gather(chain)
+    @test convertdim(step1, 2, x->DateTime(Date(x)); agg=_plus) == gather(save(chain, tempname()))
     dt2 = save(convertdim(dt, 1, x->x[1:3]; agg=_plus), tempname())
-    chainvec = convertdim(dt2, 2, Date, vecagg=length)
-    step2 = convertdim(step1, 2, Date; vecagg=length)
+    chainvec = convertdim(dt2, 2, x->DateTime(Date(x)), vecagg=length)
+    step2 = convertdim(step1, 2,  x->DateTime(Date(x)); vecagg=length)
     @test step2 == gather(chainvec)
     @test gather(chainvec[["AUD", "USD"], :]) == step2[["AUD", "USD"], :]
 end
