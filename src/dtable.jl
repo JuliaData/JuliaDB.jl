@@ -38,7 +38,7 @@ function compute(ctx, t::DTable, allowoverlap=true)
         vec_thunk = delayed((refs...) -> [refs...]; meta=true)(chunkcol...)
         cs = compute(ctx, vec_thunk) # returns a vector of Chunk objects
         Base.foreach(Dagger.persist!, cs)
-        fromchunks(cs, allowoverlap)
+        fromchunks(cs, allowoverlap=allowoverlap)
     else
         t
     end
@@ -132,6 +132,14 @@ function Dagger.domain(nd::Table)
     extr = map(extrema, cs)
     boundingrect = Interval(map(first, extr), map(last, extr))
     return IndexSpace(interval, boundingrect, Nullable{Int}(length(nd)))
+end
+
+function subindexspace(nd, r)
+    interval = Interval(nd.index[first(r)], nd.index[last(r)])
+    cs = astuple(nd.index.columns)
+    extr = map(c -> extrema_range(c, r), cs)
+    boundingrect = Interval(map(first, extr), map(last, extr))
+    return IndexSpace(interval, boundingrect, Nullable{Int}(length(r)))
 end
 
 Base.eltype{T}(::IndexSpace{T}) = T
@@ -249,26 +257,21 @@ function has_overlaps(subdomains)
 end
 
 """
-`fromchunks(chunks::AbstractArray)`
+`fromchunks(chunks::AbstractArray, [subdomains::AbstracArray]; allowoverlap=false)`
 
 Convenience function to create a DTable from an array of chunks.
 The chunks must be non-Thunks. Omits empty chunks in the output.
 """
-function fromchunks(chunks::AbstractArray, allowoverlap=false)
+function fromchunks(chunks::AbstractArray,
+                    subdomains::AbstractArray = map(domain, chunks);
+                    KV = getkvtypes(chunks),
+                    allowoverlap = false)
 
-    subdomains = map(domain, chunks)
     nzidxs = find(x->!isempty(x), subdomains)
     subdomains = subdomains[nzidxs]
 
-    kvtypes = getkvtypes.(chunktype.(chunks))
-    K, V = kvtypes[1]
-    for (Tk, Tv) in kvtypes[2:end]
-        K = promote_type(Tk, K)
-        V = promote_type(Tv, V)
-    end
-
     idxs = reduce(merge, subdomains)
-    dt = DTable(K, V, idxs,
+    dt = DTable(KV..., idxs,
                 chunks_index(subdomains, chunks[nzidxs]))
 
     if !allowoverlap && has_overlaps(subdomains)
@@ -279,6 +282,16 @@ end
 
 function getkvtypes{N<:Table}(::Type{N})
     N.parameters[2], N.parameters[1]
+end
+
+function getkvtypes(xs::AbstractArray)
+    kvtypes = getkvtypes.(chunktype.(xs))
+    K, V = kvtypes[1]
+    for (Tk, Tv) in kvtypes[2:end]
+        K = promote_type(Tk, K)
+        V = promote_type(Tv, V)
+    end
+    K, V
 end
 
 ### Distribute a Table into a DTable
