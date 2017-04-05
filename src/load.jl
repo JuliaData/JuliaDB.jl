@@ -14,6 +14,19 @@ function format_bytes(nb)
     end
 end
 
+lastindex(d::DTable) = last(d.data.columns.metadata[end].domain)
+
+# update chunk offsets and domains to form a distributed index space o:(o+n-1)
+function distribute_implicit_index_space!(chunkrefs, o=1)
+    for c in chunkrefs
+        c.handle.offset = o
+        n = get(nrows(domain(c)))
+        c.domain = IndexSpace(Interval((o,), (o+n-1,)),
+                              Interval((o,), (o+n-1,)), Nullable{Int}(n))
+        o += n
+    end
+end
+
 """
     loadfiles(files::Union{AbstractVector,String};
           usecache=true,
@@ -103,19 +116,8 @@ function loadfiles(files::Union{AbstractVector,String}, delim=','; usecache=true
     chunkrefs = gather(delayed(vcat)(data...))
 
     if !isnull(chunkrefs[1].handle.offset)
-        # implicit index mode - fabricate a 1-d index space 1:n
-        if metadata === nothing
-            o = 1
-        else
-            o = last(metadata.data.columns.metadata[end].domain)[1] + 1
-        end
-        for c in chunkrefs
-            c.handle.offset = o
-            n = get(nrows(domain(c)))
-            c.domain = IndexSpace(Interval((o,), (o+n-1,)),
-                                  Interval((o,), (o+n-1,)), Nullable{Int}(n))
-            o += n
-        end
+        distribute_implicit_index_space!(chunkrefs,
+                                         metadata===nothing ? 1 : lastindex(metadata)[1] + 1)
     end
 
     # store this back in cache
