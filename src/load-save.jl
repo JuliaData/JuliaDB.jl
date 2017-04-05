@@ -1,4 +1,4 @@
-export ingest, load, save
+export ingest, ingest!, load, save
 
 const JULIADB_INDEXFILE = "juliadb_index.jls"
 
@@ -43,15 +43,18 @@ if it doesn't exist. Arguments are the same as those to [ingest](@ref). The inde
 data in the new files should not overlap with files previously ingested.
 """
 function ingest!(files::Union{AbstractVector,String}, outputdir::AbstractString; delim = ',', opts...)
+    outputdir = abspath(outputdir)
 
     prev_chunks = []
     dtable_file = joinpath(outputdir, JULIADB_INDEXFILE)
+    existing_dtable = nothing
 
     if !isdir(outputdir)
         warn("$outputdir doesn't exist. Creating it")
         mkdir(outputdir)
     elseif isfile(dtable_file)
-        prev_chunks = chunks(load(outputdir)).data.columns.chunk
+        existing_dtable = load(outputdir)
+        prev_chunks = chunks(existing_dtable).data.columns.chunk
     end
 
     if isa(files, String)
@@ -65,10 +68,21 @@ function ingest!(files::Union{AbstractVector,String}, outputdir::AbstractString;
                 throw(ArgumentError("No file named $file."))
             end
         end
+        files = map(abspath, files)
     end
 
     if isempty(files)
         throw(ArgumentError("Specify at least one file to ingest."))
+    end
+
+    # exclude files we've already seen
+    filter!(f->!any(ch->splitext(ch.handle.filename)[1] == joinpath(outputdir, normalize_filepath(f)),
+                    prev_chunks),
+            files)
+
+    if isempty(files)
+        assert(existing_dtable !== nothing)
+        return existing_dtable
     end
 
     sz = sum(map(filesize, files))
@@ -81,9 +95,9 @@ function ingest!(files::Union{AbstractVector,String}, outputdir::AbstractString;
 
     saved = map(delayed(load_and_save), files)
 
-    chunks = vcat(prev_chunks, gather(delayed(vcat)(saved...)))
-    filenames1 = map(c -> c.handle.filename, chunks)
-    dtable = fromchunks(chunks)
+    allchunks = vcat(prev_chunks, gather(delayed(vcat)(saved...)))
+    filenames1 = map(c -> c.handle.filename, allchunks)
+    dtable = fromchunks(allchunks)
 
     if any(c->!isa(c.handle, OnDisk), dtable.chunks.data.columns.chunk)
         # This means `fromchunks` had to re-sort overlapping chunks
