@@ -71,7 +71,7 @@ function _merge(a, b)
     elseif last(b.index) < first(a.index)
         _merge(b, a)
     else
-        merge(a, b)
+        merge(a, b, agg=nothing) # Keep equal index elements
     end
 end
 
