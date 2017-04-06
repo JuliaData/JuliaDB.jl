@@ -1,4 +1,4 @@
-export ingest, load, save
+export ingest, ingest!, load, save
 
 const JULIADB_INDEXFILE = "juliadb_index.jls"
 
@@ -43,6 +43,7 @@ if it doesn't exist. Arguments are the same as those to [ingest](@ref). The inde
 data in the new files should not overlap with files previously ingested.
 """
 function ingest!(files::Union{AbstractVector,String}, outputdir::AbstractString; delim = ',', opts...)
+    outputdir = abspath(outputdir)
 
     prev_chunks = []
     dtable_file = joinpath(outputdir, JULIADB_INDEXFILE)
@@ -67,10 +68,21 @@ function ingest!(files::Union{AbstractVector,String}, outputdir::AbstractString;
                 throw(ArgumentError("No file named $file."))
             end
         end
+        files = map(abspath, files)
     end
 
     if isempty(files)
         throw(ArgumentError("Specify at least one file to ingest."))
+    end
+
+    # exclude files we've already seen
+    filter!(f->!any(ch->splitext(ch.handle.filename)[1] == joinpath(outputdir, normalize_filepath(f)),
+                    prev_chunks),
+            files)
+
+    if isempty(files)
+        assert(existing_dtable !== nothing)
+        return existing_dtable
     end
 
     sz = sum(map(filesize, files))
@@ -91,7 +103,8 @@ function ingest!(files::Union{AbstractVector,String}, outputdir::AbstractString;
     end
 
     chunks = vcat(prev_chunks, chunkrefs)
-    dtable = fromchunks(chunks)
+    allchunks = vcat(prev_chunks, chunkrefs)
+    dtable = fromchunks(allchunks)
 
     if any(c->!isa(c, Dagger.Chunk) || !isa(c.handle, OnDisk),
            dtable.chunks.data.columns.chunk)

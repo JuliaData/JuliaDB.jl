@@ -3,7 +3,10 @@ export loadfiles
 const JULIADB_CACHEDIR = ".juliadb_cache"
 const JULIADB_FILECACHE = "filemeta.dat"
 
-files_from_dir(dir) = filter(isfile, [ joinpath(dir, f) for f in readdir(dir) ])
+function files_from_dir(dir)
+    dir = abspath(dir)
+    filter(isfile, [ joinpath(dir, f) for f in readdir(dir) ])
+end
 
 function format_bytes(nb)
     bytes, mb = Base.prettyprint_getunits(nb, length(Base._mem_units), Int64(1024))
