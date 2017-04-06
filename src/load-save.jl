@@ -46,12 +46,14 @@ function ingest!(files::Union{AbstractVector,String}, outputdir::AbstractString;
 
     prev_chunks = []
     dtable_file = joinpath(outputdir, JULIADB_INDEXFILE)
+    existing_dtable = nothing
 
     if !isdir(outputdir)
         warn("$outputdir doesn't exist. Creating it")
         mkdir(outputdir)
     elseif isfile(dtable_file)
-        prev_chunks = chunks(load(outputdir)).data.columns.chunk
+        existing_dtable = load(outputdir)
+        prev_chunks = chunks(existing_dtable).data.columns.chunk
     end
 
     if isa(files, String)
@@ -75,13 +77,20 @@ function ingest!(files::Union{AbstractVector,String}, outputdir::AbstractString;
     println("Reading $(length(files)) csv files totalling $(format_bytes(sz))...")
 
     function load_and_save(file)
-        data, _ = loadTable(file, delim; opts...)
-        save_as_chunk(data, joinpath(outputdir, normalize_filepath(file)))
+        data, ii = loadTable(file, delim; opts...)
+        save_as_chunk(data, joinpath(outputdir, normalize_filepath(file)), implicit_index=ii)
     end
 
     saved = map(delayed(load_and_save), files)
 
-    chunks = vcat(prev_chunks, gather(delayed(vcat)(saved...)))
+    chunkrefs = gather(delayed(vcat)(saved...))
+
+    if !isnull(chunkrefs[1].handle.offset)
+        distribute_implicit_index_space!(chunkrefs,
+                                         existing_dtable===nothing ? 1 : lastindex(existing_dtable)[1] + 1)
+    end
+
+    chunks = vcat(prev_chunks, chunkrefs)
     dtable = fromchunks(chunks)
 
     if any(c->!isa(c, Dagger.Chunk) || !isa(c.handle, OnDisk),
@@ -149,6 +158,7 @@ type OnDisk
     filename::String
     cached_on::Vector{Int}
     cache::Bool
+    offset::Nullable{Int}  # index of first item when using implicit indices
 end
 
 Dagger.affinity(c::OnDisk) = map(OSProc, c.cached_on)
@@ -158,7 +168,7 @@ const _ondisk_cache = Dict{String, Any}()
 
 function gather(ctx, d::OnDisk)
     if d.cache && haskey(_ondisk_cache, d.filename)
-        _ondisk_cache[d.filename]
+        data = _ondisk_cache[d.filename]
     else
         data = unwrap_mmap(open(deserialize, d.filename))
         if !(myid() in d.cached_on)
@@ -166,14 +176,23 @@ function gather(ctx, d::OnDisk)
         end
         _ondisk_cache[d.filename] = data
     end
+
+    if !isnull(d.offset) && data.index[1][1] != get(d.offset)
+        o = get(d.offset)
+        data.index.columns[1][:] = o:(o+length(data)-1)
+    end
+
+    return data
 end
 
-function save_as_chunk(data, filename_base; cache=true)
+function save_as_chunk(data, filename_base; cache=true, implicit_index=false)
     jlsfile = filename_base * ".jls"
     mmapfile = filename_base * ".mmap"
     mmapped_data = save_table(data, jlsfile, mmapfile)
     _ondisk_cache[jlsfile] = unwrap_mmap(mmapped_data)
-    Dagger.Chunk(typeof(data), domain(data), OnDisk(jlsfile, Int[myid()], cache), false)
+    Dagger.Chunk(typeof(data), domain(data),
+                 OnDisk(jlsfile, Int[myid()], cache, implicit_index ? 1 : nothing),
+                 false)
 end
 
 function save_table(data::Table, file, mmap_file = file * ".mmap")
