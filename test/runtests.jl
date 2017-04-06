@@ -211,6 +211,25 @@ end
     @test gather(chainvec[["AUD", "USD"], :]) == step2[["AUD", "USD"], :]
 end
 
+@testset "reducedim" begin
+    t1 = IndexedTable(Columns([1,1,2,2], [1,2,1,2]), [1,2,3,4])
+    rd1 = reducedim(+, t1, 1)
+    rd2 = reducedim(+, t1, 2)
+    rdv1 = reducedim_vec(length, t1, 1)
+    rdv2 = reducedim_vec(length, t1, 2)
+
+    for n=1:5
+        d1 = distribute(t1, n)
+        for n2 = 1:5
+            @test gather(reducedim(+, d1, 1)) == rd1
+            @test gather(reducedim(+, d1, 2)) == rd2
+
+            @test gather(reducedim_vec(length, d1, 1)) == rdv1
+            @test gather(reducedim_vec(length, d1, 2)) == rdv2
+        end
+    end
+end
+
 @testset "permutedims" begin
     t = IndexedTable(Columns([1,1,2,2], ["a","b","a","b"]), [1,2,3,4])
     for n=1:5
