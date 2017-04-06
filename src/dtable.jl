@@ -60,7 +60,7 @@ function gather{T}(ctx, dt::DTable{T})
 end
 
 # Fast-path merge if the data don't overlap
-function _merge(a, b)
+function _merge(f, a::Table, b::Table)
     if isempty(a)
         b
     elseif isempty(b)
@@ -71,14 +71,16 @@ function _merge(a, b)
     elseif last(b.index) < first(a.index)
         _merge(b, a)
     else
-        merge(a, b, agg=nothing) # Keep equal index elements
+        f(a, b) # Keep equal index elements
     end
 end
 
-_merge(x) = x
-function _merge(x, y, ys...)
-    _merge(_merge(x,y), _merge(ys...))
+_merge(f, x::Table) = x
+function _merge(f, x::Table, y::Table, ys::Table...)
+    _merge(f, _merge(f, x,y), _merge(f, ys...))
 end
+
+_merge(x::Table, y::Table...) = _merge((a,b) -> merge(a, b, agg=nothing), x, y...)
 
 """
 `mapchunks(f, nds::Table; keeplengths=true)`
@@ -242,14 +244,16 @@ function Base.length(t::DTable)
     end
 end
 
-function has_overlaps(subdomains)
+function has_overlaps(subdomains, closed=false)
     subdomains = sort(subdomains, by = first)
     lasts = map(last, subdomains)
     for i = 1:length(subdomains)
         s_i = first(subdomains[i])
         j = searchsortedfirst(lasts, s_i)
         # allow repeated indices between chunks
-        if j != i && isless(s_i, lasts[j])
+        if closed && j <= i
+            return true
+        elseif j != i && j <= length(lasts) && isless(s_i, lasts[j])
             return true
         end
     end
