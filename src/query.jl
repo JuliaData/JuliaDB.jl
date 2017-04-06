@@ -1,6 +1,7 @@
-export select, convertdim, aggregate
+export select, convertdim, aggregate, reducedim_vec
 
-import IndexedTables: convertdim, aggregate, aggregate_to, aggregate_vec
+import IndexedTables: convertdim, aggregate, aggregate_vec, reducedim_vec
+import Base: reducedim
 
 """
 `select(arr::DTable, conditions::Pair...)`
@@ -11,6 +12,24 @@ Example: `select(arr, 1 => x->x>10, 3 => x->x!=10 ...)`
 """
 function Base.select(t::DTable, conditions::Pair...)
     mapchunks(delayed(x -> select(x, conditions...)), t, keeplengths=false)
+end
+
+function Base.select(t::DTable, which::DimName...; agg=nothing)
+    t1 = mapchunks(delayed(x -> select(x, which...; agg=agg)), t, keeplengths=true)
+    t2 = withchunksindex(t1) do cs
+        cs1 = select(cs, which...)
+        # remove dimensions from bounding boxes
+        sub_dims = [which...]
+        newbrects = map(b->b[sub_dims], cs1.data.columns.boundingrect)
+        newdata = tuplesetindex(cs1.data.columns, newbrects, :boundingrect)
+        Table(cs1.index, Columns(newdata), presorted=true)
+    end
+    if has_overlaps(index_spaces(chunks(t2)), true)
+        overlap_merge = (x, y) -> merge(x, y, agg=agg)
+        _sort(t2, merge=(ts...) -> _merge(overlap_merge, ts...), closed=true)
+    else
+        t2
+    end
 end
 
 function aggregate(f, t::DTable)
@@ -71,12 +90,38 @@ function convertdim(t::DTable, d::DimName, xlat; agg=nothing, vecagg=nothing, na
 
     if agg !== nothing
         overlap_merge = (x, y) -> merge(x, y, agg=agg)
-        t3 = _sort(t2, merge=(ts...) -> _merge(overlap_merge, ts...), closed=true)
+        _sort(t2, merge=(ts...) -> _merge(overlap_merge, ts...), closed=true)
     elseif vecagg != nothing
-        t3 = aggregate_vec(vecagg, t2)
+        aggregate_vec(vecagg, t2)
     else
-        t3 = t2
+        t3
+    end
+end
+
+function reducedim(f, x::DTable, dims)
+    keep = setdiff([1:ndims(x);], dims) # TODO: Allow symbols
+    if isempty(keep)
+        throw(ArgumentError("to remove all dimensions, use `reduce(f, A)`"))
+    end
+    select(x, keep..., agg=f)
+end
+
+reducedim(f, x::DTable, dims::Symbol) = reducedim(f, x, [dims])
+
+"""
+`reducedim_vec(f::Function, t::DTable, dims)`
+
+Like `reducedim`, except uses a function mapping a vector of values to a scalar instead
+of a 2-argument scalar function.
+"""
+function reducedim_vec(f, x::DTable, dims)
+    keep = setdiff([1:ndims(x);], dims)
+    if isempty(keep)
+        throw(ArgumentError("to remove all dimensions, use `reduce(f, A)`"))
     end
 
-    return t3
+    t = select(x, keep...; agg=nothing)
+    aggregate_vec(f, t)
 end
+
+reducedim_vec(f, x::DTable, dims::Symbol) = reducedim_vec(f, x, [dims])
