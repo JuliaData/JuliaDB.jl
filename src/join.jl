@@ -115,7 +115,7 @@ function asofjoin(left::DTable, right::DTable)
     leftjoin(left, right, IndexedTables.right, asofpred, (x,y,op)->asofjoin(x,y))
 end
 
-function merge{I1,I2,D1,D2}(left::DTable{I1,D1}, right::DTable{I2,D2})
+function merge{I1,I2,D1,D2}(left::DTable{I1,D1}, right::DTable{I2,D2}; agg=IndexedTables.right)
     lcs = chunks(left)
     rcs = chunks(right)
     lidx_spaces = index_spaces(lcs) # an iterable of subdomains in the chunks table
@@ -145,7 +145,7 @@ function merge{I1,I2,D1,D2}(left::DTable{I1,D1}, right::DTable{I2,D2})
 
         # all overlapping chunk from `right` should be merged
         # with the chunk `lchunk`
-        out_chunk = treereduce(delayed(merge),
+        out_chunk = treereduce(delayed((x,y)->merge(x, y; agg=agg)),
                                [lchunk, overlapping_chunks...], lchunk)
         push!(out_chunks, out_chunk)
 
@@ -154,8 +154,16 @@ function merge{I1,I2,D1,D2}(left::DTable{I1,D1}, right::DTable{I2,D2})
     end
     leftout_right = broadcast(!, usedup_right)
     out_subdomains = vcat(out_subdomains, ridx_spaces[leftout_right])
+
     out_chunks = vcat(out_chunks, rcs.data.columns.chunk[leftout_right])
 
     idxspace = merge(left.index_space, right.index_space)
-    return DTable(I, D, idxspace, chunks_index(out_subdomains, out_chunks))
+    t = DTable(I, D, idxspace, chunks_index(out_subdomains, out_chunks))
+
+    if agg !== nothing && has_overlaps(out_subdomains, true)
+        overlap_merge = (x, y) -> merge(x, y, agg=agg)
+        t = _sort(t, merge=(ts...) -> _merge(overlap_merge, ts...), closed=true)
+    end
+
+    return t
 end

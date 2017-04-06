@@ -62,6 +62,21 @@ function subtable(nds, r)
     Table(nds.index[r], nds.data[r], presorted=true, copy=false)
 end
 
+function extrema_range{T}(x::AbstractArray{T}, r::UnitRange)
+    if !(1 <= first(r) && last(r) <= length(x))
+        throw(BoundsError(x, r))
+    end
+
+    isempty(r) && return extrema(x[r])
+    mn = x[first(r)]
+    mx = x[first(r)]
+    @inbounds @simd for i in r
+        mn = min(x[i], mn)
+        mx = max(x[i], mx)
+    end
+    mn, mx
+end
+
 getbyheader(cols, header, i::Int) = cols[i]
 getbyheader(cols, header, i::Symbol) = getcol(cols, header, string(i))
 function getbyheader(cols, header, i::AbstractString)
