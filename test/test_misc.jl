@@ -1,3 +1,6 @@
+using JuliaDB
+using Base.Test
+
 @testset "extractarray" begin
 
     t = IndexedTable(Columns(a=[1,1,1,2,2], b=[1,2,3,1,2]),
@@ -18,4 +21,23 @@ end
 
     ──┬──
     1 │ 1"""
+end
+
+import JuliaDB: chunks, index_spaces, has_overlaps
+@testset "has_overlaps" begin
+    t = IndexedTable(Columns([1,1,2,2,2,3], [1,2,1,1,2,1]), [1,2,3,4,5,6])
+    d = distribute(t, [2,3,1])
+    i = index_spaces(chunks(d))
+    @test !has_overlaps(i)
+    @test !has_overlaps(i, true)
+
+    d = distribute(t, [2,2,2])
+    i = index_spaces(chunks(d))
+    @test !has_overlaps(i)
+    @test !has_overlaps(i, true)
+
+    d = distribute(t, [2,1,3])
+    i = index_spaces(chunks(d))
+    @test !has_overlaps(i)
+    @test has_overlaps(i, true)
 end
