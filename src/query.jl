@@ -60,7 +60,9 @@ If the mapping is many-to-one, `agg` is used to aggregate the results.
 `name` optionally specifies a name for the new dimension. `xlate` must be a
 monotonically increasing function.
 """
-function convertdim(t::DTable, d::DimName, xlat; agg=nothing, vecagg=nothing, name=nothing)
+function convertdim(t::DTable, d::DimName, xlat;
+                    agg=nothing, vecagg=nothing, name=nothing)
+
     if isa(d, Symbol)
         dn = findfirst(dimlabels(t), d)
         if dn == 0
@@ -84,17 +86,23 @@ function convertdim(t::DTable, d::DimName, xlat; agg=nothing, vecagg=nothing, na
         end
 
         newcols = tuplesetindex(cs.data.columns, newrects, :boundingrect)
-        newcols = tuplesetindex(cs.data.columns, fill(Nullable{Int}(), length(newrects)), :length)
+
+        lengths = agg !== nothing ?
+            fill(Nullable{Int}(), length(newrects)) :
+            cs.data.columns.length
+
+        newcols = tuplesetindex(newcols, lengths, :length)
+
         Table(cs1.index, Columns(newcols..., names=fieldnames(newcols)))
     end
 
-    if agg !== nothing
-        overlap_merge = (x, y) -> merge(x, y, agg=agg)
-        _sort(t2, merge=(ts...) -> _merge(overlap_merge, ts...), closed=true)
+    if agg !== nothing && has_overlaps(index_spaces(chunks(t2)), true)
+         overlap_merge = (x, y) -> merge(x, y, agg=agg)
+         _sort(t2, merge=(ts...) -> _merge(overlap_merge, ts...), closed=true)
     elseif vecagg != nothing
         aggregate_vec(vecagg, t2)
     else
-        t3
+        t2
     end
 end
 
