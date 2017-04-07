@@ -50,7 +50,7 @@
     end
 end
 
-path = joinpath(dirname(@__FILE__), "..","test","fxsample", "[A-Z]*.csv")
+path = joinpath(dirname(@__FILE__), "..","test","fxsample", "*.csv")
 files = glob(path[2:end], "/")
 const fxdata_dist = loadfiles(files, header_exists=false, type_detect_rows=4, indexcols=1:2, usecache=false)
 allcsv = reduce(string, readstring.(files))

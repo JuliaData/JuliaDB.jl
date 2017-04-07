@@ -250,10 +250,11 @@ function has_overlaps(subdomains, closed=false)
     for i = 1:length(subdomains)
         s_i = first(subdomains[i])
         j = searchsortedfirst(lasts, s_i)
+
         # allow repeated indices between chunks
-        if closed && j <= i
+        if j != i && j <= length(lasts) && isless(s_i, lasts[j])
             return true
-        elseif j != i && j <= length(lasts) && isless(s_i, lasts[j])
+        elseif closed && j != i && j <= length(lasts) && s_i == lasts[j]
             return true
         end
     end
