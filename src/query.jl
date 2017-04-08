@@ -26,7 +26,7 @@ function Base.select(t::DTable, which::DimName...; agg=nothing)
     end
     if has_overlaps(index_spaces(chunks(t2)), true)
         overlap_merge = (x, y) -> merge(x, y, agg=agg)
-        _sort(t2, merge=(ts...) -> _merge(overlap_merge, ts...), closed=true)
+        rechunk(t2, merge=(ts...) -> _merge(overlap_merge, ts...), closed=true)
     else
         t2
     end
@@ -35,14 +35,14 @@ end
 function aggregate(f, t::DTable)
     if has_overlaps(index_spaces(chunks(t)), true)
         overlap_merge = (x, y) -> merge(x, y, agg=f)
-        t = _sort(t, merge=(ts...) -> _merge(overlap_merge, ts...), closed=true)
+        t = rechunk(t, merge=(ts...) -> _merge(overlap_merge, ts...), closed=true)
     end
     mapchunks(delayed(c->aggregate(f, c)), t, keeplengths=false)
 end
 
 function aggregate_vec(f, t::DTable)
     if has_overlaps(index_spaces(chunks(t)), true)
-        t = _sort(t, closed=true) # Do not have chunks that are continuations
+        t = rechunk(t, closed=true) # Do not have chunks that are continuations
     end
     mapchunks(delayed(c->aggregate_vec(f, c)), t, keeplengths=false)
 end
@@ -98,7 +98,7 @@ function convertdim(t::DTable, d::DimName, xlat;
 
     if agg !== nothing && has_overlaps(index_spaces(chunks(t2)), true)
          overlap_merge = (x, y) -> merge(x, y, agg=agg)
-         _sort(t2, merge=(ts...) -> _merge(overlap_merge, ts...), closed=true)
+         rechunk(t2, merge=(ts...) -> _merge(overlap_merge, ts...), closed=true)
     elseif vecagg != nothing
         aggregate_vec(vecagg, t2)
     else

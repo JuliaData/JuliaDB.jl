@@ -162,7 +162,7 @@ function merge{I1,I2,D1,D2}(left::DTable{I1,D1}, right::DTable{I2,D2}; agg=Index
 
     if agg !== nothing && has_overlaps(out_subdomains, true)
         overlap_merge = (x, y) -> merge(x, y, agg=agg)
-        t = _sort(t, merge=(ts...) -> _merge(overlap_merge, ts...), closed=true)
+        t = rechunk(t, merge=(ts...) -> _merge(overlap_merge, ts...), closed=true)
     end
 
     return t

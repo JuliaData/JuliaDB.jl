@@ -1,18 +1,20 @@
-import Base.Sort: Forward, Ordering, Algorithm, defalg, lt
+import Base.Sort: Forward, Ordering, Algorithm
 
-function _sort{K,V}(t::DTable{K,V};
-               alg::Algorithm=defalg([1]),
-               lt=Base.isless,
+export rechunk
+
+function rechunk{K,V}(t::DTable{K,V}, lengths = nothing;
                closed=false,
-               merge=_merge,
-               by=identity,
-               rev::Bool=false,
-               order::Ordering=Forward)
+               merge=_merge)
 
+    order = Forward
     ctx = Dagger.Context()
     computed_t = compute(ctx, t, true) # This might have overlapping chunks
 
-    lengths = map(get, chunks(computed_t).data.columns.length)
+
+    if lengths === nothing
+        lengths = map(get, chunks(computed_t).data.columns.length)
+    end
+
     ranks = cumsum(lengths)[1:end-1]  # Get ranks for splitting at
 
     idx = dindex(computed_t).result
@@ -22,6 +24,7 @@ function _sort{K,V}(t::DTable{K,V};
     cs = chunks(computed_t).data.columns.chunk
     thunks, subspaces = shuffle_merge(ctx, cs, merge, ranks, closed, 
                                       splitters, lengths, order)
+
     fromchunks(thunks, subspaces; KV=(K,V))
 end
 
@@ -93,5 +96,5 @@ function Base.permutedims(t::DTable, p::AbstractVector)
         delayed(permutedims)(c, p)
     end
 
-    _sort(t1)
+    rechunk(t1)
 end
