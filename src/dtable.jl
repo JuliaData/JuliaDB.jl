@@ -280,7 +280,7 @@ function fromchunks(chunks::AbstractArray,
                 chunks_index(subdomains, chunks[nzidxs]))
 
     if !allowoverlap && has_overlaps(subdomains)
-        return _sort(dt)
+        return rechunk(dt)
     end
     return dt
 end
