@@ -11,11 +11,11 @@ Filter based on index columns. Conditions are accepted as column-function pairs.
 Example: `select(arr, 1 => x->x>10, 3 => x->x!=10 ...)`
 """
 function Base.select(t::DTable, conditions::Pair...)
-    mapchunks(delayed(x -> select(x, conditions...)), t, keeplengths=false)
+    mapchunks(x -> select(x, conditions...), t, keeplengths=false)
 end
 
 function Base.select{K,V}(t::DTable{K,V}, which::DimName...; agg=nothing)
-    t1 = mapchunks(delayed(x -> select(x, which...; agg=agg)), t, keeplengths=true)
+    t1 = mapchunks(x -> select(x, which...; agg=agg), t, keeplengths=true)
     cs = select(chunks(t1), which...)
 
     # remove dimensions from bounding boxes
@@ -39,19 +39,19 @@ function aggregate(f, t::DTable)
         overlap_merge = (x, y) -> merge(x, y, agg=f)
         t = rechunk(t, merge=(ts...) -> _merge(overlap_merge, ts...), closed=true)
     end
-    mapchunks(delayed(c->aggregate(f, c)), t, keeplengths=false)
+    mapchunks(c->aggregate(f, c), t, keeplengths=false)
 end
 
 function aggregate_vec(f, t::DTable)
     if has_overlaps(index_spaces(chunks(t)), true)
         t = rechunk(t, closed=true) # Do not have chunks that are continuations
     end
-    mapchunks(delayed(c->aggregate_vec(f, c)), t, keeplengths=false)
+    mapchunks(c->aggregate_vec(f, c), t, keeplengths=false)
 end
 
 # Filter on data field
 function Base.filter(fn::Function, t::DTable)
-    mapchunks(delayed(x -> filter(fn, x)), t, keeplengths=false)
+    mapchunks(x -> filter(fn, x), t, keeplengths=false)
 end
 
 """
@@ -74,7 +74,7 @@ function convertdim{K,V}(t::DTable{K,V}, d::DimName, xlat;
     end
 
     chunkf(c) = convertdim(c, d, xlat; agg=agg, vecagg=nothing, name=name)
-    t1 = mapchunks(delayed(chunkf), t)
+    t1 = mapchunks(chunkf, t)
 
     # apply the same convertdim on the index
     cs = chunks(t1)

@@ -30,7 +30,7 @@ function _getindex{K,V}(t::DTable{K,V}, idxs)
     t = DTable{K,V}(cs2)
 
     mapchunks(t, keeplengths=false) do chunk
-        delayed(getindex)(chunk, idxs...)
+        getindex(chunk, idxs...)
     end
 end
 
