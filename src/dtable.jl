@@ -307,7 +307,7 @@ rows in the respective chunk.
 
 Returns a `DTable`.
 """
-function distribute(nds::Table, rowgroups::AbstractArray)
+function distribute{V,K}(nds::Table{V,K}, rowgroups::AbstractArray)
     splits = cumsum([0, rowgroups;])
 
     if splits[end] != length(nds)
@@ -316,8 +316,12 @@ function distribute(nds::Table, rowgroups::AbstractArray)
 
     ranges = map(UnitRange, splits[1:end-1].+1, splits[2:end])
 
-    chunks = map(r->tochunk(subtable(nds, r)), ranges)
-    fromchunks(chunks)
+    # this works around locality optimizations in Dagger to make
+    # sure that the parts get distributed instead of being left on
+    # the master process - which would lead to all operations being serial.
+    chunks = map(r->delayed(identity)(subtable(nds, r)), ranges)
+    subdomains = map(r->subindexspace(nds, r), ranges)
+    fromchunks(chunks, subdomains, KV = (K, V))
 end
 
 """
@@ -327,7 +331,7 @@ Distribute an NDSpase object into `nchunks` chunks of equal size.
 
 Returns a `DTable`.
 """
-function distribute(nds::Table, nchunks=nworkers())
+function distribute(nds::Table, nchunks::Int=nworkers())
     N = length(nds)
     q, r = divrem(N, nchunks)
     nrows = vcat(collect(_repeated(q, nchunks)))
