@@ -24,7 +24,8 @@ in a directory `outputdir`. Creates `outputdir` if it doesn't exist.
 - `copy`: whether to copy the data before presorting or aggregating
 - All other options are passed on to `TextParse.csvread`
 """
-function ingest(files::Union{AbstractVector,String}, outputdir::AbstractString; delim = ',', opts...)
+function ingest(files::Union{AbstractVector,String}, outputdir::AbstractString;
+                delim = ',', opts...)
     dtable_file = joinpath(outputdir, JULIADB_INDEXFILE)
     if isfile(dtable_file)
         error("data already exists in $outputdir, use `ingest!` to append new files. Aborting.")
@@ -143,24 +144,25 @@ Saves a `DTable` to disk. This function blocks till all
 files data has been computed and saved. Saved data can
 be loaded with `load`.
 """
-function save(t::DTable, outputdir::AbstractString)
+function save{K,V}(t::DTable{K,V}, outputdir::AbstractString)
 
     if !isdir(outputdir)
         mkdir(outputdir)
     end
 
-    saved_t = withchunksindex(t) do c
-        datacols = c.data.columns
-        chunkscol = Any[begin
-            fn = joinpath(outputdir, lpad(idx, 5, "0"))
-            delayed(save_as_chunk; get_result=true)(chunk, fn)
-        end for (idx, chunk) in enumerate(datacols.chunk)]
-        Table(c.index,
-                 Columns(datacols.boundingrect,
-                         chunkscol,
-                         datacols.length,
-                         names=[:boundingrect, :chunk, :length]))
-    end
+    c = chunks(t)
+    datacols = c.data.columns
+    chunkscol = Any[begin
+        fn = joinpath(outputdir, lpad(idx, 5, "0"))
+        delayed(save_as_chunk; get_result=true)(chunk, fn)
+    end for (idx, chunk) in enumerate(datacols.chunk)]
+    cs1 = Table(c.index,
+             Columns(datacols.boundingrect,
+                     chunkscol,
+                     datacols.length,
+                     names=[:boundingrect, :chunk, :length]))
+    
+    saved_t = DTable{K,V}(cs1)
 
     final = compute(saved_t)
     open(io -> serialize(io, final), joinpath(outputdir, JULIADB_INDEXFILE), "w")

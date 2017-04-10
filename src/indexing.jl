@@ -2,16 +2,16 @@ import IndexedTables: astuple
 
 Base.getindex(t::DTable, idxs...) = _getindex(t, idxs)
 
-function _getindex{I}(t::DTable{I}, idxs::I)
+function _getindex{K,V}(t::DTable{K,V}, idxs::K)
     # scalar getindex
-    t1 = withchunksindex(t) do nds
-        subchunk_idxs = find(c->all(map(in, idxs, c)), nds.data.columns.boundingrect)
-        Table(nds.index[subchunk_idxs], nds.data[subchunk_idxs])
-    end
+    cs = chunks(t)
+    subchunk_idxs = find(c->all(map(in, idxs, c)), cs.data.columns.boundingrect)
+    cs1 = Table(cs.index[subchunk_idxs], cs.data[subchunk_idxs])
+    t1 = DTable{K,V}(cs1)
     gather(t1)[idxs...]
 end
 
-function _getindex(t::DTable, idxs)
+function _getindex{K,V}(t::DTable{K,V}, idxs)
     I = chunks(t).index
     cs = astuple(I.columns)
     if length(idxs) != length(I.columns)
@@ -23,10 +23,11 @@ function _getindex(t::DTable, idxs)
 
     # Subset the chunks
     # this is currently a linear search
-    t = withchunksindex(t) do nds
-        subchunk_idxs = find(c->all(map(in, idxs, c)), nds.data.columns.boundingrect)
-        Table(nds.index[subchunk_idxs], nds.data[subchunk_idxs])
-    end
+
+    cs = chunks(t)
+    subchunk_idxs = find(c->all(map(in, idxs, c)), cs.data.columns.boundingrect)
+    cs2 = Table(cs.index[subchunk_idxs], cs.data[subchunk_idxs])
+    t = DTable{K,V}(cs2)
 
     mapchunks(t, keeplengths=false) do chunk
         delayed(getindex)(chunk, idxs...)
