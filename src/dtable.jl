@@ -90,14 +90,14 @@ lengths will all be `Nullable{Int}()`
 """
 function mapchunks{K,V}(f, dt::DTable{K,V}; keeplengths=true)
     cs = chunks(dt)
-    t = mapchunks(f, cs, keeplengths=keeplengths)
+    t = mapchunks(delayed(f), cs, keeplengths=keeplengths)
     DTable(K, V, t)
 end
 
 Base.map(f, dt::DTable) = mapchunks(delayed(c->map(f, c)), dt)
 
 function Base.reduce(f, dt::DTable)
-    cs = mapchunks(delayed(c->reduce(f, c)), chunks(dt))
+    cs = mapchunks(c->reduce(f, c), chunks(dt))
     gather(treereduce(delayed(f), cs.data.columns.chunk))
 end
 

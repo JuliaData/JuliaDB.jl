@@ -93,7 +93,7 @@ function Base.permutedims(t::DTable, p::AbstractVector)
     end
 
     t1 = mapchunks(t) do c
-        delayed(permutedims)(c, p)
+        permutedims(c, p)
     end
 
     rechunk(t1)
