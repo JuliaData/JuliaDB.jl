@@ -7,20 +7,19 @@ export distribute, chunks, compute, gather
 
 const IndexTuple = Union{Tuple, NamedTuple}
 
-immutable DTable{K,V,I} # T<:Table
-    index_space::I
+immutable DTable{K,V} # T<:Table
     chunks::Table
 end
 
-function DTable{K,V,I}(::Type{K}, ::Type{V}, index_space::I, cs)
-    DTable{K,V,I}(index_space, cs)
+function DTable{K,V}(::Type{K}, ::Type{V}, cs)
+    DTable{K,V}(cs)
 end
 
 chunks(dt::DTable) = dt.chunks
 
 Base.eltype(dt::DTable) = eltype(chunktype(first(chunks(dt)).chunk))
 IndexedTables.dimlabels(dt::DTable) = dimlabels(chunktype(first(chunks(dt)).chunk))
-Base.ndims(dt::DTable) = ndims(dt.index_space)
+Base.ndims(dt::DTable) = ndims(dt.chunks)
 
 """
 Compute any delayed-evaluation in the distributed table.
@@ -275,9 +274,7 @@ function fromchunks(chunks::AbstractArray,
     nzidxs = find(x->!isempty(x), subdomains)
     subdomains = subdomains[nzidxs]
 
-    idxs = reduce(merge, subdomains)
-    dt = DTable(KV..., idxs,
-                chunks_index(subdomains, chunks[nzidxs]))
+    dt = DTable(KV..., chunks_index(subdomains, chunks[nzidxs]))
 
     if !allowoverlap && has_overlaps(subdomains)
         return rechunk(dt)
@@ -346,7 +343,7 @@ end
 
 function withchunksindex{K,V}(f, dt::DTable{K,V})
     cs = f(chunks(dt))
-    DTable(K, V, dt.index_space, cs)
+    DTable(K, V, cs)
 end
 
 """
