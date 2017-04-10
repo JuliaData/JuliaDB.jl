@@ -88,10 +88,10 @@ Delayed application of a function to each chunk in an DTable.
 Returns a new DTable. if `keeplength` is false, the output
 lengths will all be `Nullable{Int}()`
 """
-function mapchunks(f, dt::DTable; keeplengths=true)
-    withchunksindex(dt) do cs
-        mapchunks(f, cs, keeplengths=keeplengths)
-    end
+function mapchunks{K,V}(f, dt::DTable{K,V}; keeplengths=true)
+    cs = chunks(dt)
+    t = mapchunks(f, cs, keeplengths=keeplengths)
+    DTable(K, V, t)
 end
 
 Base.map(f, dt::DTable) = mapchunks(delayed(c->map(f, c)), dt)
@@ -339,11 +339,6 @@ end
 function subdomain(nds, r)
     # TODO: speed it up
     domain(subtable(nds, r))
-end
-
-function withchunksindex{K,V}(f, dt::DTable{K,V})
-    cs = f(chunks(dt))
-    DTable(K, V, cs)
 end
 
 """

@@ -70,7 +70,7 @@ Base.map{I}(f, x::DTable{I}, y::DTable{I}) = naturaljoin(x, y, f)
 
 # left join
 
-function leftjoin(left::DTable, right::DTable,
+function leftjoin{K,V}(left::DTable{K,V}, right::DTable,
                   op = IndexedTables.right,
                   joinwhen = (lrect, rrect) -> any(map(hasoverlap, lrect, rrect)),
                   chunkjoin = leftjoin)
@@ -99,9 +99,9 @@ function leftjoin(left::DTable, right::DTable,
     end
 
     newdata = tuplesetindex(lcs.data.columns, out_chunks, :chunk)
-    withchunksindex(left) do cs
-        Table(cs.index, Columns(newdata))
-    end
+    cs = chunks(left)
+    cs1 = Table(cs.index, Columns(newdata))
+    DTable{K,V}(cs1)
 end
 
 function asofpred(lbrect, rbrect)

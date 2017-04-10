@@ -14,16 +14,18 @@ function Base.select(t::DTable, conditions::Pair...)
     mapchunks(delayed(x -> select(x, conditions...)), t, keeplengths=false)
 end
 
-function Base.select(t::DTable, which::DimName...; agg=nothing)
+function Base.select{K,V}(t::DTable{K,V}, which::DimName...; agg=nothing)
     t1 = mapchunks(delayed(x -> select(x, which...; agg=agg)), t, keeplengths=true)
-    t2 = withchunksindex(t1) do cs
-        cs1 = select(cs, which...)
-        # remove dimensions from bounding boxes
-        sub_dims = [which...]
-        newbrects = map(b->b[sub_dims], cs1.data.columns.boundingrect)
-        newdata = tuplesetindex(cs1.data.columns, newbrects, :boundingrect)
-        Table(cs1.index, Columns(newdata), presorted=true)
-    end
+    cs = select(chunks(t1), which...)
+
+    # remove dimensions from bounding boxes
+    sub_dims = [which...]
+    newbrects = map(b->b[sub_dims], cs.data.columns.boundingrect)
+    newdata = tuplesetindex(cs.data.columns, newbrects, :boundingrect)
+    cs1 = Table(cs.index, Columns(newdata), presorted=true)
+
+    t2 = DTable(K, V, cs1)
+
     if has_overlaps(index_spaces(chunks(t2)), true)
         overlap_merge = (x, y) -> merge(x, y, agg=agg)
         rechunk(t2, merge=(ts...) -> _merge(overlap_merge, ts...), closed=true)
@@ -60,7 +62,7 @@ If the mapping is many-to-one, `agg` is used to aggregate the results.
 `name` optionally specifies a name for the new dimension. `xlate` must be a
 monotonically increasing function.
 """
-function convertdim(t::DTable, d::DimName, xlat;
+function convertdim{K,V}(t::DTable{K,V}, d::DimName, xlat;
                     agg=nothing, vecagg=nothing, name=nothing)
 
     if isa(d, Symbol)
@@ -75,26 +77,27 @@ function convertdim(t::DTable, d::DimName, xlat;
     t1 = mapchunks(delayed(chunkf), t)
 
     # apply the same convertdim on the index
-    t2 = withchunksindex(t1) do cs
-        cs1 = convertdim(cs, d, x->_map(xlat,x), name=name)
+    cs = chunks(t1)
+    cs1 = convertdim(cs, d, x->_map(xlat,x), name=name)
 
-        # apply xlat to bounding rectangles
-        newrects = map(cs.data.columns.boundingrect) do box
-            # box is an Interval of tuples
-            # xlat the (d)th element of tuple
-            tuplesetindex(box, _map(xlat, box[d]), d)
-        end
-
-        newcols = tuplesetindex(cs.data.columns, newrects, :boundingrect)
-
-        lengths = agg !== nothing ?
-            fill(Nullable{Int}(), length(newrects)) :
-            cs.data.columns.length
-
-        newcols = tuplesetindex(newcols, lengths, :length)
-
-        Table(cs1.index, Columns(newcols..., names=fieldnames(newcols)))
+    # apply xlat to bounding rectangles
+    newrects = map(cs.data.columns.boundingrect) do box
+        # box is an Interval of tuples
+        # xlat the (d)th element of tuple
+        tuplesetindex(box, _map(xlat, box[d]), d)
     end
+
+    newcols = tuplesetindex(cs.data.columns, newrects, :boundingrect)
+
+    lengths = agg !== nothing ?
+        fill(Nullable{Int}(), length(newrects)) :
+        cs.data.columns.length
+
+    newcols = tuplesetindex(newcols, lengths, :length)
+
+    cs2 = Table(cs1.index, Columns(newcols..., names=fieldnames(newcols)))
+
+    t2 = DTable{K,V}(cs2)
 
     if agg !== nothing && has_overlaps(index_spaces(chunks(t2)), true)
          overlap_merge = (x, y) -> merge(x, y, agg=agg)
