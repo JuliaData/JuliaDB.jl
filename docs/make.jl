@@ -8,5 +8,10 @@ makedocs(
    format = [:html, :latex],
    sitename = "JuliaDB",
    pages = ["index.md"],
+   pages = Any[
+       "Introduction" => "index.md",
+       "Tutorial" => "tutorial.md",
+       "API Reference" => "apireference.md"
+   ],
    assets = ["assets/jc.css"]
 )
