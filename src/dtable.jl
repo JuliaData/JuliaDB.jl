@@ -81,20 +81,7 @@ end
 
 _merge(x::Table, y::Table...) = _merge((a,b) -> merge(a, b, agg=nothing), x, y...)
 
-"""
-`mapchunks(f, nds::Table; keeplengths=true)`
-
-Delayed application of a function to each chunk in an DTable.
-Returns a new DTable. if `keeplength` is false, the output
-lengths will all be `Nullable{Int}()`
-"""
-function mapchunks{K,V}(f, dt::DTable{K,V}; keeplengths=true)
-    cs = chunks(dt)
-    t = mapchunks(delayed(f), cs, keeplengths=keeplengths)
-    DTable(K, V, t)
-end
-
-Base.map(f, dt::DTable) = mapchunks(delayed(c->map(f, c)), dt)
+Base.map(f, dt::DTable) = mapchunks(c->map(f, c), dt)
 
 function Base.reduce(f, dt::DTable)
     cs = mapchunks(c->reduce(f, c), chunks(dt))
@@ -348,17 +335,19 @@ end
 """
 `mapchunks(f, nds::Table; keeplengths=true)`
 
-Apply a function to the chunk objects in an index.
-Returns an Table. if `keeplength` is false, the output
-lengths will all be Nullable{Int}
+Delayed application of a function to each chunk in an DTable.
+Returns a new DTable. if `keeplength` is false, the output
+lengths will all be `Nullable{Int}()`
 """
-function mapchunks(f, nds::Table; keeplengths=true)
-    cols = nds.data.columns
-    outchunks = map(f, cols.chunk)
+function mapchunks{K,V}(f, dt::DTable{K,V}; keeplengths=true)
+    cs = chunks(dt)
+    cols = cs.data.columns
+    outchunks = map(delayed(f), cols.chunk)
     outlengths = keeplengths ? cols.length : fill(Nullable{Int}(), length(cols.length))
-    Table(nds.index,
-          Columns(cols.boundingrect,
+    t = Table(cs.index,
+              Columns(cols.boundingrect,
                   outchunks, outlengths,
                   names=[:boundingrect, :chunk, :length]))
+    DTable(K, V, t)
 end
 
