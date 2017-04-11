@@ -1,4 +1,4 @@
-using Documenter, JuliaDB, Dagger, TextParse, Glob
+using Documenter, JuliaDB, IndexedTables, Dagger, TextParse, Glob
 
 load_dir(x) = map(file -> joinpath("lib", x, file), readdir(joinpath(Base.source_dir(), "src", "lib", x)))
 
