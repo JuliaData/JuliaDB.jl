@@ -11,10 +11,6 @@ immutable DTable{K,V} # T<:Table
     chunks::Table
 end
 
-function DTable{K,V}(::Type{K}, ::Type{V}, cs)
-    DTable{K,V}(cs)
-end
-
 chunks(dt::DTable) = dt.chunks
 
 Base.eltype(dt::DTable) = eltype(chunktype(first(chunks(dt)).chunk))
@@ -264,7 +260,7 @@ function fromchunks(chunks::AbstractArray,
     nzidxs = find(x->!isempty(x), subdomains)
     subdomains = subdomains[nzidxs]
 
-    dt = DTable(KV..., chunks_index(subdomains, chunks[nzidxs]))
+    dt = DTable{KV...}(chunks_index(subdomains, chunks[nzidxs]))
 
     if !allowoverlap && has_overlaps(subdomains)
         return rechunk(dt)
@@ -351,6 +347,6 @@ function mapchunks{K,V}(f, dt::DTable{K,V}; keeplengths=true)
               Columns(cols.boundingrect,
                   outchunks, outlengths,
                   names=[:boundingrect, :chunk, :length]))
-    DTable(K, V, t)
+    DTable{K, V}(t)
 end
 

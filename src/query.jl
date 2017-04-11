@@ -24,7 +24,7 @@ function Base.select{K,V}(t::DTable{K,V}, which::DimName...; agg=nothing)
     newdata = tuplesetindex(cs.data.columns, newbrects, :boundingrect)
     cs1 = Table(cs.index, Columns(newdata), presorted=true)
 
-    t2 = DTable(K, V, cs1)
+    t2 = DTable{K, V}(cs1)
 
     if has_overlaps(index_spaces(chunks(t2)), true)
         overlap_merge = (x, y) -> merge(x, y, agg=agg)
