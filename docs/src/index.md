@@ -6,12 +6,10 @@ CurrentModule = JuliaDB
 
 ## Overview
 
-JuliaDB is a distributed N-dimensional sparse data manipulation library.
-
-The JuliaDB package provides a distributed table data structure where some of the columns form a sorted index.
-This structure is equivalent to an N-dimensional sparse array, and follows the array API to the extent possible.
+The JuliaDB package provides a distributed table data structure where some of the columns form a sorted index. This structure is equivalent to an N-dimensional sparse array, and follows the array API to the extent possible.
 While a table data structure provided by JuliaDB can be used for any kind of array data, it is highly efficient at the storage and querying of data sets whose indices have a natural sorted order, such as time-series data.
-The JuliaDB package provides functionality for ingesting data from a variety of data sources, and provides full integration with the rest of the Julia language ecosystem for performing analytics directly on data stored within a JuliaDB table.
+
+The JuliaDB package provides functionality for ingesting data from a variety of data sources, and provides full integration with the rest of the Julia language ecosystem for performing analytics directly on data stored within a JuliaDB table using many Julia processes.
 
 ### Installation
 
@@ -27,7 +25,7 @@ First, the index tuples are stored columnwise, with one vector per index positio
 The index vectors are expected to be homogeneous to allow more efficient storage.
 Second, the indices must have a total order, and are stored lexicographically sorted (first by the first index, then by the second index, and so on, left-to-right).
 While the indices must have totally-ordered types, the data values can be anything.
-Finally, for purposes of many operations an `DTable` acts like an N-dimensional array of its data values, where the number of dimensions is the number of index columns.  A `DTable` implements a distributed memory version of the `IndexedTable` data structure provided by the `IndexedTables.jl` package.
+Finally, for purposes of many operations an `DTable` acts like an N-dimensional array of its data values, where the number of dimensions is the number of index columns.  A `DTable` implements a distributed memory version of the `IndexedTable` data structure provided by the `IndexedTables.jl` package and re-exported by JuliaDB.
 
 ## Using JuliaDB
 
@@ -49,13 +47,13 @@ On construction, `IndexedTable` takes ownership of the columns and sorts them in
 
 ### Conversion of a Local IndexedTable to a distributed JuliaDB Table
 
-To convert an existing `IndexedTable` to a JuliaDB `DTable` can be performed through the use of the `distribute` function.
+One can convert an existing `IndexedTable` to a JuliaDB `DTable` through the use of the `distribute` function.
 
 ```@repl temperatures
 dhitemps = distribute(hitemps, 2)
 ```
 
-The first argument provided to `distribute` is an existing `IndexedTable` and the second argument describes how the indexed table should be distributed amongst worker processes.  If the second argument is a scalar of value `n`, then the `IndexedTable` will be split into `n` equal chunks across the worker processes.  If the second argument is a vector of n integers, then the distributed table with n separate chunks with each chunk having the number of rows present in each element of that vector.
+The first argument provided to `distribute` is an existing `IndexedTable` and the second argument describes how the indexed table should be distributed amongst worker processes.  If the second argument is a scalar of value `n`, then the `IndexedTable` will be split into `n` approximately equal chunks across the worker processes.  If the second argument is a vector of n integers, then the distributed table with n separate chunks with each chunk having the number of rows present in each element of that vector.
 
 ### Importing data
 
@@ -63,19 +61,19 @@ The first argument provided to `distribute` is an existing `IndexedTable` and th
 
 Importing data from column-based sources is straightforward.  JuliaDB currently provides two distinct methods for importing data: `loadfiles` and `ingest`.  Both functions load the contents of one or more CSV files in a given directory and return a `DTable` of the loaded data.  The `ingest` function has the additional property of transforming the data into an efficient internal storage format, and saving both the original data and associated JuliaDB metadata to disk in a provided output directory.
 
-The argument signature and help for `loadfiles` is the following:
-
-```@docs
-loadfiles
-```
-
 The argument signature and help for `ingest` is the following:
 
 ```@docs
 ingest
 ```
 
-As stated above in the help text, each function has a set of optional input arguments that are specific to that particular function, as well as the ability to pass a set of trailing input arguments that are subsequently passed on to `TextParse.csvread`.
+The argument signature and help for `loadfiles` is the following:
+
+```@docs
+loadfiles
+```
+
+As stated above in the help text, each function has a set of optional input arguments that are specific to that particular function, as well as the ability to pass a set of trailing input arguments that are subsequently passed on to [`TextParse.csvread`](https://juliacomputing.com/TextParse.jl/stable/index.html#TextParse.csvread).
 
 An in-place variant of the `ingest!` function will append data from new files on to an existing `DTable` stored in a defined `outputdir`.  The help string for the in-place version of `ingest!` is the following:
 
@@ -130,7 +128,7 @@ The leftmost column is esssentially the primary key --- indexing is fastest in t
 ### Select and aggregate
 
 In some cases one wants to consider a subset of dimensions, for example when producing a simplified summary of data.
-This can be done by passing dimension (column) numbers to `select`:
+This can be done by passing dimension (column) numbers (or names, as symbols) to `select`:
 
 
 ```@repl temperatures
@@ -163,25 +161,13 @@ For example, a point in time can be expressed at the level of seconds, minutes, 
 In our toy temperature dataset, we might want to look at monthly instead of daily highs.
 
 This can be accomplished using the `convertdim` function.
-It accepts an array, a dimension number to convert, a function or dictionary to apply to indices in that dimension, and an aggregation function (the aggregation function is needed in case the mapping is many-to-one).
+It accepts a DTable, a dimension number to convert, a function or dictionary to apply to indices in that dimension, and an aggregation function (the aggregation function is needed in case the mapping is many-to-one).
 The following call therefore gives monthly high temperatures:
 
 
 ```@repl temperatures
 convertdim(dhitemps, 2, Dates.month, agg=max)
 ```
-
-### Assignment
-
-`DTable` supports indexed assignment just like other arrays, but there are caveats.
-Since data is stored in a compact, sorted representation, inserting a single element is potentially very inefficient (`O(n)`, since it requires moving up to half of the existing elements).
-Therefore single-element insertions are accumulated into a temporary buffer to amortize cost.
-
-When the next whole-array operation (e.g. indexing or broadcast) is performed, the temporary buffer is merged into the main storage.
-This operation is called `flush!`, and can also be invoked explicitly.
-The cost of this operation is `O(n*log(n)) + O(m)`, where `n` is the number of inserted items and `m` is the number of existing items.
-This means that the worst case occurs when alternating between inserting a small number of items, and performing whole-array operations.
-To the extent possible, insertions should be batched, and in general done rarely.
 
 ### Named columns
 
@@ -289,14 +275,4 @@ asofjoin(left::DTable, right::DTable)
 
 ```@docs
 merge(left::DTable, right::DTable; agg)
-```
-
-#### Appendix
-
-```@docs
-IndexedTable
-```
-
-```@docs
-csvread
 ```
