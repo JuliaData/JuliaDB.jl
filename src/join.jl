@@ -52,7 +52,7 @@ function naturaljoin{I1, I2, D1, D2}(left::DTable{I1,D1},
         append!(out_subdomains, overlapping_subdomains)
     end
 
-    return DTable(I, D, chunks_index(out_subdomains, out_chunks))
+    return DTable{I, D}(chunks_index(out_subdomains, out_chunks))
 end
 
 combine_op_t(a, b) = tuple
@@ -156,7 +156,7 @@ function merge{I1,I2,D1,D2}(left::DTable{I1,D1}, right::DTable{I2,D2}; agg=Index
 
     out_chunks = vcat(out_chunks, rcs.data.columns.chunk[leftout_right])
 
-    t = DTable(I, D, chunks_index(out_subdomains, out_chunks))
+    t = DTable{I, D}(chunks_index(out_subdomains, out_chunks))
 
     if agg !== nothing && has_overlaps(out_subdomains, true)
         overlap_merge = (x, y) -> merge(x, y, agg=agg)
