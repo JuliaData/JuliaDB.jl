@@ -7,6 +7,7 @@ Returns a `DTable` containing only the elements of `t` where the given indices (
 match. If `idx` has the same type as the index tuple of the `t`, then this is
 considered a scalar indexing (indexing of a single value). In this case the value
 itself is looked up and returned.
+
 """
 Base.getindex(t::DTable, idxs...) = _getindex(t, idxs)
 

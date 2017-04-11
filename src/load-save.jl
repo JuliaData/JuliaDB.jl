@@ -44,6 +44,8 @@ end
 ingest data from `files` and append into data stored in `outputdir`. Creates `outputdir`
 if it doesn't exist. Arguments are the same as those to [ingest](@ref). The index range of
 data in the new files should not overlap with files previously ingested.
+
+See also [`ingest`](@ingest)
 """
 function ingest!(files::Union{AbstractVector,String}, outputdir::AbstractString; delim = ',', opts...)
     outputdir = abspath(outputdir)
@@ -133,6 +135,8 @@ end
 
 Load a saved `DTable` from `dir` directory. Data can be saved
 using `ingest` or `save` functions.
+
+See also [`ingest`](@ref), [`save`](@ref)
 """
 function load(dir::AbstractString)
     dtable_file = joinpath(dir, JULIADB_INDEXFILE)
@@ -145,6 +149,8 @@ end
 Saves a `DTable` to disk. This function blocks till all
 files data has been computed and saved. Saved data can
 be loaded with `load`.
+
+See also [`ingest`](@ref), [`load`](@ref)
 """
 function save{K,V}(t::DTable{K,V}, outputdir::AbstractString)
 

@@ -38,20 +38,9 @@ of file paths, or the path of a directory containing files to load.
 
 # Arguments:
 
-- `delim::Char`: the delimiter to use to read the text file with data. defaults to `,`
-- `indexcols::AbstractArray`: columns that are meant to act as the index for the table.
-   Defaults to all but the last column. If `datacols` is set, defaults to all
-   columns other than the data columns. If `indexcols` is an empty vector,
-   an implicit index of itegers `1:n` is added to the data.
-- `datacols::AbstractArray`: columns that are meant to act as the data for the table.
-   Defaults to the last column. If `indexcols` is set, defaults to all
-   columns other than the index columns.
-- `agg::Function`: aggregation function to use to combine data points with the same index. Defaults to nothing which leaves the data unaggregated (see [`aggregate`](@ref) to aggregate post-loading)).
-   table.)
-- `presorted::Bool`: specifies if each CSV file is internally already sorted according
-   to the specified index column. This will avoid a re-sorting.
 - `usecache::Bool`: use cached metadata from previous loads while loading the files. Set this to `false` if you are changing other options.
-- The rest of the keyword arguments will be passed on to [`TextParse.csvread`](@ref) which is used by this function to load data from individual files.
+
+All other arguments options are the same as those listed in [`ingest`](@ref).
 
 See also [`ingest`](@ref).
 """

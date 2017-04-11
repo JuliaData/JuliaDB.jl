@@ -60,7 +60,8 @@ end
 """
     gather(t::DTable)
 
-Gets distributed data in a DTable `t` and merges it into [IndexedTable](@ref) object
+Gets distributed data in a DTable `t` and merges it into
+[IndexedTable](#IndexedTables.IndexedTable) object
 
 !!! warning
     `gather(t)` requires at least as much memory as the size of the
