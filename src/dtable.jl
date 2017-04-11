@@ -122,7 +122,10 @@ function Dagger.domain(nd::Table)
     return IndexSpace(interval, boundingrect, Nullable{Int}(length(nd)))
 end
 
-function subindexspace(nd, r)
+function subindexspace(nd::IndexedTable, r)
+    if isempty(r)
+        return EmptySpace{eltype(nd.index)}()
+    end
     interval = Interval(nd.index[first(r)], nd.index[last(r)])
     cs = astuple(nd.index.columns)
     extr = map(c -> extrema_range(c, r), cs)
