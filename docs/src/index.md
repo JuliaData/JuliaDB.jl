@@ -4,6 +4,8 @@ CurrentModule = JuliaDB
 
 # JuliaDB.jl
 
+## Overview
+
 JuliaDB is a distributed N-dimensional sparse data manipulation library.
 
 The JuliaDB package provides a distributed table data structure where some of the columns form a sorted index.
@@ -26,6 +28,8 @@ The index vectors are expected to be homogeneous to allow more efficient storage
 Second, the indices must have a total order, and are stored lexicographically sorted (first by the first index, then by the second index, and so on, left-to-right).
 While the indices must have totally-ordered types, the data values can be anything.
 Finally, for purposes of many operations an `DTable` acts like an N-dimensional array of its data values, where the number of dimensions is the number of index columns.  A `DTable` implements a distributed memory version of the `IndexedTable` data structure provided by the `IndexedTables.jl` package.
+
+## Using JuliaDB
 
 ### Construction of an IndexedTable
 
@@ -269,7 +273,7 @@ reducedim(f, t::DTable, dims)
 reducedim_vec(f, t::DTable, dims)
 ```
 
-### Joins
+#### Joins
 
 ```@docs
 naturaljoin(left::DTable, right::DTable)
@@ -287,7 +291,7 @@ asofjoin(left::DTable, right::DTable)
 merge(left::DTable, right::DTable; agg)
 ```
 
-### Appendix
+#### Appendix
 
 ```@docs
 IndexedTable
