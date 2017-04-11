@@ -1,7 +1,4 @@
-using Documenter, JuliaDB, Dagger, TextParse, Glob
-
-#makedocs(format=:html, sitename="JuliaDB",
-#         pages=["index.md"])
+using Documenter, JuliaDB, IndexedTables, Dagger, TextParse, Glob
 
 load_dir(x) = map(file -> joinpath("lib", x, file), readdir(joinpath(Base.source_dir(), "src", "lib", x)))
 
