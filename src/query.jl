@@ -77,8 +77,8 @@ end
 Filters `t` removing rows for which `f` is false. `f` is passed only the data
 and not the index.
 """
-function Base.filter(fn::Function, t::DTable)
-    mapchunks(x -> filter(fn, x), t, keeplengths=false)
+function Base.filter(f, t::DTable)
+    mapchunks(x -> filter(f, x), t, keeplengths=false)
 end
 
 """
