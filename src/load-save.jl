@@ -10,19 +10,21 @@ in a directory `outputdir`. Creates `outputdir` if it doesn't exist.
 
 # Arguments:
 
-- `delim`: the delimiter to use to read the text file with data. defaults to `,`
-- `indexcols`: columns that are meant to act as the index for the table.
+- `delim::Char`: the delimiter to use to read the text file with data. defaults to `,`
+- `indexcols::AbstractArray`: columns that are meant to act as the index for the table.
    Defaults to all but the last column. If `datacols` is set, defaults to all
-   columns other than the data columns.
-- `indexcols`: columns that are meant to act as the data for the table.
+   columns other than the data columns. If `indexcols` is an empty vector,
+   an implicit index of itegers `1:n` is added to the data.
+- `datacols::AbstractArray`: columns that are meant to act as the data for the table.
    Defaults to the last column. If `indexcols` is set, defaults to all
    columns other than the index columns.
-- `agg`: aggregation function to use to combine data points with the same index.
-    Defaults to nothing. (Currently `agg` only works on each chunk and not the whole
-    table.)
-- `presorted`: whether the data in each chunk is pre-sorted.
-- `copy`: whether to copy the data before presorting or aggregating
-- All other options are passed on to `TextParse.csvread`
+- `agg::Function`: aggregation function to use to combine data points with the same index. Defaults to nothing which leaves the data unaggregated (see [`aggregate`](@ref) to aggregate post-loading)).
+   table.)
+- `presorted::Bool`: specifies if each CSV file is internally already sorted according
+   to the specified index column. This will avoid a re-sorting.
+- The rest of the keyword arguments will be passed on to [`TextParse.csvread`](@ref) which is used by this function to load data from individual files.
+
+See also [`loadfiles`](@ref) and [`save`](@ref)
 """
 function ingest(files::Union{AbstractVector,String}, outputdir::AbstractString;
                 delim = ',', opts...)

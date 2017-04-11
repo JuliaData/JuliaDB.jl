@@ -7,6 +7,10 @@ export distribute, chunks, compute, gather
 
 const IndexTuple = Union{Tuple, NamedTuple}
 
+"""
+A distributed table. Can be constructed using [loadfiles](@ref),
+[ingest](@ref) or [distribute](@ref)
+"""
 immutable DTable{K,V} # T<:Table
     chunks::Table
 end
@@ -18,13 +22,27 @@ IndexedTables.dimlabels(dt::DTable) = dimlabels(chunktype(first(chunks(dt)).chun
 Base.ndims(dt::DTable) = ndims(dt.chunks)
 
 """
-Compute any delayed-evaluation in the distributed table.
+    compute(t::DTable, allowoverlap=true)
 
+Computes any delayed-evaluations in the `DTable`.
 The computed data is left on the worker processes.
+Subsequent operations on the results will reuse the chunks.
 
-The first `ctx` argument is an optional `Dagger.Context` object
-enumerating processes where any unevaluated chunks must be computed
+If `allowoverlap` is false then the computed data is resorted to have no
+chunks with overlapping index ranges if necessary.
+
+If you expect the result of some operation to be used more than once,
+it's better to compute it once and then use it many times.
+
+See also [`gather`](@ref).
+
+!!! warning
+    `compute(t)` requires at least as much memory as the size of the
+    result of the computing `t`. If the result is expected to be big,
+    try `compute(save(t, "output_dir"))` instead. See [`save`](@ref) for more.
 """
+compute(t::DTable, allowoverlap=true) = compute(Dagger.Context(), t, allowoverlap)
+
 function compute(ctx, t::DTable, allowoverlap=true)
     chunkcol = chunks(t).data.columns.chunk
     if any(Dagger.istask, chunkcol)
@@ -40,11 +58,18 @@ function compute(ctx, t::DTable, allowoverlap=true)
 end
 
 """
-Gather data in a DTable into an Table object
+    gather(t::DTable)
 
-The first ctx is an optional Dagger.Context object
-enumerating processes where any unevaluated chunks must be computed
+Gets distributed data in a DTable `t` and merges it into [IndexedTable](@ref) object
+
+!!! warning
+    `gather(t)` requires at least as much memory as the size of the
+    result of the computing `t`. If the result is expected to be big,
+    try `compute(save(t, "output_dir"))` instead. See [`save`](@ref) for more.
+    This data can be loaded later using [`load`](@ref).
 """
+gather(t::DTable) = gather(Dagger.Context(), t)
+
 function gather{T}(ctx, dt::DTable{T})
     cs = chunks(dt).data.columns.chunk
     if length(cs) > 0
@@ -77,6 +102,11 @@ end
 
 _merge(x::Table, y::Table...) = _merge((a,b) -> merge(a, b, agg=nothing), x, y...)
 
+"""
+    map(f, t::DTable)
+
+Applies a function `f` on every element in the data of table `t`.
+"""
 Base.map(f, dt::DTable) = mapchunks(c->map(f, c), dt)
 
 function Base.reduce(f, dt::DTable)
@@ -85,11 +115,9 @@ function Base.reduce(f, dt::DTable)
 end
 
 """
-`IndexSpace(interval, boundingrect, nrows)`
+    IndexSpace(interval, boundingrect, nrows)
 
-metadata about an Table chunk. When storing metadata about a chunk we must be
-conservative about what we store. i.e. it is ok to store that a chunk has more
-indices than what it actually contains.
+Metadata about a chunk of a DTable.
 
 - `interval`: An `Interval` object with the first and the last index tuples.
 - `boundingrect`: An `Interval` object with the lowest and the highest indices as tuples.
@@ -220,6 +248,10 @@ function trylength(t::DTable)
     return len
 end
 
+"""
+The length of the `DTable` if it can be computed. Will throw an error if not.
+You can get the length of such tables after calling [`compute`](@ref) on them.
+"""
 function Base.length(t::DTable)
     l = trylength(t)
     if isnull(l)
@@ -285,11 +317,11 @@ end
 ### Distribute a Table into a DTable
 
 """
-`distribute(nds::Table, rowgroups::AbstractArray)`
+    distribute(itable::IndexedTable, rowgroups::AbstractArray)
 
-Distribute an Table object into chunks of number of
-rows specified by `rowgroups`. `rowgroups` is a vector specifying the number of
-rows in the respective chunk.
+Distributes an IndexedTable object into a DTable by splitting it up into chunks
+of `rowgroups` elements. `rowgroups` is a vector specifying the number of
+rows in the chunks.
 
 Returns a `DTable`.
 """
@@ -311,9 +343,10 @@ function distribute{V,K}(nds::Table{V,K}, rowgroups::AbstractArray)
 end
 
 """
-`distribute(nds::Table, nchunks::Int=nworkers())`
+    distribute(itable::IndexedTable, nchunks::Int=nworkers())
 
-Distribute an NDSpase object into `nchunks` chunks of equal size.
+Distributes an IndexedTable object into a DTable of `nchunks` chunks
+of approximately equal size.
 
 Returns a `DTable`.
 """
@@ -332,11 +365,12 @@ function subdomain(nds, r)
 end
 
 """
-`mapchunks(f, nds::Table; keeplengths=true)`
+    mapchunks(f, t::DTable; keeplengths=true)
 
-Delayed application of a function to each chunk in an DTable.
-Returns a new DTable. if `keeplength` is false, the output
-lengths will all be `Nullable{Int}()`
+Applies a function to each chunk in `t`. Returns a new DTable.
+If `keeplength` is false, this means that the lengths of the output
+chunks is unknown before [`compute`](@ref). This function is used
+internally by many DTable operations.
 """
 function mapchunks{K,V}(f, dt::DTable{K,V}; keeplengths=true)
     cs = chunks(dt)
