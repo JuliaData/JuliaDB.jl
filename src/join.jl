@@ -2,9 +2,29 @@ import IndexedTables: naturaljoin, _naturaljoin, leftjoin, similarz, asofjoin, m
 
 export naturaljoin, innerjoin, leftjoin, asofjoin, merge
 
+"""
+    naturaljoin(left::DTable, right::DTable, [op])
+
+Returns a new `DTable` containing only rows where the indices are present both in
+`left` AND `right` tables. The data columns are concatenated.
+"""
+function naturaljoin{I,J,D1,D2}(left::DTable{I,D1}, right::DTable{J,D2})
+    op = combine_op_t(D1, D2)
+    naturaljoin(left, right, op, true)
+end
+
+"""
+    naturaljoin(left::DTable, right::DTable, op, ascolumns=false)
+
+Returns a new `DTable` containing only rows where the indices are present both in
+`left` AND `right` tables. The data columns are concatenated. The data of the matching
+rows from `left` and `right` are combined using `op`. If `op` returns a tuple or
+NamedTuple, and `ascolumns` is set to true, the output table will contain the tuple
+elements as separate data columns instead as a single column of resultant tuples.
+"""
 function naturaljoin{I1, I2, D1, D2}(left::DTable{I1,D1},
                                      right::DTable{I2,D2},
-                                     op, columns=false)
+                                     op, ascolumns=false)
     lcs = chunks(left)
     rcs = chunks(right)
     lidx_spaces = index_spaces(lcs) # an iterable of subdomains in the chunks table
@@ -20,7 +40,7 @@ function naturaljoin{I1, I2, D1, D2}(left::DTable{I1,D1},
 
     # if the output data type is a tuple and `columns` arg is true,
     # we want the output to be a Columns rather than an array of tuples
-    default_data = if columns && issubtype(D, Tuple)
+    default_data = if ascolumns && issubtype(D, Tuple)
         (l,r) -> Columns(map(similarz,cols(l.data))...,map(similarz,cols(r.data))...)
         # TODO: do this sort of thing for NamedTuples
         # needs IndexedTables to comply as well.
@@ -60,16 +80,18 @@ combine_op_t{T<:Tuple, U<:Tuple}(a::Type{T}, b::Type{U}) = (l, r)->(l..., r...)
 combine_op_t{T<:Tuple}(a, b::Type{T}) = (l, r)->(l, r...)
 combine_op_t{T<:Tuple}(a::Type{T}, b) = (l, r)->(l..., r)
 
-function naturaljoin{I,J,D1,D2}(left::DTable{I,D1}, right::DTable{J,D2})
-    op = combine_op_t(D1, D2)
-    naturaljoin(left, right, op, true)
-end
-
 Base.map{I}(f, x::DTable{I}, y::DTable{I}) = naturaljoin(x, y, f)
 
 
 # left join
 
+"""
+    leftjoin(left::DTable, right::DTable, [op::Function])
+
+Keeps only rows with indices in `left`. If rows of the same index are
+present in `right`, then they are combined using `op`. `op` by default
+picks the value from `right`.
+"""
 function leftjoin{K,V}(left::DTable{K,V}, right::DTable,
                   op = IndexedTables.right,
                   joinwhen = (lrect, rrect) -> any(map(hasoverlap, lrect, rrect)),
@@ -110,10 +132,22 @@ function asofpred(lbrect, rbrect)
      !isless(lbrect[end], rbrect[end]))
 end
 
+"""
+    asofjoin(left::DTable, right::DTable)
+
+Keeps the indices of `left` but uses the value from `right` corresponding to highest
+index less than or equal to that of left.
+"""
 function asofjoin(left::DTable, right::DTable)
     leftjoin(left, right, IndexedTables.right, asofpred, (x,y,op)->asofjoin(x,y))
 end
 
+"""
+    merge(left::DTable, right::DTable; agg)
+
+Merges `left` and `right` combining rows with matching indices using `agg`.
+By default `agg` picks the value from `right`.
+"""
 function merge{I1,I2,D1,D2}(left::DTable{I1,D1}, right::DTable{I2,D2}; agg=IndexedTables.right)
     lcs = chunks(left)
     rcs = chunks(right)

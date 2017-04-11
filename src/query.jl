@@ -4,16 +4,25 @@ import IndexedTables: convertdim, aggregate, aggregate_vec, reducedim_vec
 import Base: reducedim
 
 """
-`select(arr::DTable, conditions::Pair...)`
+    select(t::DTable, conditions::Pair...)
 
 Filter based on index columns. Conditions are accepted as column-function pairs.
 
-Example: `select(arr, 1 => x->x>10, 3 => x->x!=10 ...)`
+Example: `select(t, 1 => x->x>10, 3 => x->x!=10 ...)`
 """
 function Base.select(t::DTable, conditions::Pair...)
     mapchunks(x -> select(x, conditions...), t, keeplengths=false)
 end
 
+"""
+    select(t::DTable, which...; agg)
+
+Returns a new DTable where only a subset of the index columns (specified by `which`) are kept.
+
+The `agg` keyword argument is a function which specifies how entries with
+equal indices should be aggregated. If `agg` is unspecified, then the repeating
+indices are kept in the output, you can then aggregate using [`aggregate`](@ref)
+"""
 function Base.select{K,V}(t::DTable{K,V}, which::DimName...; agg=nothing)
     t1 = mapchunks(x -> select(x, which...; agg=agg), t, keeplengths=true)
     cs = select(chunks(t1), which...)
@@ -34,6 +43,12 @@ function Base.select{K,V}(t::DTable{K,V}, which::DimName...; agg=nothing)
     end
 end
 
+"""
+    aggregate(f, t::DTable)
+
+Combines adjacent rows with equal indices using the given
+2-argument reduction function `f`.
+"""
 function aggregate(f, t::DTable)
     if has_overlaps(index_spaces(chunks(t)), true)
         overlap_merge = (x, y) -> merge(x, y, agg=f)
@@ -42,6 +57,12 @@ function aggregate(f, t::DTable)
     mapchunks(c->aggregate(f, c), t, keeplengths=false)
 end
 
+"""
+    aggregate_vec(f::Function, x::DTable)
+
+Combine adjacent rows with equal indices using a function from vector to scalar,
+e.g. `mean`.
+"""
 function aggregate_vec(f, t::DTable)
     if has_overlaps(index_spaces(chunks(t)), true)
         t = rechunk(t, closed=true) # Do not have chunks that are continuations
@@ -50,17 +71,25 @@ function aggregate_vec(f, t::DTable)
 end
 
 # Filter on data field
+"""
+    filter(f, t::DTable)
+
+Filters `t` removing rows for which `f` is false. `f` is passed only the data
+and not the index.
+"""
 function Base.filter(fn::Function, t::DTable)
     mapchunks(x -> filter(fn, x), t, keeplengths=false)
 end
 
 """
-`convertdim(x::DTable, d::DimName, xlate; agg::Function, name)`
+    convertdim(x::DTable, d::DimName, xlate; agg::Function, name)
 
 Apply function or dictionary `xlate` to each index in the specified dimension.
 If the mapping is many-to-one, `agg` is used to aggregate the results.
 `name` optionally specifies a name for the new dimension. `xlate` must be a
 monotonically increasing function.
+
+See also [`reducedim`](@ref) and [`aggregate`](@ref)
 """
 function convertdim{K,V}(t::DTable{K,V}, d::DimName, xlat;
                     agg=nothing, vecagg=nothing, name=nothing)
@@ -109,6 +138,14 @@ function convertdim{K,V}(t::DTable{K,V}, d::DimName, xlat;
     end
 end
 
+"""
+    reducedim(f, t::DTable, dims)
+
+Remove `dims` dimensions from `t`, aggregate any rows with equal indices
+using 2-argument function `f`.
+
+See also [`reducedim_vec`](@ref), [`select`](@ref) and [`aggregate`](@ref).
+"""
 function reducedim(f, x::DTable, dims)
     keep = setdiff([1:ndims(x);], dims) # TODO: Allow symbols
     if isempty(keep)
@@ -120,10 +157,11 @@ end
 reducedim(f, x::DTable, dims::Symbol) = reducedim(f, x, [dims])
 
 """
-`reducedim_vec(f::Function, t::DTable, dims)`
+    reducedim_vec(f::Function, t::DTable, dims)
 
-Like `reducedim`, except uses a function mapping a vector of values to a scalar instead
-of a 2-argument scalar function.
+Like `reducedim`, except uses a function mapping a vector of values to a scalar instead of a 2-argument scalar function.
+
+See also [`reducedim`](@ref) and [`aggregate_vec`](@ref).
 """
 function reducedim_vec(f, x::DTable, dims)
     keep = setdiff([1:ndims(x);], dims)

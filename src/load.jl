@@ -31,22 +31,29 @@ function distribute_implicit_index_space!(chunkrefs, o=1)
 end
 
 """
-    loadfiles(files::Union{AbstractVector,String};
-          usecache=true,
-          indexcols=Int[],
-          datacols=Int[],
-          agg=nothing,
-          presorted=false,
-          copy=false,
-          csvopts...)
+    loadfiles(files::Union{AbstractVector,String}, delim = ','; <options>)
 
 Load a collection of CSV `files` into a DTable, where `files` is either a vector
 of file paths, or the path of a directory containing files to load.
-`indexcols` is a vector of column indices to be used as the index, and `datacols`
-is a vector of column indices to be used as the data for the resulting table.
-`agg`, `presorted` and `copy` are the corresponding keyword arguments passed to the
-`Table` constructor.
-The rest of the keyword arguments (`csvopts`) will be passed on to `TextParse.csvread`
+
+# Arguments:
+
+- `delim::Char`: the delimiter to use to read the text file with data. defaults to `,`
+- `indexcols::AbstractArray`: columns that are meant to act as the index for the table.
+   Defaults to all but the last column. If `datacols` is set, defaults to all
+   columns other than the data columns. If `indexcols` is an empty vector,
+   an implicit index of itegers `1:n` is added to the data.
+- `datacols::AbstractArray`: columns that are meant to act as the data for the table.
+   Defaults to the last column. If `indexcols` is set, defaults to all
+   columns other than the index columns.
+- `agg::Function`: aggregation function to use to combine data points with the same index. Defaults to nothing which leaves the data unaggregated (see [`aggregate`](@ref) to aggregate post-loading)).
+   table.)
+- `presorted::Bool`: specifies if each CSV file is internally already sorted according
+   to the specified index column. This will avoid a re-sorting.
+- `usecache::Bool`: use cached metadata from previous loads while loading the files. Set this to `false` if you are changing other options.
+- The rest of the keyword arguments will be passed on to [`TextParse.csvread`](@ref) which is used by this function to load data from individual files.
+
+See also [`ingest`](@ref).
 """
 function loadfiles(files::Union{AbstractVector,String}, delim=','; usecache=true, opts...)
 
