@@ -22,12 +22,13 @@ in a directory `outputdir`. Creates `outputdir` if it doesn't exist.
    table.)
 - `presorted::Bool`: specifies if each CSV file is internally already sorted according
    to the specified index column. This will avoid a re-sorting.
+- `tomemory::Bool`: Load data to memory after ingesting instead of mmapping. Defaults to false.
 - The rest of the keyword arguments will be passed on to [`TextParse.csvread`](@ref) which is used by this function to load data from individual files.
 
 See also [`loadfiles`](@ref) and [`save`](@ref)
 """
 function ingest(files::Union{AbstractVector,String}, outputdir::AbstractString;
-                delim = ',', opts...)
+                delim = ',', tomemory=false, opts...)
     dtable_file = joinpath(outputdir, JULIADB_INDEXFILE)
     if isfile(dtable_file)
         error("data already exists in $outputdir, use `ingest!` to append new files. Aborting.")
@@ -35,7 +36,7 @@ function ingest(files::Union{AbstractVector,String}, outputdir::AbstractString;
     if !isdir(outputdir)
         mkdir(outputdir)
     end
-    ingest!(files, outputdir; delim = delim, opts...)
+    ingest!(files, outputdir; delim = delim, tomemory=tomemory, opts...)
 end
 
 """
@@ -47,7 +48,7 @@ data in the new files should not overlap with files previously ingested.
 
 See also [`ingest`](@ingest)
 """
-function ingest!(files::Union{AbstractVector,String}, outputdir::AbstractString; delim = ',', opts...)
+function ingest!(files::Union{AbstractVector,String}, outputdir::AbstractString; delim = ',', tomemory=false, opts...)
     outputdir = abspath(outputdir)
 
     prev_chunks = []
@@ -121,7 +122,11 @@ function ingest!(files::Union{AbstractVector,String}, outputdir::AbstractString;
     end
 
     open(io -> serialize(io, dtable), joinpath(outputdir, JULIADB_INDEXFILE), "w")
-    dtable
+    if tomemory
+        compute(mapchunks(identity, dtable))
+    else
+        dtable
+    end
 end
 
 function normalize_filepath(filepath)
@@ -131,16 +136,22 @@ function normalize_filepath(filepath)
 end
 
 """
-    load(dir::AbstractString)
+    load(dir::AbstractString; tomemory)
 
 Load a saved `DTable` from `dir` directory. Data can be saved
-using `ingest` or `save` functions.
+using `ingest` or `save` functions. If `tomemory` option is true,
+then data is loaded into memory rather than mmapped.
 
 See also [`ingest`](@ref), [`save`](@ref)
 """
-function load(dir::AbstractString)
+function load(dir::AbstractString; tomemory=false)
     dtable_file = joinpath(dir, JULIADB_INDEXFILE)
-    open(deserialize, dtable_file)
+    dtable = open(deserialize, dtable_file)
+    if tomemory
+        compute(mapchunks(identity, dtable; keeplengths=true))
+    else
+        dtable
+    end
 end
 
 """

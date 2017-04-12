@@ -1,3 +1,5 @@
+import JuliaDB: tuplesetindex
+
 @testset "Utilities" begin
 
     @testset "NamedTuples isless" begin

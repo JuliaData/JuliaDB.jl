@@ -1,3 +1,9 @@
+using Base.Test
+using JuliaDB
+using PooledArrays
+
+import JuliaDB: MmappableArray, copy_mmap, unwrap_mmap
+
 @testset "MmappableArray" begin
     @testset "Array of floats" begin
         X = rand(100, 100)
@@ -63,6 +69,8 @@ const fxdata, _ = loadTable(allcsv;
 ingest_output = tempname()
 fxdata_ingest = ingest(files, ingest_output, header_exists=false, type_detect_rows=4, indexcols=1:2)
 
+import Dagger: Chunk, MemToken
+import JuliaDB: OnDisk
 @testset "Load" begin
     cache = joinpath(JuliaDB.JULIADB_CACHEDIR, JuliaDB.JULIADB_FILECACHE)
     if isfile(cache)
@@ -72,22 +80,25 @@ fxdata_ingest = ingest(files, ingest_output, header_exists=false, type_detect_ro
     @test gather(fxdata_dist) == fxdata
     @test gather(fxdata_ingest) == fxdata
     @test gather(load(ingest_output)) == fxdata
+    c = first(load(ingest_output).chunks.data.columns.chunk)
+    @test typeof(c.handle) == OnDisk
+    d = load(ingest_output,tomemory=true)
+    @test gather(d) == fxdata
+    c2 = first(d.chunks.data.columns.chunk)
+    @test typeof(c2.handle) == MemToken
     #@test gather(dt[["blah"], :,:]) == fxdata
     function common_test1(dt)
-        nds=gather(dt)
-        @test haskey(nds.index.columns, :symbol)
-        @test haskey(nds.index.columns, :time)
-        @test length(nds.index.columns) == 2
-        @test haskey(nds.data.columns, :open)
-        @test haskey(nds.data.columns, :close)
-        @test length(nds.data.columns) == 2
     end
     dt = loadfiles(files, colnames=["symbol", "time", "open", "close"], indexcols=["symbol", "time"], usecache=false)
     common_test1(dt)
-    dt = loadfiles(files, colnames=["symbol", "time", "open", "close"], datacols=["open", "close"], usecache=false)
-    common_test1(dt)
-    dt = loadfiles(files, colnames=["symbol", "time", "open", "close"], datacols=["open", "close"], indexcols=["symbol", "time"], usecache=false)
-    common_test1(dt)
+    nds=gather(dt)
+    @test haskey(nds.index.columns, :symbol)
+    @test haskey(nds.index.columns, :time)
+    @test length(nds.index.columns) == 2
+    @test haskey(nds.data.columns, :open)
+    @test haskey(nds.data.columns, :close)
+    @test length(nds.data.columns) == 2
+    dt = loadfiles(files, colnames=["symbol", "time", "open", "close"], usecache=false)
     dt = loadfiles(files, colnames=["symbol", "time", "open", "close"], usecache=false)
     nds = gather(dt)
     @test length(nds.data.columns) == 1
