@@ -57,6 +57,7 @@ function aggregate(f, t::DTable)
     mapchunks(c->aggregate(f, c), t, keeplengths=false)
 end
 
+
 """
     aggregate_vec(f::Function, x::DTable)
 
