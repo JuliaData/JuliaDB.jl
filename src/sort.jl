@@ -62,10 +62,15 @@ function shuffle_merge(ctx::Dagger.Context, cs::AbstractArray,
     starts = ones(Int, length(cs))
 
     empty = compute(delayed(x->subtable(x, 1:0))(cs[1])) # An empty table with the right types
-
     merged_chunks = [begin
         if closed
-            lasts = map(last, idxs) # no continuations
+            include_rank  = map(last, idxs)     # include elements of rank r
+            lessthan_rank = map(first, idxs).-1 # only elements of rank < r
+            if abs(sum(include_rank) - rank) <= abs(sum(lessthan_rank) - rank)
+                lasts = include_rank
+            else
+                lasts = lessthan_rank
+            end
         else
             lasts = map(first, idxs).-1 # First, we keep all elements less than
                                         # the one with the required rank
