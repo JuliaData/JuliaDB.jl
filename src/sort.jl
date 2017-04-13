@@ -36,9 +36,20 @@ function merge_thunk(cs::AbstractArray, merge::Function, starts::AbstractArray, 
     if isempty(nonempty)
         empty, domain(empty)
     else
-        subspaces = gather(delayed(vcat)(map(delayed(subindexspace),
-                                             cs[nonempty], ranges[nonempty])...))
-        thunk = delayed(merge)(map(delayed(subtable), cs[nonempty], ranges[nonempty])...)
+        cs1 = Any[]
+        ds = Any[]
+        for (c, r) in zip(cs[nonempty], ranges[nonempty])
+            n = nrows(domain(c))
+            if !isnull(n) && get(n) == length(r)
+                push!(cs1, c)
+                push!(ds, domain(c))
+            else
+                push!(cs1, delayed(subtable)(c, r))
+                push!(ds, delayed(subindexspace)(c, r))
+            end
+        end
+        subspaces = gather(delayed(vcat)(ds...))
+        thunk = delayed(merge)(cs1...)
         thunk, reduce(JuliaDB.merge, subspaces)
     end
 end
