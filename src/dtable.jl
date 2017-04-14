@@ -111,8 +111,8 @@ Applies a function `f` on every element in the data of table `t`.
 Base.map(f, dt::DTable) = mapchunks(c->map(f, c), dt)
 
 function Base.reduce(f, dt::DTable)
-    cs = mapchunks(c->reduce(f, c), chunks(dt))
-    gather(treereduce(delayed(f), cs.data.columns.chunk))
+    cs = mapchunks(c->reduce(f, c), dt)
+    gather(treereduce(delayed(f), chunks(cs).data.columns.chunk))
 end
 
 """
