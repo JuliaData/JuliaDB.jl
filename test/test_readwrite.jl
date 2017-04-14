@@ -89,7 +89,7 @@ import JuliaDB: OnDisk
     #@test gather(dt[["blah"], :,:]) == fxdata
     function common_test1(dt)
     end
-    dt = loadfiles(files, colnames=["symbol", "time", "open", "close"], indexcols=["symbol", "time"], usecache=false)
+    dt = loadfiles(files, colnames=["symbol", "time", "open", "close"], indexcols=[("symbol", "dummy"), ("dummy", "time")], usecache=false)
     common_test1(dt)
     nds=gather(dt)
     @test haskey(nds.index.columns, :symbol)

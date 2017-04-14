@@ -86,6 +86,17 @@ function getbyheader(cols, header, i::AbstractString)
     getbyheader(cols, header, findfirst(header, i))
 end
 
+# pick the first of many columns
+function getbyheader(cols, header, oneof::Tuple)
+    for c in oneof
+        try
+            return getbyheader(cols, header, c)
+        catch err
+        end
+    end
+    throw(ArgumentError("Couldn't find any of the columns in $cs"))
+end
+
 """
 get a subset of vectors wrapped in Columns from a tuple of vectors
 """
