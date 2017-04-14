@@ -106,7 +106,7 @@ function getbyheader_canonical(cols, header, oneof::Tuple)
         catch err
         end
     end
-    throw(ArgumentError("Couldn't find any of the columns in $cs"))
+    throw(ArgumentError("Couldn't find any of the columns in $oneof"))
 end
 
 function getbyheader_canonical(cols, header, oneof)
