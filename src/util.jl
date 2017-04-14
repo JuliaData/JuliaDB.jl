@@ -97,12 +97,28 @@ function getbyheader(cols, header, oneof::Tuple)
     throw(ArgumentError("Couldn't find any of the columns in $cs"))
 end
 
+function getbyheader_canonical(cols, header, oneof::Tuple)
+
+    for c in oneof
+        try
+            getbyheader(cols, header, c)
+            return first(oneof)
+        catch err
+        end
+    end
+    throw(ArgumentError("Couldn't find any of the columns in $cs"))
+end
+
+function getbyheader_canonical(cols, header, oneof)
+    getbyheader(cols, header, oneof)
+end
+
 """
 get a subset of vectors wrapped in Columns from a tuple of vectors
 """
 function getcolsubset(cols, header, subcols)
     colnames = !isempty(header) ?
-        vcat(map(i -> Symbol(getbyheader(header, header, i)), subcols)) :
+        vcat(map(i -> Symbol(getbyheader_canonical(header, header, i)), subcols)) :
         nothing
 
     if length(subcols) > 1

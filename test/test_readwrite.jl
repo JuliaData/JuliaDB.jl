@@ -93,7 +93,8 @@ import JuliaDB: OnDisk
     common_test1(dt)
     nds=gather(dt)
     @test haskey(nds.index.columns, :symbol)
-    @test haskey(nds.index.columns, :time)
+    @test haskey(nds.index.columns, :dummy)
+    @test !haskey(nds.index.columns, :time)
     @test length(nds.index.columns) == 2
     @test haskey(nds.data.columns, :open)
     @test haskey(nds.data.columns, :close)
