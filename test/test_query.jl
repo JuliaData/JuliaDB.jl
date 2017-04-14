@@ -1,3 +1,10 @@
+@testset "map & reduce" begin
+    t = IndexedTable(Columns([1,1,2,2], [1,2,1,2]), [1,2,3,4])
+    d = distribute(t, 2)
+    @test gather(map(-, d)) == map(-, t)
+    @test reduce(+, d) == 10
+end
+
 @testset "getindex" begin
     t = IndexedTable(Columns([1,1,1,2,2], [1,2,3,1,2]), [1,2,3,4,5])
     for n=1:5
