@@ -17,7 +17,7 @@ function format_bytes(nb)
     end
 end
 
-lastindex(d::DTable) = last(d.data.columns.metadata[end].domain)
+lastindex(d) = last(d.data.columns.metadata[end].domain)
 
 # update chunk offsets and domains to form a distributed index space o:(o+n-1)
 function distribute_implicit_index_space!(chunkrefs, o=1)
