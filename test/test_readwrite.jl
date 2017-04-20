@@ -105,4 +105,9 @@ import JuliaDB: OnDisk
     @test length(nds.data.columns) == 1
     @test !isempty(nds.data.columns.close)
     @test length(nds.index.columns) == 3
+
+    ingest2 = tempname()
+    fxdata2 = ingest(files[1:end-1], ingest2, header_exists=false, indexcols=[])
+    fxdata3 = ingest!(files[end:end], ingest2, header_exists=false, indexcols=[])
+    @test length(fxdata3) == 150 > length(fxdata2)
 end

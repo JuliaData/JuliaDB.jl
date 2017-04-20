@@ -105,10 +105,9 @@ function ingest!(files::Union{AbstractVector,String}, outputdir::AbstractString;
 
     if !isnull(chunkrefs[1].handle.offset)
         distribute_implicit_index_space!(chunkrefs,
-                                         existing_dtable===nothing ? 1 : lastindex(existing_dtable)[1] + 1)
+                                         existing_dtable===nothing ? 1 : last(existing_dtable.chunks.data.columns.chunk[end].domain)[1] + 1)
     end
 
-    chunks = vcat(prev_chunks, chunkrefs)
     allchunks = vcat(prev_chunks, chunkrefs)
     dtable = fromchunks(allchunks)
 
