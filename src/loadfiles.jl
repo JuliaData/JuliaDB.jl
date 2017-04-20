@@ -103,7 +103,7 @@ function loadfiles(files::Union{AbstractVector,String}, delim=','; usecache=true
 
     if isempty(unknown)
         # we read all required metadata from cache
-        return fromchunks(validcache, false)
+        return fromchunks(validcache)
     end
 
     sz = sum(map(filesize, unknown))
