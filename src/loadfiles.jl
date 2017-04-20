@@ -73,9 +73,6 @@ function loadfiles(files::Union{AbstractVector,String}, delim=','; usecache=true
     validcache = []
     metadata = nothing
 
-    # there can be multiple Table possible in the same file
-    # we hope that each one has a unique hash:
-    opthash = hash(Dict(opts))
     # Read metadata about a subset of files if safe to
     metafile = joinpath(cachedir, JULIADB_FILECACHE)
     if usecache && isfile(metafile)
@@ -86,8 +83,8 @@ function loadfiles(files::Union{AbstractVector,String}, delim=','; usecache=true
             warn("Cached metadata file is corrupt. Not using cache.")
             @goto readunknown
         end
-        knownmeta = metadata[sort!(files), opthash]
-        known = knownmeta.index.columns.filename
+        knownmeta = metadata[sort!(files)]
+        known = knownmeta.index.columns[1]
 
         # only those with the same mtime
         valid = knownmeta.data.columns.mtime .== mtime.(known)
@@ -120,7 +117,7 @@ function loadfiles(files::Union{AbstractVector,String}, delim=','; usecache=true
     end
 
     # store this back in cache
-    cache = Table(Columns(unknown, fill(opthash, length(unknown)), names=[:filename, :opthash]),
+    cache = Table(unknown,
                   Columns(mtime.(unknown), Dagger.Chunk[chunkrefs...], names=[:mtime, :metadata]))
 
     if metadata != nothing
@@ -147,10 +144,14 @@ end
 
 Dagger.affinity(c::CSVChunk) = map(OSProc, c.cached_on)
 
+# make sure cache matches a certain subset of options
+csvkey(csv::CSVChunk) = (csv.filename, filter((k,v)->(k in (:colnames,:indexcols,:datacols)), csv.opts))
+
 function gather(ctx, csv::CSVChunk)
-    if csv.cache && haskey(_read_cache, (csv.filename, csv.opts))
+    key = csvkey(csv)
+    if csv.cache && haskey(_read_cache, key)
         #println("Having to fetch data from $csv.cached_on")
-        data = _read_cache[(csv.filename, csv.opts)]
+        data = _read_cache[key]
     elseif csv.cached_on != [myid()] && !isempty(csv.cached_on)
         # TODO: remove myid() if it's in cached_on
         pid = first(csv.cached_on)
@@ -169,7 +170,7 @@ function gather(ctx, csv::CSVChunk)
         if !(myid() in csv.cached_on)
             push!(csv.cached_on, myid())
         end
-        _read_cache[(csv.filename, csv.opts)] = data
+        _read_cache[key] = data
     end
 
     if !isnull(csv.offset) && data.index[1][1] != get(csv.offset)
