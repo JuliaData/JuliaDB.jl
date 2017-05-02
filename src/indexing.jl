@@ -40,6 +40,6 @@ function _getindex{K,V}(t::DTable{K,V}, idxs)
 
     mapchunks(t, keeplengths=false) do chunk
         getindex(chunk, idxs...)
-    end
+    end |> cache_thunks
 end
 

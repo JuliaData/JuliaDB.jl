@@ -195,7 +195,12 @@ type OnDisk
     offset::Nullable{Int}  # index of first item when using implicit indices
 end
 
-Dagger.affinity(c::OnDisk) = map(OSProc, c.cached_on)
+function Dagger.affinity(c::OnDisk)
+    sz = filesize(c.filename)
+    map(c.cached_on) do p
+        OSProc(p) => sz
+    end
+end
 
 ## TODO: Can make this an LRU cache
 const _ondisk_cache = Dict{String, Any}()

@@ -145,7 +145,13 @@ type CSVChunk
     offset::Nullable{Int}  # index of first item when using implicit indices
 end
 
-Dagger.affinity(c::CSVChunk) = map(OSProc, c.cached_on)
+function Dagger.affinity(c::CSVChunk)
+    # use filesize as a measure of data size
+    sz = filesize(c.filename)
+    map(c.cached_on) do p
+        OSProc(p) => sz
+    end
+end
 
 function gather(ctx, csv::CSVChunk)
     if csv.cache && haskey(_read_cache, (csv.filename, csv.opts))

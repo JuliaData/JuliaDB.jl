@@ -112,5 +112,5 @@ function Base.permutedims(t::DTable, p::AbstractVector)
         permutedims(c, p)
     end
 
-    rechunk(t1)
+    cache_thunks(rechunk(t1))
 end
