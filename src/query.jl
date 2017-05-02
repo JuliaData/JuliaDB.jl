@@ -24,22 +24,26 @@ equal indices should be aggregated. If `agg` is unspecified, then the repeating
 indices are kept in the output, you can then aggregate using [`aggregate`](@ref)
 """
 function Base.select{K,V}(t::DTable{K,V}, which::DimName...; agg=nothing)
-    t1 = mapchunks(x -> select(x, which...; agg=agg), t, keeplengths=true)
-    cs = select(chunks(t1), which...)
 
     # remove dimensions from bounding boxes
     sub_dims = [which...]
-    newbrects = map(b->b[sub_dims], cs.data.columns.boundingrect)
-    newdata = tuplesetindex(cs.data.columns, newbrects, :boundingrect)
-    cs1 = Table(cs.index, Columns(newdata), presorted=true)
+    subinterval(intv, idx) = Interval(first(intv)[idx], last(intv)[idx])
+    subdomains = map(t.subdomains) do idxspace
+        IndexSpace(subinterval(idxspace.interval, sub_dims),
+                   subinterval(idxspace.boundingrect, sub_dims),
+                   Nullable{Int}())
+    end
 
-    t2 = DTable{K, V}(cs1)
+    t = mapchunks(x -> select(x, which...; agg=agg), t)
 
-    if has_overlaps(index_spaces(chunks(t2)), true)
-        overlap_merge = (x, y) -> merge(x, y, agg=agg)
-        rechunk(t2, merge=(ts...) -> _merge(overlap_merge, ts...), closed=true)
+    t1 = DTable{eltype(subdomains[1]), V}(subdomains, t.chunks)
+
+    if has_overlaps(subdomains, true)
+        overlap_merge(x, y) = merge(x, y, agg=agg)
+        chunk_merge(ts...) = _merge(overlap_merge, ts...)
+        rechunk(t1, merge=chunk_merge, closed=true)
     else
-        t2
+        t1
     end |> cache_thunks
 end
 
@@ -50,7 +54,7 @@ Combines adjacent rows with equal indices using the given
 2-argument reduction function `f`.
 """
 function aggregate(f, t::DTable)
-    if has_overlaps(index_spaces(chunks(t)), true)
+    if has_overlaps(t.subdomains, true)
         overlap_merge = (x, y) -> merge(x, y, agg=f)
         t = rechunk(t, merge=(ts...) -> _merge(overlap_merge, ts...), closed=true)
     end
@@ -64,7 +68,7 @@ Combine adjacent rows with equal indices using a function from vector to scalar,
 e.g. `mean`.
 """
 function aggregate_vec(f, t::DTable)
-    if has_overlaps(index_spaces(chunks(t)), true)
+    if has_overlaps(t.subdomains, true)
         t = rechunk(t, closed=true) # Do not have chunks that are continuations
     end
     mapchunks(c->aggregate_vec(f, c), t, keeplengths=false) |> cache_thunks
@@ -78,7 +82,7 @@ Filters `t` removing rows for which `f` is false. `f` is passed only the data
 and not the index.
 """
 function Base.filter(f, t::DTable)
-    mapchunks(x -> filter(f, x), t, keeplengths=false) |> cache_thunks
+    cache_thunks(mapchunks(x -> filter(f, x), t, keeplengths=false))
 end
 
 """
@@ -103,39 +107,29 @@ function convertdim{K,V}(t::DTable{K,V}, d::DimName, xlat;
     end
 
     chunkf(c) = convertdim(c, d, xlat; agg=agg, vecagg=nothing, name=name)
-    t1 = mapchunks(chunkf, t)
+    chunks = map(delayed(chunkf), t.chunks)
 
-    # apply the same convertdim on the index
-    cs = chunks(t1)
-    cs1 = convertdim(cs, d, x->_map(xlat,x), name=name)
+    xlatdim(intv, d) = Interval(tuplesetindex(first(intv), xlat(first(intv)[d]), d),
+                                tuplesetindex(last(intv),  xlat(last(intv)[d]), d))
 
+    # TODO: handle name kwarg
     # apply xlat to bounding rectangles
-    newrects = map(cs.data.columns.boundingrect) do box
-        # box is an Interval of tuples
-        # xlat the (d)th element of tuple
-        tuplesetindex(box, _map(xlat, box[d]), d)
+    subdomains = map(t.subdomains) do space
+        nrows = agg === nothing ? space.nrows : Nullable{Int}()
+        IndexSpace(xlatdim(space.interval, d), xlatdim(space.boundingrect, d), nrows)
     end
 
-    newcols = tuplesetindex(cs.data.columns, newrects, :boundingrect)
+    t1 = DTable{eltype(subdomains[1]),V}(subdomains, chunks)
 
-    lengths = agg !== nothing ?
-        fill(Nullable{Int}(), length(newrects)) :
-        cs.data.columns.length
-
-    newcols = tuplesetindex(newcols, lengths, :length)
-
-    cs2 = Table(cs1.index, Columns(newcols..., names=fieldnames(newcols)))
-
-    t2 = DTable{K,V}(cs2)
-
-    if agg !== nothing && has_overlaps(index_spaces(chunks(t2)), true)
-         overlap_merge = (x, y) -> merge(x, y, agg=agg)
-         rechunk(t2, merge=(ts...) -> _merge(overlap_merge, ts...), closed=true)
+    if agg !== nothing && has_overlaps(subdomains, true)
+        overlap_merge(x, y) = merge(x, y, agg=agg)
+        chunk_merge(ts...)  = _merge(overlap_merge, ts...)
+        cache_thunks(rechunk(t1, merge=chunk_merge, closed=true))
     elseif vecagg != nothing
-        aggregate_vec(vecagg, t2)
+        aggregate_vec(vecagg, t1) # already cached
     else
-        t2
-    end |> cache_thunks
+        cache_thunks(t1)
+    end
 end
 
 """
@@ -151,7 +145,7 @@ function reducedim(f, x::DTable, dims)
     if isempty(keep)
         throw(ArgumentError("to remove all dimensions, use `reduce(f, A)`"))
     end
-    select(x, keep..., agg=f) |> cache_thunks
+    cache_thunks(select(x, keep..., agg=f))
 end
 
 reducedim(f, x::DTable, dims::Symbol) = reducedim(f, x, [dims])
@@ -170,7 +164,7 @@ function reducedim_vec(f, x::DTable, dims)
     end
 
     t = select(x, keep...; agg=nothing)
-    aggregate_vec(f, t) |> cache_thunks
+    cache_thunks(aggregate_vec(f, t))
 end
 
 reducedim_vec(f, x::DTable, dims::Symbol) = reducedim_vec(f, x, [dims])

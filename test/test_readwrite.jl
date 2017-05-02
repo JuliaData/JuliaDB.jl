@@ -80,11 +80,11 @@ import JuliaDB: OnDisk
     @test gather(fxdata_dist) == fxdata
     @test gather(fxdata_ingest) == fxdata
     @test gather(load(ingest_output)) == fxdata
-    c = first(load(ingest_output).chunks.data.columns.chunk)
+    c = first(load(ingest_output).chunks)
     @test typeof(c.handle) == OnDisk
     d = load(ingest_output,tomemory=true)
     @test gather(d) == fxdata
-    c2 = first(d.chunks.data.columns.chunk)
+    c2 = first(d.chunks)
     @test typeof(c2.handle) == MemToken
     #@test gather(dt[["blah"], :,:]) == fxdata
     function common_test1(dt)

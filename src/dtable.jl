@@ -8,18 +8,36 @@ export distribute, chunks, compute, gather
 const IndexTuple = Union{Tuple, NamedTuple}
 
 """
+    IndexSpace(interval, boundingrect, nrows)
+
+Metadata about an `IndexedTable`, a chunk of a DTable.
+
+- `interval`: An `Interval` object with the first and the last index tuples.
+- `boundingrect`: An `Interval` object with the lowest and the highest indices as tuples.
+- `nrows`: A `Nullable{Int}` of number of rows in the Table, if knowable
+           (See design doc section on "Knowability of chunk size")
+"""
+immutable IndexSpace{T<:IndexTuple}
+    interval::Interval{T}
+    boundingrect::Interval{T}
+    nrows::Nullable{Int}
+end
+
+boundingrect(x::IndexSpace) = x.boundingrect
+interval(x::IndexSpace) = x.interval
+
+"""
 A distributed table. Can be constructed using [loadfiles](@ref),
 [ingest](@ref) or [distribute](@ref)
 """
-immutable DTable{K,V} # T<:Table
-    chunks::Table
+immutable DTable{K,V}
+    subdomains::Vector{IndexSpace{K}}
+    chunks::Vector
 end
 
-chunks(dt::DTable) = dt.chunks
-
-Base.eltype(dt::DTable) = eltype(chunktype(first(chunks(dt)).chunk))
-IndexedTables.dimlabels(dt::DTable) = dimlabels(chunktype(first(chunks(dt)).chunk))
-Base.ndims(dt::DTable) = ndims(dt.chunks)
+Base.eltype{K,V}(dt::DTable{K,V}) = V
+IndexedTables.dimlabels(dt::DTable) = dimlabels(chunktype(first(dt.chunks))) # XXX: doesn't work if first chunk is a thunk
+Base.ndims{K}(dt::DTable{K}) = nfields(K)
 
 """
     compute(t::DTable, allowoverlap=true)
@@ -44,11 +62,10 @@ See also [`gather`](@ref).
 compute(t::DTable, allowoverlap=true) = compute(Dagger.Context(), t, allowoverlap)
 
 function compute(ctx, t::DTable, allowoverlap=true)
-    chunkcol = chunks(t).data.columns.chunk
-    if any(Dagger.istask, chunkcol)
+    if any(Dagger.istask, t.chunks)
         # we need to splat `thunks` so that Dagger knows the inputs
         # are thunks and they need to be staged for scheduling
-        vec_thunk = delayed((refs...) -> [refs...]; meta=true)(chunkcol...)
+        vec_thunk = delayed((refs...) -> [refs...]; meta=true)(t.chunks...)
         cs = compute(ctx, vec_thunk) # returns a vector of Chunk objects
         Base.foreach(Dagger.persist!, cs)
         fromchunks(cs, allowoverlap=allowoverlap)
@@ -72,7 +89,7 @@ Gets distributed data in a DTable `t` and merges it into
 gather(t::DTable) = gather(Dagger.Context(), t)
 
 function gather{T}(ctx, dt::DTable{T})
-    cs = chunks(dt).data.columns.chunk
+    cs = dt.chunks
     if length(cs) > 0
         gather(ctx, treereduce(delayed(_merge), cs))
     else
@@ -111,24 +128,8 @@ Applies a function `f` on every element in the data of table `t`.
 Base.map(f, dt::DTable) = mapchunks(c->map(f, c), dt)
 
 function Base.reduce(f, dt::DTable)
-    cs = mapchunks(c->reduce(f, c), dt)
-    gather(treereduce(delayed(f), chunks(cs).data.columns.chunk))
-end
-
-"""
-    IndexSpace(interval, boundingrect, nrows)
-
-Metadata about a chunk of a DTable.
-
-- `interval`: An `Interval` object with the first and the last index tuples.
-- `boundingrect`: An `Interval` object with the lowest and the highest indices as tuples.
-- `nrows`: A `Nullable{Int}` of number of rows in the Table, if knowable
-           (See design doc section on "Knowability of chunk size")
-"""
-immutable IndexSpace{T<:IndexTuple}
-    interval::Interval{T}
-    boundingrect::Interval{T}
-    nrows::Nullable{Int}
+    cs = map(delayed(c->reduce(f, c)), dt.chunks)
+    gather(treereduce(delayed(f), cs))
 end
 
 immutable EmptySpace{T} <: Domain end
@@ -200,37 +201,6 @@ function Base.intersect(d1::EmptySpace, d2::Union{IndexSpace,EmptySpace})
     d1
 end
 
-"""
-`chunks_index(subdomains, chunks)`
-
-- `subdomains`: a vector of subdomains
-- `chunks`: a vector of chunks for those corresponding subdomains
-
-Create an lookup table from a bunch of `IndexSpace`s
-This lookup table is itself an Table object indexed by the
-first and last indices in the chunks. We enforce the constraint
-that the chunks must be disjoint to make such an arrangement
-possible. But this is kind of silly though since all the lookups
-are best done on the bounding boxes. So,
-TODO: use an RTree of bounding boxes here.
-"""
-function chunks_index(subdomains, chunks)
-
-    index = Columns(map(x->Array{Interval{typeof(x)}}(0),
-                        first(subdomains[1].interval))...)
-    boundingrects = Columns(map(x->Array{Interval{typeof(x)}}(0),
-                             first(subdomains[1].boundingrect))...)
-
-    for subd in subdomains
-        push!(index, map(Interval, first(subd), last(subd)))
-        push!(boundingrects, map(Interval, mins(subd), maxes(subd)))
-    end
-
-    Table(index, Columns(boundingrects,
-                            chunks, map(x->x.nrows, subdomains),
-                            names=[:boundingrect, :chunk, :length]))
-end
-
 # given a chunks index constructed above, give an array of
 # index spaces spanned by the chunks in the index
 function index_spaces(t::Table)
@@ -241,7 +211,7 @@ end
 
 function trylength(t::DTable)
     len = Nullable(0)
-    for l in chunks(t).data.columns.length
+    for l in map(x->x.nrows, t.subdomains)
         if !isnull(l) && !isnull(len)
             len = Nullable(get(len) + get(l))
         else
@@ -295,7 +265,7 @@ function fromchunks(chunks::AbstractArray,
     nzidxs = find(x->!isempty(x), subdomains)
     subdomains = subdomains[nzidxs]
 
-    dt = DTable{KV...}(chunks_index(subdomains, chunks[nzidxs]))
+    dt = DTable{KV...}(subdomains, chunks[nzidxs])
 
     if !allowoverlap && has_overlaps(subdomains)
         return rechunk(dt)
@@ -305,7 +275,7 @@ function fromchunks(chunks::AbstractArray,
 end
 
 function cache_thunks(dt::DTable)
-    foreach(chunks(dt).data.columns.chunk) do c
+    for c in dt.chunks
         if isa(c, Dagger.Thunk)
             Dagger.cache_result!(c)
         end
@@ -371,12 +341,6 @@ function distribute(nds::Table, nchunks::Int=nworkers())
     distribute(nds, nrows)
 end
 
-# DTable utilities
-function subdomain(nds, r)
-    # TODO: speed it up
-    domain(subtable(nds, r))
-end
-
 """
     mapchunks(f, t::DTable; keeplengths=true)
 
@@ -385,15 +349,15 @@ If `keeplength` is false, this means that the lengths of the output
 chunks is unknown before [`compute`](@ref). This function is used
 internally by many DTable operations.
 """
-function mapchunks{K,V}(f, dt::DTable{K,V}; keeplengths=true)
-    cs = chunks(dt)
-    cols = cs.data.columns
-    outchunks = map(delayed(f), cols.chunk)
-    outlengths = keeplengths ? cols.length : fill(Nullable{Int}(), length(cols.length))
-    t = Table(cs.index,
-              Columns(cols.boundingrect,
-                  outchunks, outlengths,
-                  names=[:boundingrect, :chunk, :length]))
-    DTable{K, V}(t)
+function mapchunks{K,V}(f, t::DTable{K,V}; keeplengths=true)
+    chunks = map(delayed(f), t.chunks)
+    if keeplengths
+        DTable{K, V}(t.subdomains, chunks)
+    else
+        DTable{K, V}(map(null_length, t.subdomains), chunks)
+    end
 end
 
+function null_length(x::IndexSpace)
+    IndexSpace(x.interval, x.boundingrect, Nullable{Int}())
+end

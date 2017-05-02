@@ -29,6 +29,11 @@ function hasoverlap(i1::Interval, i2::Interval)
     (first(i1) <= last(i2) && first(i2) <= last(i1))
 end
 
+function boxhasoverlap(a,b)
+    all(map(in, map(Interval, first(a), last(a)),
+                map(Interval, first(b), last(b))))
+end
+
 # KIND OF A HACK: Interval of Intervals - used for indexing into a table of Intervals
 
 # convert a thing to an interval of its own

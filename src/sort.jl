@@ -12,17 +12,18 @@ function rechunk{K,V}(t::DTable{K,V}, lengths = nothing;
 
 
     if lengths === nothing
-        lengths = map(get, chunks(computed_t).data.columns.length)
+        lengths = get.(nrows.(computed_t.subdomains))
     end
 
-    ranks = cumsum(lengths)[1:end-1]  # Get ranks for splitting at
+    # Get ranks for splitting at
+    ranks = cumsum(lengths)[1:end-1]
 
     idx = dindex(computed_t).result
     # select elements of required ranks in parallel:
     splitters = Dagger.pselect(ctx, idx, ranks, order)
 
-    cs = chunks(computed_t).data.columns.chunk
-    thunks, subspaces = shuffle_merge(ctx, cs, merge, ranks, closed, 
+    thunks, subspaces = shuffle_merge(ctx, computed_t.chunks,
+                                      merge, ranks, closed, 
                                       splitters, lengths, order)
 
     fromchunks(thunks, subspaces; KV=(K,V))
@@ -103,14 +104,22 @@ end
 
 ### Permutedims
 
-function Base.permutedims(t::DTable, p::AbstractVector)
+function Base.permutedims{K,V}(t::DTable{K,V}, p::AbstractVector)
     if !(length(p) == ndims(t) && isperm(p))
         throw(ArgumentError("argument to permutedims must be a valid permutation"))
     end
 
-    t1 = mapchunks(t) do c
-        permutedims(c, p)
+    permuteintv(intv,d) = Interval(first(intv)[d],
+                                   last(intv)[d])
+    idxs = map(t.subdomains) do dmn
+        IndexSpace(permuteintv(dmn.interval, p),
+                   permuteintv(dmn.boundingrect, p),
+                   dmn.nrows,
+                  )
     end
+
+    chunks = map(delayed(c -> permutedims(c, p)), t.chunks)
+    t1 = DTable{eltype(idxs[1]), V}(idxs, chunks)
 
     cache_thunks(rechunk(t1))
 end
