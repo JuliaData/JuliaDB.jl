@@ -12,7 +12,7 @@ function extractarray(t::DTable, accessor)
         Cat(chunktype(cs[1]), ArrayDomain(1:sum(lengths)), dmnchunks, [cs...])
     end
 
-    cs = map(delayed(accessor), chunks(t).data.columns.chunk)
+    cs = map(delayed(accessor), t.chunks)
     ComputedArray(compute(delayed(arraymaker;meta=true)(cs...)))
 end
 

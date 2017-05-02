@@ -60,7 +60,7 @@ function ingest!(files::Union{AbstractVector,String}, outputdir::AbstractString;
         mkdir(outputdir)
     elseif isfile(dtable_file)
         existing_dtable = load(outputdir)
-        prev_chunks = chunks(existing_dtable).data.columns.chunk
+        prev_chunks = existing_dtable.chunks
     end
 
     if isa(files, String)
@@ -104,15 +104,17 @@ function ingest!(files::Union{AbstractVector,String}, outputdir::AbstractString;
     chunkrefs = gather(delayed(vcat)(saved...))
 
     if !isnull(chunkrefs[1].handle.offset)
-        distribute_implicit_index_space!(chunkrefs,
-                                         existing_dtable===nothing ? 1 : last(existing_dtable.chunks.data.columns.chunk[end].domain)[1] + 1)
+        offset = existing_dtable===nothing ? 1 :
+            reduce(max, 0, first.(last.(existing_table.subdomains))) + 1
+
+        distribute_implicit_index_space!(chunkrefs, offset)
     end
 
     allchunks = vcat(prev_chunks, chunkrefs)
-    dtable = fromchunks(allchunks)
+    dtable = cache_thunks(fromchunks(allchunks))
 
     if any(c->!isa(c, Dagger.Chunk) || !isa(c.handle, OnDisk),
-           dtable.chunks.data.columns.chunk)
+           dtable.chunks)
         # This means `fromchunks` had to re-sort overlapping chunks
         tmpname = tempname()
         dtable = save(dtable, tmpname) # write out the sorted version
@@ -168,19 +170,12 @@ function save{K,V}(t::DTable{K,V}, outputdir::AbstractString)
         mkdir(outputdir)
     end
 
-    c = chunks(t)
-    datacols = c.data.columns
-    chunkscol = Any[begin
+    chunks = Any[begin
         fn = joinpath(outputdir, lpad(idx, 5, "0"))
         delayed(save_as_chunk; get_result=true)(chunk, fn)
-    end for (idx, chunk) in enumerate(datacols.chunk)]
-    cs1 = Table(c.index,
-             Columns(datacols.boundingrect,
-                     chunkscol,
-                     datacols.length,
-                     names=[:boundingrect, :chunk, :length]))
+    end for (idx, chunk) in enumerate(t.chunks)]
     
-    saved_t = DTable{K,V}(cs1)
+    saved_t = DTable{K,V}(t.subdomains, chunks)
 
     final = compute(saved_t)
     open(io -> serialize(io, final), joinpath(outputdir, JULIADB_INDEXFILE), "w")

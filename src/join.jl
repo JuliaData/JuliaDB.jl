@@ -25,10 +25,6 @@ elements as separate data columns instead as a single column of resultant tuples
 function naturaljoin{I1, I2, D1, D2}(left::DTable{I1,D1},
                                      right::DTable{I2,D2},
                                      op, ascolumns=false)
-    lcs = chunks(left)
-    rcs = chunks(right)
-    lidx_spaces = index_spaces(lcs) # an iterable of subdomains in the chunks table
-    ridx_spaces = index_spaces(rcs)
     out_subdomains = Any[]
     out_chunks = Any[]
 
@@ -48,16 +44,16 @@ function naturaljoin{I1, I2, D1, D2}(left::DTable{I1,D1},
         (l,r) -> similar(l.data, D, 0)
     end
 
-    for i in 1:length(lcs)
-        lchunk = lcs.data.columns.chunk[i]
-        lbrect = lcs.data.columns.boundingrect[i]
-        subdomain = lidx_spaces[i]
+    for i in 1:length(left.chunks)
+        lchunk = left.chunks[i]
+        subdomain = left.subdomains[i]
+        lbrect = subdomain.boundingrect
         # for each chunk in `left`
         # find all the overlapping chunks from `right`
-        overlapping = map(rcs.data.columns.boundingrect) do rbrect
-            all(map(hasoverlap, lbrect, rbrect))
+        overlapping = map(boundingrect.(right.subdomains)) do rbrect
+            boxhasoverlap(lbrect, rbrect)
         end
-        overlapping_chunks = rcs.data.columns.chunk[overlapping]
+        overlapping_chunks = right.chunks[overlapping]
 
         # each overlapping chunk from `right` should be joined
         # with the chunk `lchunk`
@@ -67,12 +63,12 @@ function naturaljoin{I1, I2, D1, D2}(left::DTable{I1,D1},
         append!(out_chunks, joined_chunks)
 
         overlapping_subdomains = map(r->intersect(subdomain, r),
-                                 ridx_spaces[overlapping])
+                                     right.subdomains[overlapping])
 
         append!(out_subdomains, overlapping_subdomains)
     end
 
-    return cache_thunks(DTable{I, D}(chunks_index(out_subdomains, out_chunks)))
+    return cache_thunks(DTable{I, D}(out_subdomains, out_chunks))
 end
 
 combine_op_t(a, b) = tuple
@@ -94,24 +90,20 @@ picks the value from `right`.
 """
 function leftjoin{K,V}(left::DTable{K,V}, right::DTable,
                   op = IndexedTables.right,
-                  joinwhen = (lrect, rrect) -> any(map(hasoverlap, lrect, rrect)),
+                  joinwhen = boxhasoverlap,
                   chunkjoin = leftjoin)
 
-    lcs = chunks(left)
-    rcs = chunks(right)
-    lidx_spaces = index_spaces(lcs) # an iterable of subdomains in the chunks table
-    ridx_spaces = index_spaces(rcs)
     out_chunks = Any[]
 
-    for i in 1:length(lcs)
-        lchunk = lcs.data.columns.chunk[i]
-        lbrect = lcs.data.columns.boundingrect[i]
-        subdomain = lidx_spaces[i]
+    for i in 1:length(left.chunks)
+        lchunk = left.chunks[i]
+        subdomain = left.subdomains[i]
+        lbrect = subdomain.boundingrect
         # for each chunk in `left`
         # find all the overlapping chunks from `right`
         overlapping = map(rbrect -> joinwhen(lbrect, rbrect),
-                          rcs.data.columns.boundingrect)
-        overlapping_chunks = rcs.data.columns.chunk[overlapping]
+                          boundingrect.(right.subdomains))
+        overlapping_chunks = right.chunks[overlapping]
         if !isempty(overlapping_chunks)
             push!(out_chunks, reduce(delayed((x,y)->chunkjoin(x,y, op)), lchunk,
                                          overlapping_chunks))
@@ -120,16 +112,16 @@ function leftjoin{K,V}(left::DTable{K,V}, right::DTable,
         end
     end
 
-    newdata = tuplesetindex(lcs.data.columns, out_chunks, :chunk)
-    cs = chunks(left)
-    cs1 = Table(cs.index, Columns(newdata))
-    cache_thunks(DTable{K,V}(cs1))
+    cache_thunks(DTable{K,V}(left.subdomains, out_chunks))
 end
 
 function asofpred(lbrect, rbrect)
-    all(map(hasoverlap, lbrect, rbrect)) ||
-    (all(map(hasoverlap, lbrect[1:end-1], rbrect[1:end-1])) &&
-     !isless(lbrect[end], rbrect[end]))
+    allbutlast(x::Interval) = Interval(first(x)[1:end-1],
+                                       last(x)[1:end-1])
+    all(boxhasoverlap(lbrect, rbrect)) ||
+    (all(boxhasoverlap(allbutlast(lbrect),
+                       allbutlast(rbrect))) &&
+     !isless(last(lbrect), first(rbrect)))
 end
 
 """
@@ -149,13 +141,9 @@ Merges `left` and `right` combining rows with matching indices using `agg`.
 By default `agg` picks the value from `right`.
 """
 function merge{I1,I2,D1,D2}(left::DTable{I1,D1}, right::DTable{I2,D2}; agg=IndexedTables.right)
-    lcs = chunks(left)
-    rcs = chunks(right)
-    lidx_spaces = index_spaces(lcs) # an iterable of subdomains in the chunks table
-    ridx_spaces = index_spaces(rcs)
     out_subdomains = Any[]
     out_chunks = Any[]
-    usedup_right = Array{Bool}(length(ridx_spaces))
+    usedup_right = Array{Bool}(length(right.subdomains))
 
     I = promote_type(I1, I2)        # output index type
     D = promote_type(D1, D2)        # output data type
@@ -163,16 +151,16 @@ function merge{I1,I2,D1,D2}(left::DTable{I1,D1}, right::DTable{I2,D2}; agg=Index
     cols(v) = (v,)
     cols(v::Columns) = v.columns
 
-    for i in 1:length(lcs)
-        lchunk = lcs.data.columns.chunk[i]
-        lbrect = lcs.data.columns.boundingrect[i]
-        subdomain = lidx_spaces[i]
+    for i in 1:length(left.chunks)
+        lchunk = left.chunks[i]
+        subdomain = left.subdomains[i]
+        lbrect = subdomain.boundingrect
         # for each chunk in `left`
         # find all the overlapping chunks from `right`
-        overlapping = map(rcs.data.columns.boundingrect) do rbrect
-            all(map(hasoverlap, lbrect, rbrect))
+        overlapping = map(boundingrect.(right.subdomains)) do rbrect
+            boxhasoverlap(lbrect, rbrect)
         end
-        overlapping_chunks = rcs.data.columns.chunk[overlapping]
+        overlapping_chunks = right.chunks[overlapping]
 
         broadcast!(&, usedup_right, usedup_right, overlapping)
 
@@ -182,15 +170,15 @@ function merge{I1,I2,D1,D2}(left::DTable{I1,D1}, right::DTable{I2,D2}; agg=Index
                                [lchunk, overlapping_chunks...], lchunk)
         push!(out_chunks, out_chunk)
 
-        merged_subdomain = reduce(merge, subdomain, ridx_spaces[overlapping])
+        merged_subdomain = reduce(merge, subdomain, right.subdomains[overlapping])
         push!(out_subdomains, merged_subdomain)
     end
     leftout_right = broadcast(!, usedup_right)
-    out_subdomains = vcat(out_subdomains, ridx_spaces[leftout_right])
+    out_subdomains = vcat(out_subdomains, right.subdomains[leftout_right])
 
-    out_chunks = vcat(out_chunks, rcs.data.columns.chunk[leftout_right])
+    out_chunks = vcat(out_chunks, right.chunks[leftout_right])
 
-    t = DTable{I, D}(chunks_index(out_subdomains, out_chunks))
+    t = DTable{I, D}(out_subdomains, out_chunks)
 
     if agg !== nothing && has_overlaps(out_subdomains, true)
         overlap_merge = (x, y) -> merge(x, y, agg=agg)
