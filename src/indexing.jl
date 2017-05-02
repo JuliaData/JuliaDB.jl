@@ -1,4 +1,3 @@
-import IndexedTables: astuple
 
 """
     t[idx...]
