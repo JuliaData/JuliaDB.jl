@@ -142,7 +142,13 @@ type CSVChunk
     offset::Nullable{Int}  # index of first item when using implicit indices
 end
 
-Dagger.affinity(c::CSVChunk) = map(OSProc, c.cached_on)
+function Dagger.affinity(c::CSVChunk)
+    # use filesize as a measure of data size
+    sz = filesize(c.filename)
+    map(c.cached_on) do p
+        OSProc(p) => sz
+    end
+end
 
 # make sure cache matches a certain subset of options
 csvkey(csv::CSVChunk) = (csv.filename, filter((k,v)->(k in (:colnames,:indexcols,:datacols)), csv.opts))
