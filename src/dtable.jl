@@ -142,8 +142,9 @@ function Dagger.domain(nd::Table)
 
     interval = Interval(first(nd.index), last(nd.index))
     cs = astuple(nd.index.columns)
-    extr = map(extrema, cs)
-    boundingrect = Interval(map(first, extr), map(last, extr))
+    extr = map(extrema, cs[2:end]) # we use first and last value of first column
+    boundingrect = Interval((first(cs[1]), map(first, extr)...),
+                            (last(cs[1]), map(last, extr)...))
     return IndexSpace(interval, boundingrect, Nullable{Int}(length(nd)))
 end
 
@@ -153,8 +154,9 @@ function subindexspace(nd::IndexedTable, r)
     end
     interval = Interval(nd.index[first(r)], nd.index[last(r)])
     cs = astuple(nd.index.columns)
-    extr = map(c -> extrema_range(c, r), cs)
-    boundingrect = Interval(map(first, extr), map(last, extr))
+    extr = map(c -> extrema_range(c, r), cs[2:end])
+    boundingrect = Interval((cs[1][first(r)], map(first, extr)...),
+                            (cs[1][last(r)], map(last, extr)...))
     return IndexSpace(interval, boundingrect, Nullable{Int}(length(r)))
 end
 
