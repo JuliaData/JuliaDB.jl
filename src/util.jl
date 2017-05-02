@@ -1,3 +1,4 @@
+import IndexedTables: astuple
 
 using NamedTuples
 
@@ -382,4 +383,21 @@ else
     function _repeated(x, n)
         Iterators.repeated(x,n)
     end
+end
+
+
+import Dagger: approx_size
+
+function approx_size(cs::Columns)
+    sum(map(approx_size, astuple(cs.columns)))
+end
+
+function approx_size(t::IndexedTable)
+    approx_size(t.data) + approx_size(t.index)
+end
+
+using PooledArrays
+
+function approx_size(pa::PooledArray)
+    approx_size(pa.refs) + approx_size(pa.pool)
 end
