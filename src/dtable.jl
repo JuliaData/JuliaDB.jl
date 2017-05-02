@@ -297,8 +297,18 @@ function fromchunks(chunks::AbstractArray,
 
     if !allowoverlap && has_overlaps(subdomains)
         return rechunk(dt)
+    else
+        return dt
     end
-    return dt
+end
+
+function cache_thunks(dt::DTable)
+    foreach(chunks(dt).data.columns.chunk) do c
+        if isa(c, Dagger.Thunk)
+            Dagger.cache_result!(c)
+        end
+    end
+    dt
 end
 
 function getkvtypes{N<:Table}(::Type{N})

@@ -11,7 +11,7 @@ Filter based on index columns. Conditions are accepted as column-function pairs.
 Example: `select(t, 1 => x->x>10, 3 => x->x!=10 ...)`
 """
 function Base.select(t::DTable, conditions::Pair...)
-    mapchunks(x -> select(x, conditions...), t, keeplengths=false)
+    cache_thunks(mapchunks(x -> select(x, conditions...), t, keeplengths=false))
 end
 
 """
@@ -40,7 +40,7 @@ function Base.select{K,V}(t::DTable{K,V}, which::DimName...; agg=nothing)
         rechunk(t2, merge=(ts...) -> _merge(overlap_merge, ts...), closed=true)
     else
         t2
-    end
+    end |> cache_thunks
 end
 
 """
@@ -54,7 +54,7 @@ function aggregate(f, t::DTable)
         overlap_merge = (x, y) -> merge(x, y, agg=f)
         t = rechunk(t, merge=(ts...) -> _merge(overlap_merge, ts...), closed=true)
     end
-    mapchunks(c->aggregate(f, c), t, keeplengths=false)
+    mapchunks(c->aggregate(f, c), t, keeplengths=false) |> cache_thunks
 end
 
 """
@@ -67,7 +67,7 @@ function aggregate_vec(f, t::DTable)
     if has_overlaps(index_spaces(chunks(t)), true)
         t = rechunk(t, closed=true) # Do not have chunks that are continuations
     end
-    mapchunks(c->aggregate_vec(f, c), t, keeplengths=false)
+    mapchunks(c->aggregate_vec(f, c), t, keeplengths=false) |> cache_thunks
 end
 
 # Filter on data field
@@ -78,7 +78,7 @@ Filters `t` removing rows for which `f` is false. `f` is passed only the data
 and not the index.
 """
 function Base.filter(f, t::DTable)
-    mapchunks(x -> filter(f, x), t, keeplengths=false)
+    mapchunks(x -> filter(f, x), t, keeplengths=false) |> cache_thunks
 end
 
 """
@@ -135,7 +135,7 @@ function convertdim{K,V}(t::DTable{K,V}, d::DimName, xlat;
         aggregate_vec(vecagg, t2)
     else
         t2
-    end
+    end |> cache_thunks
 end
 
 """
@@ -151,7 +151,7 @@ function reducedim(f, x::DTable, dims)
     if isempty(keep)
         throw(ArgumentError("to remove all dimensions, use `reduce(f, A)`"))
     end
-    select(x, keep..., agg=f)
+    select(x, keep..., agg=f) |> cache_thunks
 end
 
 reducedim(f, x::DTable, dims::Symbol) = reducedim(f, x, [dims])
@@ -170,7 +170,9 @@ function reducedim_vec(f, x::DTable, dims)
     end
 
     t = select(x, keep...; agg=nothing)
-    aggregate_vec(f, t)
+    aggregate_vec(f, t) |> cache_thunks
 end
 
 reducedim_vec(f, x::DTable, dims::Symbol) = reducedim_vec(f, x, [dims])
+
+

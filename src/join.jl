@@ -72,7 +72,7 @@ function naturaljoin{I1, I2, D1, D2}(left::DTable{I1,D1},
         append!(out_subdomains, overlapping_subdomains)
     end
 
-    return DTable{I, D}(chunks_index(out_subdomains, out_chunks))
+    return cache_thunks(DTable{I, D}(chunks_index(out_subdomains, out_chunks)))
 end
 
 combine_op_t(a, b) = tuple
@@ -123,7 +123,7 @@ function leftjoin{K,V}(left::DTable{K,V}, right::DTable,
     newdata = tuplesetindex(lcs.data.columns, out_chunks, :chunk)
     cs = chunks(left)
     cs1 = Table(cs.index, Columns(newdata))
-    DTable{K,V}(cs1)
+    cache_thunks(DTable{K,V}(cs1))
 end
 
 function asofpred(lbrect, rbrect)
@@ -197,5 +197,5 @@ function merge{I1,I2,D1,D2}(left::DTable{I1,D1}, right::DTable{I2,D2}; agg=Index
         t = rechunk(t, merge=(ts...) -> _merge(overlap_merge, ts...), closed=true)
     end
 
-    return t
+    return cache_thunks(t)
 end
