@@ -105,7 +105,7 @@ function ingest!(files::Union{AbstractVector,String}, outputdir::AbstractString;
 
     if !isnull(chunkrefs[1].handle.offset)
         offset = existing_dtable===nothing ? 1 :
-            reduce(max, 0, first.(last.(existing_table.subdomains))) + 1
+            reduce(max, 0, first.(last.(existing_dtable.subdomains))) + 1
 
         distribute_implicit_index_space!(chunkrefs, offset)
     end
