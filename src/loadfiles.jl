@@ -110,8 +110,8 @@ function loadfiles(files::Union{AbstractVector,String}, delim=','; usecache=true
     chunkrefs = gather(delayed(vcat)(data...))
 
     if !isnull(chunkrefs[1].handle.offset)
-        lastidx = reduce(max, 1, first.(last.(domain.(validcache))))
-        distribute_implicit_index_space!(chunkrefs, lastidx[1])
+        lastidx = reduce(max, 0, first.(last.(domain.(validcache)))) + 1
+        distribute_implicit_index_space!(chunkrefs, lastidx)
     end
 
     # store this back in cache
