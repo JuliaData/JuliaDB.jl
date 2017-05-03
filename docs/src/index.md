@@ -13,9 +13,9 @@ The JuliaDB package provides functionality for ingesting data from a variety of 
 
 ## Installation
 
-Julia Computing will provide you with a zip file containing the JuliaDB package.  Depending on your operating system, you will also be provided with specific instructions on where to unzip that file within your JuliaPro installation.
-
-Prior to initial execution of JuliaDB with JuliaPro v0.5.1.1 or earlier, you will need to update your local copy of METADATA via `Pkg.update()`, and also add the Dagger.jl, Glob.jl, IndexedTables.jl, and TextParse.jl packages via `Pkg.add("Dagger")`, `Pkg.add("Glob")`, `Pkg.add("IndexedTables")`, and `Pkg.add("TextParse")`.
+```julia
+Pkg.clone("https://github.com/JuliaComputing/JuliaDB.jl.git")
+```
 
 ## Introduction
 
