@@ -7,7 +7,7 @@ using Base.Test
                      Columns(c=[1,2,3,4,5], d=[5,4,3,2,1]))
     for i=[2, 3, 5]
         d = compute(distribute(t, i))
-        dist = map(get, chunks(d).data.columns.length)
+        dist = map(get, map(JuliaDB.nrows, d.subdomains))
         @test map(length, Dagger.domainchunks(getindexcol(d, 1).result)) == dist
         @test gather(getindexcol(d, 2)) == t.index.columns[2]
         @test gather( getdatacol(d, 2)) == t.data.columns[2]
@@ -27,17 +27,17 @@ import JuliaDB: chunks, index_spaces, has_overlaps
 @testset "has_overlaps" begin
     t = IndexedTable(Columns([1,1,2,2,2,3], [1,2,1,1,2,1]), [1,2,3,4,5,6])
     d = distribute(t, [2,3,1])
-    i = index_spaces(chunks(d))
+    i = d.subdomains
     @test !has_overlaps(i)
     @test !has_overlaps(i, true)
 
     d = distribute(t, [2,2,2])
-    i = index_spaces(chunks(d))
+    i = d.subdomains
     @test !has_overlaps(i)
     @test !has_overlaps(i, true)
 
     d = distribute(t, [2,1,3])
-    i = index_spaces(chunks(d))
+    i = d.subdomains
     @test !has_overlaps(i)
     @test has_overlaps(i, true)
 end

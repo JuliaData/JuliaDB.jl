@@ -17,8 +17,6 @@ function format_bytes(nb)
     end
 end
 
-lastindex(d) = last(d.data.columns.metadata[end].domain)
-
 # update chunk offsets and domains to form a distributed index space o:(o+n-1)
 function distribute_implicit_index_space!(chunkrefs, o=1)
     for c in chunkrefs
@@ -100,7 +98,7 @@ function loadfiles(files::Union{AbstractVector,String}, delim=','; usecache=true
 
     if isempty(unknown)
         # we read all required metadata from cache
-        return fromchunks(validcache)
+        return cache_thunks(fromchunks(validcache))
     end
 
     sz = sum(map(filesize, unknown))
@@ -112,8 +110,8 @@ function loadfiles(files::Union{AbstractVector,String}, delim=','; usecache=true
     chunkrefs = gather(delayed(vcat)(data...))
 
     if !isnull(chunkrefs[1].handle.offset)
-        distribute_implicit_index_space!(chunkrefs,
-                                         metadata===nothing ? 1 : lastindex(metadata)[1] + 1)
+        lastidx = reduce(max, 1, first.(last.(domain.(validcache))))
+        distribute_implicit_index_space!(chunkrefs, lastidx[1])
     end
 
     # store this back in cache
@@ -127,7 +125,7 @@ function loadfiles(files::Union{AbstractVector,String}, delim=','; usecache=true
         serialize(io, cache)
     end
 
-    fromchunks(vcat(validcache, chunkrefs))
+    cache_thunks(fromchunks(vcat(validcache, chunkrefs)))
 end
 
 ## TODO: Can make this an LRU cache
@@ -153,18 +151,23 @@ end
 # make sure cache matches a certain subset of options
 csvkey(csv::CSVChunk) = (csv.filename, filter((k,v)->(k in (:colnames,:indexcols,:datacols)), csv.opts))
 
+
 function gather(ctx, csv::CSVChunk)
+    _gather(ctx, csv)[1]
+end
+
+function _gather(ctx, csv::CSVChunk)
     key = csvkey(csv)
     if csv.cache && haskey(_read_cache, key)
         #println("Having to fetch data from $csv.cached_on")
-        data = _read_cache[key]
+        data, ii = _read_cache[key]
     elseif csv.cached_on != [myid()] && !isempty(csv.cached_on)
         # TODO: remove myid() if it's in cached_on
         pid = first(csv.cached_on)
         if pid == myid()
             pid = last(csv.cached_on)
         end
-        data = remotecall_fetch(c -> gather(ctx, c), pid, csv)
+        data, ii = remotecall_fetch(c -> _gather(ctx, c), pid, csv)
     else
         #println("CACHE MISS $csv")
         data, ii = loadTable(csv.filename, csv.delim; csv.opts...)
@@ -176,21 +179,24 @@ function gather(ctx, csv::CSVChunk)
         if !(myid() in csv.cached_on)
             push!(csv.cached_on, myid())
         end
-        _read_cache[key] = data
+        _read_cache[key] = data, ii
     end
 
-    if !isnull(csv.offset) && data.index[1][1] != get(csv.offset)
-        o = get(csv.offset)
+    if ii && data.index[1][1] != get(csv.offset, 1)
+        o = get(csv.offset,1)
         data.index.columns[1][:] = o:(o+length(data)-1)
     end
 
-    return data
+    return data, ii
 end
 
 function makecsvchunk(file, delim; cache=true, opts...)
     handle = CSVChunk(file, cache, delim, Int[], Dict(opts), nothing)
     # We need to actually load the data to get things like
     # the type and Domain. It will get cached if cache is true
-    nds = gather(Context(), handle)
+    nds, ii = _gather(Context(), handle)
+    if ii
+        handle.offset = 1
+    end
     Dagger.Chunk(typeof(nds), domain(nds), handle, false)
 end
