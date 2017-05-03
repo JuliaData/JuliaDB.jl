@@ -65,9 +65,18 @@ const fxdata, _ = loadTable(allcsv;
                             indexcols=1:2,
                             type_detect_rows=4,
                             header_exists=false)
+const fxdata_unordered, ii = loadTable(allcsv;
+                                      csvread=TextParse._csvread,
+                                      indexcols=[],
+                                      type_detect_rows=4,
+                                      header_exists=false)
 
 ingest_output = tempname()
 fxdata_ingest = ingest(files, ingest_output, header_exists=false, type_detect_rows=4, indexcols=1:2)
+ingest_output_unordered = tempname()
+fxdata_ingest_unordered = ingest(files, ingest_output_unordered,
+                                 header_exists=false,
+                                 type_detect_rows=4, indexcols=[])
 
 import Dagger: Chunk, MemToken
 import JuliaDB: OnDisk
@@ -80,6 +89,7 @@ import JuliaDB: OnDisk
     @test gather(fxdata_dist) == fxdata
     @test gather(fxdata_ingest) == fxdata
     @test gather(load(ingest_output)) == fxdata
+    @test gather(load(ingest_output_unordered)) == fxdata_unordered
     c = first(load(ingest_output).chunks)
     @test typeof(c.handle) == OnDisk
     d = load(ingest_output,tomemory=true)
@@ -87,10 +97,7 @@ import JuliaDB: OnDisk
     c2 = first(d.chunks)
     @test typeof(c2.handle) == MemToken
     #@test gather(dt[["blah"], :,:]) == fxdata
-    function common_test1(dt)
-    end
     dt = loadfiles(files, colnames=["symbol", "time", "open", "close"], indexcols=[("symbol", "dummy"), ("dummy", "time")], usecache=false)
-    common_test1(dt)
     nds=gather(dt)
     @test haskey(nds.index.columns, :symbol)
     @test haskey(nds.index.columns, :dummy)
@@ -100,9 +107,14 @@ import JuliaDB: OnDisk
     @test haskey(nds.data.columns, :close)
     @test length(nds.data.columns) == 2
     dt = loadfiles(files, colnames=["symbol", "time", "open", "close"], usecache=false)
-    dt = loadfiles(files, colnames=["symbol", "time", "open", "close"], usecache=false)
     nds = gather(dt)
     @test length(nds.data.columns) == 1
     @test !isempty(nds.data.columns.close)
     @test length(nds.index.columns) == 3
+
+    dt = loadfiles(files, header_exists=false, indexcols=[], usecache=false)
+    @test gather(dt) == fxdata_unordered
+    # reuses csv read cache:
+    dt = loadfiles(files, header_exists=false, indexcols=[], usecache=false)
+    @test gather(dt) == fxdata_unordered
 end

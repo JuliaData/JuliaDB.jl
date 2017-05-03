@@ -104,13 +104,15 @@ function ingest!(files::Union{AbstractVector,String}, outputdir::AbstractString;
     chunkrefs = gather(delayed(vcat)(saved...))
 
     if !isnull(chunkrefs[1].handle.offset)
-        distribute_implicit_index_space!(chunkrefs,
-                                         existing_dtable===nothing ? 1 : lastindex(existing_dtable)[1] + 1)
+        offset = existing_dtable===nothing ? 1 :
+            reduce(max, 1, first.(last.(existing_table.subdomains))) + 1
+
+        distribute_implicit_index_space!(chunkrefs, offset)
     end
 
     chunks = vcat(prev_chunks, chunkrefs)
     allchunks = vcat(prev_chunks, chunkrefs)
-    dtable = fromchunks(allchunks)
+    dtable = cache_thunks(fromchunks(allchunks))
 
     if any(c->!isa(c, Dagger.Chunk) || !isa(c.handle, OnDisk),
            dtable.chunks)
