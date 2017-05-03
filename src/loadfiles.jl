@@ -110,27 +110,31 @@ function loadfiles(files::Union{AbstractVector,String}, delim=','; usecache=true
     chunkrefs = gather(delayed(vcat)(data...))
 
     if !isnull(chunkrefs[1].handle.offset)
-<<<<<<< HEAD
-        lastidx = reduce(max, 1, first.(last.(domain.(validcache))))
-        distribute_implicit_index_space!(chunkrefs, lastidx[1])
-=======
         lastidx = reduce(max, 0, first.(last.(domain.(validcache)))) + 1
         distribute_implicit_index_space!(chunkrefs, lastidx)
->>>>>>> a56c4be... fix a couple of implicit index bugs when read cache is reused
     end
 
     # store this back in cache
     cache = Table(unknown,
-                  Columns(mtime.(unknown), Dagger.Chunk[chunkrefs...], names=[:mtime, :metadata]))
+                  Columns(mtime.(unknown),
+                          convert(Array{Dagger.Chunk}, chunkrefs),
+                          names=[:mtime, :metadata]))
 
     if metadata != nothing
         cache = merge(metadata, cache)
     end
+
+    chunks = [cache[f].metadata for f in files] # keep order of the input files
+
+    if !isnull(chunkrefs[1].handle.offset)
+        distribute_implicit_index_space!(chunks, 1)
+    end
+
     open(metafile, "w") do io
         serialize(io, cache)
     end
 
-    cache_thunks(fromchunks(vcat(validcache, chunkrefs)))
+    cache_thunks(fromchunks(chunks))
 end
 
 ## TODO: Can make this an LRU cache
@@ -163,9 +167,9 @@ end
 function _gather(ctx, csv::CSVChunk)
     key = csvkey(csv)
     if csv.cache && haskey(_read_cache, key)
-        #println("Having to fetch data from $csv.cached_on")
         data, ii = _read_cache[key]
     elseif csv.cached_on != [myid()] && !isempty(csv.cached_on)
+        #println("Having to fetch data from $(csv.cached_on)")
         # TODO: remove myid() if it's in cached_on
         pid = first(csv.cached_on)
         if pid == myid()
@@ -174,6 +178,7 @@ function _gather(ctx, csv::CSVChunk)
         data, ii = remotecall_fetch(c -> _gather(ctx, c), pid, csv)
     else
         #println("CACHE MISS $csv")
+        #@show myid()
         data, ii = loadTable(csv.filename, csv.delim; csv.opts...)
 
         if ii && isnull(csv.offset)

@@ -74,7 +74,12 @@ const fxdata_unordered, ii = loadTable(allcsv;
 ingest_output = tempname()
 fxdata_ingest = ingest(files, ingest_output, header_exists=false, type_detect_rows=4, indexcols=1:2)
 ingest_output_unordered = tempname()
-fxdata_ingest_unordered = ingest(files, ingest_output_unordered,
+# note: this will result in a different table if files[3:end] is ingested first
+fxdata_ingest_unordered = ingest(files[1:3], ingest_output_unordered,
+                                 header_exists=false,
+                                 type_detect_rows=4, indexcols=[])
+# this should also test appending new files
+fxdata_ingest_unordered = ingest!(files, ingest_output_unordered,
                                  header_exists=false,
                                  type_detect_rows=4, indexcols=[])
 
@@ -90,6 +95,7 @@ import JuliaDB: OnDisk
     @test gather(fxdata_ingest) == fxdata
     @test gather(load(ingest_output)) == fxdata
     @test gather(load(ingest_output_unordered)) == fxdata_unordered
+    @test issorted(gather(getindexcol(load(ingest_output_unordered), 1)))
     c = first(load(ingest_output).chunks)
     @test typeof(c.handle) == OnDisk
     d = load(ingest_output,tomemory=true)
@@ -119,6 +125,7 @@ import JuliaDB: OnDisk
 
     dt = loadfiles(files, header_exists=false, indexcols=[], usecache=false)
     @test gather(dt) == fxdata_unordered
+    @test issorted(gather(getindexcol(dt, 1)))
     # reuses csv read cache:
     dt = loadfiles(files, header_exists=false, indexcols=[], usecache=false)
     @test gather(dt) == fxdata_unordered
