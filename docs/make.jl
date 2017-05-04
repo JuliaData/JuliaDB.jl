@@ -5,12 +5,10 @@ load_dir(x) = map(file -> joinpath("lib", x, file), readdir(joinpath(Base.source
 makedocs(
    modules = [JuliaDB],
    clean = false,
-   format = [:html, :latex],
+   format = [:html],#, :latex],
    sitename = "JuliaDB",
-   pages = ["index.md"],
    pages = Any[
        "Introduction" => "index.md",
-       "Tutorial" => "tutorial.md",
        "API Reference" => "apireference.md"
    ],
    assets = ["assets/jc.css"]
