@@ -81,6 +81,11 @@ function loadfiles(files::Union{AbstractVector,String}, delim=','; usecache=true
             warn("Cached metadata file is corrupt. Not using cache.")
             @goto readunknown
         end
+        for c in metadata.data.columns.metadata
+            if isa(c.handle, CSVChunk)
+                c.handle.cached_on = Int[]
+            end
+        end
         knownmeta = metadata[sort!(files)]
         known = knownmeta.index.columns[1]
 
