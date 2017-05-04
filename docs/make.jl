@@ -11,5 +11,5 @@ makedocs(
        "Introduction" => "index.md",
        "API Reference" => "apireference.md"
    ],
-   assets = ["assets/jc.css"]
+   assets = ["assets/custom.css"]
 )
