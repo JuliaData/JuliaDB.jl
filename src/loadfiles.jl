@@ -81,11 +81,6 @@ function loadfiles(files::Union{AbstractVector,String}, delim=','; usecache=true
             warn("Cached metadata file is corrupt. Not using cache.")
             @goto readunknown
         end
-        for c in metadata.data.columns.metadata
-            if isa(c.handle, CSVChunk)
-                c.handle.cached_on = Int[]
-            end
-        end
         knownmeta = metadata[sort!(files)]
         known = knownmeta.index.columns[1]
 
@@ -140,26 +135,27 @@ end
 
 ## TODO: Can make this an LRU cache
 const _read_cache = Dict{Tuple{String, Dict},Any}()
+const _cached_on = Dict{Tuple{String, Dict},Any}() # workers register here once they have read a file
 
 type CSVChunk
     filename::String
     cache::Bool
     delim::Char
-    cached_on::Vector{Int}
     opts::Dict
     offset::Nullable{Int}  # index of first item when using implicit indices
 end
 
+# make sure cache matches a certain subset of options
+csvkey(csv::CSVChunk) = (csv.filename, filter((k,v)->(k in (:colnames,:indexcols,:datacols)), csv.opts))
+
 function Dagger.affinity(c::CSVChunk)
     # use filesize as a measure of data size
+    key = csvkey(c)
     sz = filesize(c.filename)
-    map(c.cached_on) do p
+    map(get(_cached_on, key, [])) do p
         OSProc(p) => sz
     end
 end
-
-# make sure cache matches a certain subset of options
-csvkey(csv::CSVChunk) = (csv.filename, filter((k,v)->(k in (:colnames,:indexcols,:datacols)), csv.opts))
 
 
 function gather(ctx, csv::CSVChunk)
@@ -168,16 +164,18 @@ end
 
 function _gather(ctx, csv::CSVChunk)
     key = csvkey(csv)
+    cached_on = remotecall_fetch(()->get(_cached_on, key, Int[]), 1)
     if csv.cache && haskey(_read_cache, key)
         data, ii = _read_cache[key]
-    elseif csv.cached_on != [myid()] && !isempty(csv.cached_on)
+    elseif !isempty(cached_on) && (myid() in cached_on)
         #println("Having to fetch data from $(csv.cached_on)")
-        # TODO: remove myid() if it's in cached_on
-        pid = first(csv.cached_on)
-        if pid == myid()
-            pid = last(csv.cached_on)
-        end
+        pid = first(cached_on)
         data, ii = remotecall_fetch(c -> _gather(ctx, c), pid, csv)
+        _read_cache[key] = data, ii
+        mypid = myid() # tell master you've got it too
+        remotecall(1) do
+            push!(Base.@get!(JuliaDB._cached_on, key, []), mypid)
+        end
     else
         #println("CACHE MISS $csv")
         #@show myid()
@@ -187,10 +185,11 @@ function _gather(ctx, csv::CSVChunk)
             csv.offset = 1
         end
 
-        if !(myid() in csv.cached_on)
-            push!(csv.cached_on, myid())
-        end
         _read_cache[key] = data, ii
+        mypid = myid()
+        remotecall(1) do # tell master you have it
+            push!(Base.@get!(JuliaDB._cached_on, key, []), mypid)
+        end
     end
 
     if ii && data.index[1][1] != get(csv.offset, 1)
@@ -202,7 +201,7 @@ function _gather(ctx, csv::CSVChunk)
 end
 
 function makecsvchunk(file, delim; cache=true, opts...)
-    handle = CSVChunk(file, cache, delim, Int[], Dict(opts), nothing)
+    handle = CSVChunk(file, cache, delim, Dict(opts), nothing)
     # We need to actually load the data to get things like
     # the type and Domain. It will get cached if cache is true
     nds, ii = _gather(Context(), handle)
