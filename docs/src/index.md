@@ -80,13 +80,8 @@ This can be done by passing dimension (column) numbers (or names, as symbols) to
 select(fxdata, 2)
 ```
 
-In this case, the result has multiple values for some indices, and so does not fully behave like a normal array anymore.
-Operations that might leave the array in such a state accept the keyword argument `agg`, a function to use to combine all values associated with the same indices:
-
-
-```@repl fxdata
-select(fxdata, 2, agg=(x,y) -> x)
-```
+In this case, the result might have multiple values for some indices, and so does not fully behave like a normal array anymore.
+Operations that might leave the array in such a state accept the keyword argument `agg`, a function to use to combine all values associated with the same indices.
 
 `select` also supports filtering columns with arbitrary predicates, by passing `column=>predicate` pairs:
 
@@ -100,7 +95,7 @@ select(fxdata, 2=>Dates.isfriday)
 A location in the coordinate space of an array often has multiple possible descriptions.
 This is especially common when describing data at different levels of detail.
 For example, a point in time can be expressed at the level of seconds, minutes, or hours.
-In our toy temperature dataset, we might want to look at monthly instead of daily highs.
+In our test dataset, we might want to look at monthly values.
 
 This can be accomplished using the `convertdim` function.
 It accepts a DTable, a dimension number to convert, a function or dictionary to apply to indices in that dimension, and an aggregation function (the aggregation function is needed in case the mapping is many-to-one).
