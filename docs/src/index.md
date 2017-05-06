@@ -38,7 +38,9 @@ fxdata = loadfiles(files, header_exists=false,
 
 Here we specified that the files don't have a header line (`header_exists`), specified the column names (`colnames`) manually, and also specified that `loadfiles` should use columns 1 and 2 as the index for the data (`indexcols`). The index columns will be used to sort the data for efficient queries. See [the API reference for `loadfiles`](apireference.html#JuliaDB.loadfiles) for all available options.
 
-Notice that the output says `150 rows in 10 chunks`. `loadfiles` creates a distributed table (`DTable`) with as many chunks as the input files. The loaded chunks are distributed across available worker processes. `loadfiles` will also save metadata about the contents of the files in a directory named `.juliadb_cache` under the current working directory. This means, the next time the files are loaded, it will not need to actually parse them to know what's in them. However the files will be parsed once an operation requires the data in it.
+Notice that the output says `150 rows in 10 chunks`. `loadfiles` creates a distributed table (`DTable`) with as many chunks as the input files. The loaded chunks are distributed across available worker processes. `loadfiles` will also save metadata about the contents of the files in a directory named `.juliadb` under the current working directory. This means, the next time the files are loaded, it will not need to actually parse them to know what's in them. However the files will be parsed once an operation requires the data in it.
+
+It is also possible to pass a directory path to `loadfiles`, in which case it will load all files in the directory, and place `.juliadb` in that directory as well.
 
 Another way to load data into JuliaDB is using [`ingest`](@ref ingest). `ingest` reads and saves the data in an efficient memory-mappable storage format for faster re-reading. You can also add new files to an existing dataset using [`ingest!`](@ref ingest!).
 

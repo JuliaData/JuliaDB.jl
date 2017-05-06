@@ -86,7 +86,7 @@ fxdata_ingest_unordered = ingest!(files, ingest_output_unordered,
 import Dagger: Chunk, MemToken
 import JuliaDB: OnDisk
 @testset "Load" begin
-    cache = joinpath(JuliaDB.JULIADB_CACHEDIR, JuliaDB.JULIADB_FILECACHE)
+    cache = joinpath(JuliaDB.JULIADB_DIR, JuliaDB.JULIADB_FILECACHE)
     if isfile(cache)
         rm(cache)
     end
