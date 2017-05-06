@@ -1,6 +1,6 @@
 export loadfiles
 
-const JULIADB_CACHEDIR = ".juliadb_cache"
+const JULIADB_DIR = ".juliadb"
 const JULIADB_FILECACHE = "filemeta.dat"
 
 function files_from_dir(dir)
@@ -48,7 +48,7 @@ function loadfiles(files::Union{AbstractVector,String}, delim=','; usecache=true
         if !isdir(files)
             throw(ArgumentError("Specified path does not refer to an existing directory."))
         end
-        cachedir = joinpath(files, JULIADB_CACHEDIR)
+        cachedir = joinpath(files, JULIADB_DIR)
         files = files_from_dir(files)
     else
         for file in files
@@ -56,7 +56,7 @@ function loadfiles(files::Union{AbstractVector,String}, delim=','; usecache=true
                 throw(ArgumentError("No file named $file."))
             end
         end
-        cachedir = JULIADB_CACHEDIR
+        cachedir = JULIADB_DIR
     end
 
     if isempty(files)
