@@ -1,6 +1,6 @@
 # JuliaDB
 
-[![JuliaDB](https://juliarun-ci.s3.amazonaws.com/push/JuliaComputing/JuliaDB/julia_0_5.svg)](https://juliarun-ci.s3.amazonaws.com/push/JuliaComputing/JuliaDB/julia_0_5.log) [![JuliaDB](https://juliarun-ci.s3.amazonaws.com/push/JuliaComputing/JuliaDB/julia_0_6.svg)](https://juliarun-ci.s3.amazonaws.com/push/JuliaComputing/JuliaDB/julia_0_6.log)
+[![Build Status](https://travis-ci.org/JuliaComputing/JuliaDB.jl.svg?branch=master)](https://travis-ci.org/JuliaComputing/JuliaDB.jl)
 
 JuliaDB is a package for working with large persistent data sets.
 Given a set of CSV files, it builds and saves an index that allows the data to be accessed
