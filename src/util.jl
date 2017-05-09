@@ -42,23 +42,6 @@ function treereduce(f, xs, v0=xs[1])
 end
 
 
-@generated function Base.map(f, nts::NamedTuple...)
-    fields = fieldnames(nts[1])
-    for x in nts[2:end]
-        if !isequal(fieldnames(x), fields)
-            throw(ArgumentError("All NamedTuple inputs to map must have the same fields"))
-        end
-    end
-    N = nfields(nts[1])
-    M = length(nts)
-
-    NT = NamedTuples.create_tuple(fields) # This must already exist if this function may be called
-    quote
-        tup = Base.@ntuple $N j -> f((Base.@ntuple $M i -> nts[i][j])...)
-        NamedTuples.$NT(tup...)
-    end
-end
-
 function subtable(nds, r)
     Table(nds.index[r], nds.data[r], presorted=true, copy=false)
 end
