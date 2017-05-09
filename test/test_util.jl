@@ -8,11 +8,6 @@ import JuliaDB: tuplesetindex
         @test @NT(x=1, y=2) <  @NT(x=1, y=2, z=3)
     end
 
-    @testset "NamedTuples map" begin
-        @test map(round,
-                  @NT(x=1//3, y=Int),
-                  @NT(x=3, y=2//3)) == @NT(x=0.333, y=1)
-    end
     @testset "tuplesetindex" begin
         @test tuplesetindex((1,2,3), 4, 2) == (1,4,3)
         @test tuplesetindex(@NT(x=1,y=2,z=3), 4, 2) == @NT(x=1,y=4,z=3)
