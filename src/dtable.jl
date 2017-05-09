@@ -40,7 +40,7 @@ IndexedTables.dimlabels(dt::DTable) = dimlabels(chunktype(first(dt.chunks))) # X
 Base.ndims{K}(dt::DTable{K}) = nfields(K)
 
 """
-    compute(t::DTable, allowoverlap=true)
+    compute(t::DTable; allowoverlap, closed)
 
 Computes any delayed-evaluations in the `DTable`.
 The computed data is left on the worker processes.
@@ -48,6 +48,9 @@ Subsequent operations on the results will reuse the chunks.
 
 If `allowoverlap` is false then the computed data is resorted to have no
 chunks with overlapping index ranges if necessary.
+
+If `closed` is true is false then the computed data is resorted to have no
+chunks with overlapping OR continuous boundaries.
 
 If you expect the result of some operation to be used more than once,
 it's better to compute it once and then use it many times.
@@ -59,16 +62,16 @@ See also [`gather`](@ref).
     result of the computing `t`. If the result is expected to be big,
     try `compute(save(t, "output_dir"))` instead. See [`save`](@ref) for more.
 """
-compute(t::DTable, allowoverlap=true) = compute(Dagger.Context(), t, allowoverlap)
+compute(t::DTable; kwargs...) = compute(Dagger.Context(), t; kwargs...)
 
-function compute(ctx, t::DTable, allowoverlap=true)
+function compute(ctx, t::DTable; allowoverlap=false, closed=false)
     if any(Dagger.istask, t.chunks)
         # we need to splat `thunks` so that Dagger knows the inputs
         # are thunks and they need to be staged for scheduling
         vec_thunk = delayed((refs...) -> [refs...]; meta=true)(t.chunks...)
         cs = compute(ctx, vec_thunk) # returns a vector of Chunk objects
-        Base.foreach(Dagger.persist!, cs)
-        fromchunks(cs, allowoverlap=allowoverlap)
+        t = fromchunks(cs, allowoverlap=allowoverlap, closed=closed)
+        cache_thunks(t)
     else
         t
     end
@@ -260,6 +263,7 @@ The chunks must be non-Thunks. Omits empty chunks in the output.
 function fromchunks(chunks::AbstractArray,
                     subdomains::AbstractArray = map(domain, chunks);
                     KV = getkvtypes(chunks),
+                    closed = false,
                     allowoverlap = false)
 
     nzidxs = find(x->!isempty(x), subdomains)
@@ -267,8 +271,8 @@ function fromchunks(chunks::AbstractArray,
 
     dt = DTable{KV...}(subdomains, chunks[nzidxs])
 
-    if !allowoverlap && has_overlaps(subdomains)
-        return rechunk(dt)
+    if !allowoverlap && has_overlaps(subdomains, closed)
+        return rechunk(dt, closed=closed)
     else
         return dt
     end
@@ -308,7 +312,8 @@ rows in the chunks.
 
 Returns a `DTable`.
 """
-function distribute{V,K}(nds::Table{V,K}, rowgroups::AbstractArray)
+function distribute{V,K}(nds::Table{V,K}, rowgroups::AbstractArray;
+                        allowoverlap = false, closed = false)
     splits = cumsum([0, rowgroups;])
 
     if splits[end] != length(nds)
@@ -322,7 +327,8 @@ function distribute{V,K}(nds::Table{V,K}, rowgroups::AbstractArray)
     # the master process - which would lead to all operations being serial.
     chunks = map(r->delayed(identity)(subtable(nds, r)), ranges)
     subdomains = map(r->subindexspace(nds, r), ranges)
-    fromchunks(chunks, subdomains, KV = (K, V))
+    fromchunks(chunks, subdomains, KV = (K, V),
+               allowoverlap=allowoverlap, closed=closed)
 end
 
 """
@@ -333,12 +339,13 @@ of approximately equal size.
 
 Returns a `DTable`.
 """
-function distribute(nds::Table, nchunks::Int=nworkers())
+function distribute(nds::Table, nchunks::Int=nworkers();
+                    allowoverlap = false, closed = false)
     N = length(nds)
     q, r = divrem(N, nchunks)
     nrows = vcat(collect(_repeated(q, nchunks)))
     nrows[end] += r
-    distribute(nds, nrows)
+    distribute(nds, nrows; allowoverlap=allowoverlap, closed=closed)
 end
 
 """

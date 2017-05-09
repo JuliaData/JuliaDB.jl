@@ -8,7 +8,8 @@ function rechunk{K,V}(t::DTable{K,V}, lengths = nothing;
 
     order = Forward
     ctx = Dagger.Context()
-    computed_t = compute(ctx, t, true) # This might have overlapping chunks
+    # This might have overlapping chunks
+    computed_t = compute(ctx, t, allowoverlap=true)
 
 
     if lengths === nothing
