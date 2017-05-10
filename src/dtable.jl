@@ -46,21 +46,19 @@ Computes any delayed-evaluations in the `DTable`.
 The computed data is left on the worker processes.
 Subsequent operations on the results will reuse the chunks.
 
-If `allowoverlap` is false then the computed data is resorted to have no
+If `allowoverlap` is false then the computed data is re-sorted if required to have no
 chunks with overlapping index ranges if necessary.
 
-If `closed` is true is false then the computed data is resorted to have no
+If `closed` is true then the computed data is re-sorted if required to have no
 chunks with overlapping OR continuous boundaries.
-
-If you expect the result of some operation to be used more than once,
-it's better to compute it once and then use it many times.
 
 See also [`gather`](@ref).
 
 !!! warning
     `compute(t)` requires at least as much memory as the size of the
-    result of the computing `t`. If the result is expected to be big,
-    try `compute(save(t, "output_dir"))` instead. See [`save`](@ref) for more.
+    result of the computing `t`. You usually don't need to do this for the whole dataset.
+    If the result is expected to be big, try `compute(save(t, "output_dir"))` instead.
+    See [`save`](@ref) for more.
 """
 compute(t::DTable; kwargs...) = compute(Dagger.Context(), t; kwargs...)
 
