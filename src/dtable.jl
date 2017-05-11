@@ -293,8 +293,8 @@ function getkvtypes(xs::AbstractArray)
     kvtypes = getkvtypes.(chunktype.(xs))
     K, V = kvtypes[1]
     for (Tk, Tv) in kvtypes[2:end]
-        K = promote_type(Tk, K)
-        V = promote_type(Tv, V)
+        K = map_params(promote_type, Tk, K)
+        V = map_params(promote_type, Tv, V)
     end
     K, V
 end
