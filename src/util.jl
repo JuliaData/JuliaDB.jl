@@ -384,3 +384,51 @@ using PooledArrays
 function approx_size(pa::PooledArray)
     approx_size(pa.refs) + approx_size(pa.pool)
 end
+
+# smarter merges on NullableArray + other arrays
+import IndexedTables: promoted_similar
+
+function promoted_similar(x::NullableArray, y::NullableArray, n)
+    similar(x, promote_type(eltype(x),eltype(y)), n)
+end
+
+function promoted_similar(x::NullableArray, y::AbstractArray, n)
+    similar(x, promote_type(eltype(x),eltype(y)), n)
+end
+
+function promoted_similar(x::AbstractArray, y::NullableArray, n)
+    similar(y, promote_type(eltype(x),eltype(y)), n)
+end
+
+# The following is not inferable, this is OK because the only place we use
+# this doesn't need it.
+import Base: tuple_type_head, tuple_type_tail
+
+function _map_params(f, T, S)
+    (f(tuple_type_head(T), tuple_type_head(S)), _map_params(f, tuple_type_tail(T), tuple_type_tail(S))...)
+end
+
+_map_params(f, T::Type{Tuple{}},S::Type{Tuple{}}) = ()
+
+map_params{T,S}(f, ::Type{T}, ::Type{S}) = f(T,S)
+
+#function map_params{N}(f, T::Type{T} where T<:Tuple{Vararg{Any,N}}, S::Type{S} where S<: Tuple{Vararg{Any,N}})
+Base.@pure function map_params{T<:Tuple,S<:Tuple}(f, ::Type{T}, ::Type{S})
+    if nfields(T) != nfields(S)
+        MethodError(map_params, (typeof(f), T,S))
+    end
+    Tuple{_map_params(f, T,S)...}
+end
+
+tuple_type_head{NT<: NamedTuple}(T::Type{NT}) = fieldtype(NT, 1)
+Base.@pure function tuple_type_tail{NT<: NamedTuple}(T::Type{NT})
+    Tuple{Base.argtail(NT.parameters...)...}
+end
+
+Base.@pure @generated function map_params{T<:NamedTuple,S<:NamedTuple}(f, ::Type{T}, ::Type{S})
+    if fieldnames(T) != fieldnames(S)
+        MethodError(map_params, (T,S))
+    end
+    :(NamedTuples.$(NamedTuples.create_tuple(fieldnames(T))){_map_params(f, T, S)...})
+end
+
