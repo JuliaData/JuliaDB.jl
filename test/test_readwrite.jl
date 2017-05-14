@@ -103,9 +103,9 @@ import JuliaDB: OnDisk
     c2 = first(d.chunks)
     @test typeof(c2.handle) == MemToken
     #@test gather(dt[["blah"], :,:]) == fxdata
-    dt = loadfiles(files, colnames=["symbol", "time", "open", "close"], indexcols=[("symbol", "dummy"), ("dummy", "time")], usecache=false)
+    dt = loadfiles(files, colnames=["cur pair", "time", "open", "close"], indexcols=[("cur pair", "dummy"), ("dummy", "time")], usecache=false)
     nds=gather(dt)
-    @test haskey(nds.index.columns, :symbol)
+    @test haskey(nds.index.columns, :cur_pair)
     @test haskey(nds.index.columns, :dummy)
     @test !haskey(nds.index.columns, :time)
     @test length(nds.index.columns) == 2

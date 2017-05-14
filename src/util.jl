@@ -78,7 +78,7 @@ function getbyheader(cols, header, oneof::Tuple)
         catch err
         end
     end
-    throw(ArgumentError("Couldn't find any of the columns in $cs"))
+    throw(ArgumentError("Couldn't find any of the columns in $oneof"))
 end
 
 function getbyheader_canonical(cols, header, oneof::Tuple)
@@ -101,9 +101,15 @@ end
 get a subset of vectors wrapped in Columns from a tuple of vectors
 """
 function getcolsubset(cols, header, subcols)
-    colnames = !isempty(header) ?
-        vcat(map(i -> Symbol(getbyheader_canonical(header, header, i)), subcols)) :
-        nothing
+    if !isempty(header)
+        names = map(subcols) do i
+            str = getbyheader_canonical(header, header, i)
+            Symbol(replace(str, r"\s", "_"))
+        end
+        colnames = vcat(names) # make sure it's a vector
+    else
+        colnames = nothing
+    end
 
     if length(subcols) > 1
         Columns(map(i -> getbyheader(cols, header, i), subcols)...; names=colnames)
