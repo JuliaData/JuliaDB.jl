@@ -2,6 +2,8 @@ import IndexedTables: astuple
 
 using NamedTuples
 
+export @pick
+
 function tuplesetindex{N}(x::Tuple{Vararg{Any,N}}, v, i)
     ntuple(Val{N}) do j
         i == j ? v : x[j]
