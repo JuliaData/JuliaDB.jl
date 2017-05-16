@@ -3,6 +3,9 @@ export select, convertdim, aggregate, reducedim_vec
 import IndexedTables: convertdim, aggregate, aggregate_vec, reducedim_vec
 import Base: reducedim
 
+# re-export
+export @pick
+
 """
     select(t::DTable, conditions::Pair...)
 

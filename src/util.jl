@@ -2,6 +2,9 @@ import IndexedTables: astuple
 
 using NamedTuples
 
+# re-export
+export @NT
+
 function tuplesetindex{N}(x::Tuple{Vararg{Any,N}}, v, i)
     ntuple(Val{N}) do j
         i == j ? v : x[j]
@@ -429,6 +432,7 @@ Base.@pure @generated function map_params{T<:NamedTuple,S<:NamedTuple}(f, ::Type
     if fieldnames(T) != fieldnames(S)
         MethodError(map_params, (T,S))
     end
-    :(NamedTuples.$(NamedTuples.create_tuple(fieldnames(T))){_map_params(f, T, S)...})
+    NT = Expr(:macrocall, :(NamedTuples.$(Symbol("@NT"))), fieldnames(T)...)
+    :($NT{_map_params(f, T, S)...})
 end
 
