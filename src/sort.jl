@@ -10,6 +10,11 @@ function rechunk{K,V}(t::DTable{K,V}, lengths = nothing;
     ctx = Dagger.Context()
     # This might have overlapping chunks
     computed_t = compute(ctx, t, allowoverlap=true)
+    # We need to persist all the chunks since computation
+    # of any subset of the final chunks in this function
+    # might cause required chunks to be gc'd.
+    # we need to find ways to fix exactly this though
+    foreach(Dagger.persist!, computed_t.chunks)
 
 
     if lengths === nothing
@@ -20,6 +25,7 @@ function rechunk{K,V}(t::DTable{K,V}, lengths = nothing;
     ranks = cumsum(lengths)[1:end-1]
 
     idx = dindex(computed_t).result
+    Dagger.persist!(idx)
     # select elements of required ranks in parallel:
     splitters = Dagger.pselect(ctx, idx, ranks, order)
 
