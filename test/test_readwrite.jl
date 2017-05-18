@@ -56,32 +56,36 @@ import JuliaDB: MmappableArray, copy_mmap, unwrap_mmap
     end
 end
 
-path = joinpath(dirname(@__FILE__), "..","test","fxsample", "*.csv")
-files = glob(path[2:end], "/")
-const fxdata_dist = loadfiles(files, header_exists=false, type_detect_rows=4, indexcols=1:2, usecache=false)
-allcsv = reduce(string, readstring.(files))
-const fxdata, _ = loadTable(allcsv;
+path = joinpath(dirname(@__FILE__), "..","test", "sample")
+files = glob("*.csv", path)
+const spdata_dist = loadfiles(files, type_detect_rows=4,
+                              indexcols=1:2, usecache=false)
+_readstr(f) = open(f) do fh
+    readline(fh)
+    readstring(fh)
+end
+readfiles(fs) = reduce(string, vcat(readstring(fs[1]), _readstr.(fs[2:end])))
+allcsv = reduce(string, readfiles(files))
+const spdata, _ = loadTable(allcsv;
                             csvread=TextParse._csvread,
-                            indexcols=1:2,
-                            type_detect_rows=4,
-                            header_exists=false)
-const fxdata_unordered, ii = loadTable(allcsv;
+                            header_exists=true,
+                            indexcols=1:2)
+
+shuffle_files = shuffle(files)
+shuffle_allcsv = reduce(string, readfiles(shuffle_files))
+const spdata_unordered, ii = loadTable(shuffle_allcsv;
                                       csvread=TextParse._csvread,
-                                      indexcols=[],
-                                      type_detect_rows=4,
-                                      header_exists=false)
+                                      indexcols=[])
 
 ingest_output = tempname()
-fxdata_ingest = ingest(files, ingest_output, header_exists=false, type_detect_rows=4, indexcols=1:2)
+spdata_ingest = ingest(files, ingest_output, indexcols=1:2)
 ingest_output_unordered = tempname()
 # note: this will result in a different table if files[3:end] is ingested first
-fxdata_ingest_unordered = ingest(files[1:3], ingest_output_unordered,
-                                 header_exists=false,
-                                 type_detect_rows=4, indexcols=[])
+spdata_ingest_unordered = ingest(shuffle_files[1:3], ingest_output_unordered,
+                                 indexcols=[])
 # this should also test appending new files
-fxdata_ingest_unordered = ingest!(files, ingest_output_unordered,
-                                 header_exists=false,
-                                 type_detect_rows=4, indexcols=[])
+spdata_ingest_unordered = ingest!(shuffle_files, ingest_output_unordered,
+                                 indexcols=[])
 
 import Dagger: Chunk, MemToken
 import JuliaDB: OnDisk
@@ -90,43 +94,32 @@ import JuliaDB: OnDisk
     if isfile(cache)
         rm(cache)
     end
-    @test gather(fxdata_dist) == fxdata
-    @test gather(fxdata_dist) == fxdata
-    @test gather(fxdata_ingest) == fxdata
-    @test gather(load(ingest_output)) == fxdata
-    @test gather(load(ingest_output_unordered)) == fxdata_unordered
+    @test gather(spdata_dist) == spdata
+    @test gather(spdata_dist) == spdata
+    @test gather(spdata_ingest) == spdata
+    @test gather(load(ingest_output)) == spdata
+    @test gather(load(ingest_output_unordered)) == spdata_unordered
     @test issorted(gather(getindexcol(load(ingest_output_unordered), 1)))
     c = first(load(ingest_output).chunks)
     @test typeof(c.handle) == OnDisk
     d = load(ingest_output,tomemory=true)
-    @test gather(d) == fxdata
+    @test gather(d) == spdata
     c2 = first(d.chunks)
     @test typeof(c2.handle) == MemToken
-    #@test gather(dt[["blah"], :,:]) == fxdata
-    dt = loadfiles(files, colnames=["symbol", "time", "open", "close"], indexcols=[("symbol", "dummy"), ("dummy", "time")], usecache=false)
+    #@test gather(dt[["blah"], :,:]) == spdata
+    dt = loadfiles(files, indexcols=[("date", "dummy"), ("dummy", "ticker")], usecache=false)
     nds=gather(dt)
-    @test haskey(nds.index.columns, :symbol)
+    @test haskey(nds.index.columns, :date)
     @test haskey(nds.index.columns, :dummy)
-    @test !haskey(nds.index.columns, :time)
+    @test !haskey(nds.index.columns, :ticker)
     @test length(nds.index.columns) == 2
-    @test haskey(nds.data.columns, :open)
-    @test haskey(nds.data.columns, :close)
-    @test length(nds.data.columns) == 2
-    dt = loadfiles(files, colnames=["symbol", "time", "open", "close"], usecache=false)
-    nds = gather(dt)
-    @test length(nds.data.columns) == 1
-    @test !isempty(nds.data.columns.close)
-    @test length(nds.index.columns) == 3
+    @test fieldnames(nds.data.columns) == [:open, :high, :low, :close, :volume]
+    @test length(nds.data.columns) == 5
 
-    ingest2 = tempname()
-    fxdata2 = ingest(files[1:end-1], ingest2, header_exists=false, indexcols=[])
-    fxdata3 = ingest!(files[end:end], ingest2, header_exists=false, indexcols=[])
-    @test length(fxdata3) == 150 > length(fxdata2)
-
-    dt = loadfiles(files, header_exists=false, indexcols=[], usecache=false)
-    @test gather(dt) == fxdata_unordered
+    dt = loadfiles(shuffle_files, indexcols=[], usecache=false)
+    @test gather(dt) == spdata_unordered
     @test issorted(gather(getindexcol(dt, 1)))
     # reuses csv read cache:
-    dt = loadfiles(files, header_exists=false, indexcols=[], usecache=false)
-    @test gather(dt) == fxdata_unordered
+    dt = loadfiles(shuffle_files, indexcols=[], usecache=false)
+    @test gather(dt) == spdata_unordered
 end
