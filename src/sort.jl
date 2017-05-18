@@ -11,9 +11,9 @@ function rechunk{K,V}(t::DTable{K,V}, lengths = nothing;
     # This might have overlapping chunks
     computed_t = compute(ctx, t, allowoverlap=true)
 
-
+    chunk_lengths = get.(nrows.(computed_t.subdomains))
     if lengths === nothing
-        lengths = get.(nrows.(computed_t.subdomains))
+        lengths = chunk_lengths
     end
 
     # Get ranks for splitting at
@@ -25,7 +25,7 @@ function rechunk{K,V}(t::DTable{K,V}, lengths = nothing;
 
     thunks, subspaces = shuffle_merge(ctx, computed_t.chunks,
                                       merge, ranks, closed, 
-                                      splitters, lengths, order)
+                                      splitters, chunk_lengths, order)
 
     fromchunks(thunks, subspaces; KV=(K,V))
 end
@@ -59,12 +59,16 @@ end
 function shuffle_merge(ctx::Dagger.Context, cs::AbstractArray,
                        merge::Function, ranks::AbstractArray,
                        closed::Bool, splitter_indices::AbstractArray,
-                       lengths::AbstractArray, ord::Base.Sort.Ordering)
+                       ls::AbstractArray, ord::Base.Sort.Ordering)
     # splitter_indices: array of (splitter => vector of p index ranges) in sorted order
     starts = ones(Int, length(cs))
+    lasts = copy(starts)
 
     empty = compute(delayed(x->subtable(x, 1:0))(cs[1])) # An empty table with the right types
-    merged_chunks = [begin
+
+    thunks = Any[]
+    subdomains = Any[]
+    for (rank, idxs) in zip(ranks, map(last, splitter_indices))
         if closed
             include_rank  = map(last, idxs)     # include elements of rank r
             lessthan_rank = map(first, idxs).-1 # only elements of rank < r
@@ -91,15 +95,15 @@ function shuffle_merge(ctx::Dagger.Context, cs::AbstractArray,
 
         thnk, subspace = merge_thunk(cs, merge, starts, lasts, empty, ord)
         starts = lasts.+1
-        thnk, subspace
 
-        end for (rank, idxs) in zip(ranks, map(last, splitter_indices))]
+        push!(thunks, thnk)
+        push!(subdomains, subspace)
+    end
 
     # trailing sub-chunks make up the last chunk:
-    t, s = merge_thunk(cs, merge, starts, lengths, empty, ord)
-    thunks = vcat(map(first, merged_chunks), t)
-    subspaces = vcat(map(last, merged_chunks), s)
-    thunks, subspaces
+    t, s = merge_thunk(cs, merge, starts, ls, empty, ord)
+
+    vcat(thunks, t), vcat(subdomains, s)
 end
 
 
