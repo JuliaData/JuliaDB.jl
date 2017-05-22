@@ -436,3 +436,17 @@ Base.@pure @generated function map_params{T<:NamedTuple,S<:NamedTuple}(f, ::Type
     :($NT{_map_params(f, T, S)...})
 end
 
+function randomsample(n, r::Range)
+    k = 0
+    taken = Set{eltype(r)}()
+    output = eltype(r)[]
+    while k < n && k < length(r)
+        x = rand(r)
+        if !(x in taken)
+            push!(taken, x)
+            push!(output, x)
+            k += 1
+        end
+    end
+    return output
+end

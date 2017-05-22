@@ -36,7 +36,16 @@ function rechunk{K,V}(t::DTable{K,V}, lengths = nothing;
     fromchunks(thunks, subspaces; KV=(K,V))
 end
 
-Dagger.mid(x::NamedTuple, y::NamedTuple) = map(Dagger.mid, x, y)
+function sampleselect(ctx, idx, cumweights, order; samples=32)
+
+    sample(n) = x -> x[randomsample(n, 1:length(x))]
+    sample_chunks = map(delayed(sample(samples)), idx.chunks)
+    sampleidx = sort!(gather(delayed(vcat)(sample_chunks...)), order=order)
+
+    samplecuts = round.(Int, (cumweights ./ sum(cumweights)) .* length(sampleidx))
+    splitteridxs = min.(samplecuts, length(sampleidx))
+    sampleidxs[splitteridxs]
+end
 
 function merge_thunk(cs::AbstractArray, merge::Function, starts::AbstractArray, lasts::AbstractArray, empty, ord::Base.Sort.Ordering)
     ranges = map(UnitRange, starts, lasts)
