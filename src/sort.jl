@@ -1,4 +1,5 @@
 import Base.Sort: Forward, Ordering, Algorithm
+import Dagger: affinity
 
 export rechunk
 
@@ -10,7 +11,7 @@ function rechunk{K,V}(t::DTable{K,V}, lengths = nothing;
     order = Forward
     ctx = Dagger.Context()
     # This might have overlapping chunks
-    computed_t = compute(ctx, t, allowoverlap=true)
+    computed_t = compute(ctx, cache_thunks(t), allowoverlap=true)
     # We need to persist all the chunks since computation
     # of any subset of the final chunks in this function
     # might cause required chunks to be gc'd.
@@ -53,27 +54,29 @@ function sampleselect(ctx, idx, ranks, order; samples=32)
     [splitters[i]=>xs[i, :] for i in 1:size(xs,1)]
 end
 
+immutable All
+end
+subtable(t::IndexedTable, ::All) = t
+
 function merge_thunk(cs::AbstractArray, merge::Function, starts::AbstractArray, lasts::AbstractArray, empty, ord::Base.Sort.Ordering)
     ranges = map(UnitRange, starts, lasts)
     nonempty = find(map(x->!isempty(x), ranges))
     if isempty(nonempty)
-        empty, domain(empty)
+        []
     else
         cs1 = Any[]
         ds = Any[]
         for (c, r) in zip(cs[nonempty], ranges[nonempty])
             n = nrows(domain(c))
             if !isnull(n) && get(n) == length(r)
-                push!(cs1, c)
+                push!(cs1, (c, All()))
                 push!(ds, domain(c))
             else
-                push!(cs1, delayed(subtable)(c, r))
+                push!(cs1, (c, r))
                 push!(ds, delayed(subindexspace)(c, r))
             end
         end
-        subspaces = gather(delayed(vcat)(ds...))
-        thunk = delayed(merge)(cs1...)
-        thunk, reduce(JuliaDB.merge, subspaces)
+        cs1
     end
 end
 
@@ -87,7 +90,7 @@ function shuffle_merge(ctx::Dagger.Context, cs::AbstractArray,
 
     empty = compute(delayed(x->subtable(x, 1:0))(cs[1])) # An empty table with the right types
 
-    thunks = Any[]
+    subparts = Any[]
     subdomains = Any[]
     for (rank, idxs) in zip(ranks, map(last, splitter_indices))
         if closed
@@ -114,17 +117,67 @@ function shuffle_merge(ctx::Dagger.Context, cs::AbstractArray,
             end
         end
 
-        thnk, subspace = merge_thunk(cs, merge, starts, lasts, empty, ord)
+        subps = merge_thunk(cs, merge, starts, lasts, empty, ord)
         starts = lasts.+1
 
-        push!(thunks, thnk)
-        push!(subdomains, subspace)
+        push!(subparts, subps)
     end
 
     # trailing sub-chunks make up the last chunk:
-    t, s = merge_thunk(cs, merge, starts, ls, empty, ord)
+    subps = merge_thunk(cs, merge, starts, ls, empty, ord)
 
-    vcat(thunks, t), vcat(subdomains, s)
+
+    push!(subparts, subps)
+
+    transfers = Dict()
+    ws = workers()
+    for (to_chunk, ps) in enumerate(subparts)
+        to_pid = (to_chunk % length(ws)) + 1
+        for (p, range) in ps
+            pids = affinity(p)
+            if !isempty(pids)
+                aff = first(rand(affinity(p))).pid
+            else
+                aff = rand(ws) # ask a random worker to compute it
+            end
+            if !haskey(transfers, aff=>to_pid)
+                transfers[aff=>to_pid] = Any[]
+            end
+            push!(transfers[aff=>to_pid], to_chunk=>(p, range))
+        end
+    end
+
+    dest_chunks = Dict()
+    @sync for (from_pid, to_pid) in sort(collect(keys(transfers)))
+        subchunks = transfers[from_pid=>to_pid]
+        dest_chunk_ids = first.(subchunks)
+        actual_data = last.(subchunks)
+        @async begin
+            part_chunks = remotecall_fetch(to_pid) do
+                parts = remotecall_fetch(from_pid) do
+                    ps = Any[]
+                    for (d, r) in actual_data
+                        push!(ps, subtable(gather(d), r))
+                    end
+                    ps
+                end
+                map(tochunk, parts)
+            end
+            for (c_id, p) in zip(dest_chunk_ids, part_chunks)
+                if !haskey(dest_chunks, c_id)
+                    dest_chunks[c_id] = Any[]
+                end
+                push!(dest_chunks[c_id], p)
+            end
+        end
+    end
+
+    result = [begin
+        delayed(merge)(sort(dest_chunks[k], by=x->first(domain(x)))...) =>
+        reduce(JuliaDB.merge, domain.(dest_chunks[k]))
+    end for k in sort(collect(keys(dest_chunks)))]
+
+    first.(result), last.(result)
 end
 
 
