@@ -105,7 +105,7 @@ function shuffle_merge(ctx::Dagger.Context, cs::AbstractArray,
             while sum(lasts) < rank
                 reqd = rank - sum(lasts)
                 if i > length(idxs)
-                    error("Median of wrong rank found")
+                    break
                 end
                 available = min(reqd, length(idxs[i])) # We add more elements
                                                        # keeping sort stability
