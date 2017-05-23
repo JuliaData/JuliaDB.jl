@@ -325,8 +325,8 @@ function distribute{V,K}(nds::Table{V,K}, rowgroups::AbstractArray;
     # the master process - which would lead to all operations being serial.
     chunks = map(r->delayed(identity)(subtable(nds, r)), ranges)
     subdomains = map(r->subindexspace(nds, r), ranges)
-    fromchunks(chunks, subdomains, KV = (K, V),
-               allowoverlap=allowoverlap, closed=closed)
+    cache_thunks(fromchunks(chunks, subdomains, KV = (K, V),
+                            allowoverlap=allowoverlap, closed=closed))
 end
 
 """
