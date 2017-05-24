@@ -116,7 +116,7 @@ end
 
 _merge(f, x::Table) = x
 function _merge(f, x::Table, y::Table, ys::Table...)
-    _merge(f, _merge(f, x,y), _merge(f, ys...))
+    treereduce((a,b)->_merge(f, a, b), [x,y,ys...])
 end
 
 _merge(x::Table, y::Table...) = _merge((a,b) -> merge(a, b, agg=nothing), x, y...)
@@ -236,7 +236,9 @@ function Base.length(t::DTable)
 end
 
 function has_overlaps(subdomains, closed=false)
-    subdomains = sort(subdomains, by = first)
+    if !issorted(subdomains, by=first)
+        subdomains = sort(subdomains, by = first)
+    end
     lasts = map(last, subdomains)
     for i = 1:length(subdomains)
         s_i = first(subdomains[i])
