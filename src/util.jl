@@ -97,7 +97,10 @@ function getbyheader_canonical(cols, header, oneof::Tuple)
 end
 
 function getbyheader_canonical(cols, header, oneof)
-    getbyheader(cols, header, oneof)
+    str = getbyheader(cols, header, oneof)
+    if isa(str, AbstractString)
+        replace(str, r"\s", "_")
+    end
 end
 
 """
