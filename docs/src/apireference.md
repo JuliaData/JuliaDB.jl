@@ -4,6 +4,12 @@ CurrentModule = JuliaDB
 
 # API documentation
 
+## DTable
+
+```@docs
+JuliaDB.DTable
+```
+
 ## Loading data
 
 ```@docs
@@ -24,6 +30,12 @@ Loading a previously saved `DTable` from disk can be accomplished through use of
 
 ```@docs
 load
+```
+
+## distributing an IndexedTable
+
+```@docs
+distribute
 ```
 
 ## Compute and gather
