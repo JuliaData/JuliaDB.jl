@@ -128,7 +128,7 @@ Notice the use of `x.low` in the predicate. This is because `x` is a [`NamedTupl
 
 # Map and Reduce
 
-Good ol' `map` and `reduce` behave as you'd expect them. `map` applies a function to every data point in the table. The input to `map` and `reduce` could be either:
+Good ol' `map` and `reduce` behave as you'd expect them to. `map` applies a function to every data point in the table. The input to `map` and `reduce` could be either:
 
 - a [`NamedTuple`](https://github.com/blackrock/NamedTuples.jl) - if the data columns are named
 - a `Tuple` - if there are multiple columns but the columns are not named

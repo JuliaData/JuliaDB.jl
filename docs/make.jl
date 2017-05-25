@@ -15,7 +15,7 @@ makedocs(
 )
 
 deploydocs(
-    repo = "github.com/JuliaComputing/TextParse.jl.git",
+    repo = "github.com/JuliaComputing/JuliaDB.jl.git",
     target = "build",
     deps = nothing,
     make = nothing,
