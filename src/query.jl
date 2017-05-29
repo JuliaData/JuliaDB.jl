@@ -57,11 +57,14 @@ Combines adjacent rows with equal indices using the given
 2-argument reduction function `f`.
 """
 function aggregate(f, t::DTable)
-    if has_overlaps(t.subdomains, true)
+    t1 = mapchunks(c->aggregate(f, c), t, keeplengths=false)
+    if has_overlaps(t1.subdomains, true)
         overlap_merge = (x, y) -> merge(x, y, agg=f)
-        t = rechunk(t, merge=(ts...) -> _merge(overlap_merge, ts...), closed=true)
+        t2 = rechunk(t1, merge=(ts...) -> _merge(overlap_merge, ts...), closed=true)
+        cache_thunks(t2)
+    else
+        cache_thunks(t1)
     end
-    mapchunks(c->aggregate(f, c), t, keeplengths=false) |> cache_thunks
 end
 
 """
@@ -72,7 +75,7 @@ e.g. `mean`.
 """
 function aggregate_vec(f, t::DTable)
     if has_overlaps(t.subdomains, true)
-        t = rechunk(t, closed=true) # Do not have chunks that are continuations
+        t = rechunk(t, closed=true) # Should not have chunks that are continuations
     end
     mapchunks(c->aggregate_vec(f, c), t, keeplengths=false) |> cache_thunks
 end
