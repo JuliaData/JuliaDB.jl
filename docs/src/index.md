@@ -2,7 +2,7 @@
 CurrentModule = JuliaDB
 ```
 
-# Overview
+## Overview
 
 **JuliaDB is a package for working with large persistent data sets.**
 
@@ -19,7 +19,7 @@ JuliaDB is Julia all the way down. This means queries can be composed with Julia
 
 JuliaDB provides a distributed-array-like data model where the sorted index data comprises the dimensions of the array. It is based on [Dagger](https://github.com/JuliaParallel/Dagger.jl) and [IndexedTables](https://github.com/JuliaComputing/IndexedTables.jl).  Over time, we hope to extend the data model to represent dense arrays and other Julia array types like [`AxisArrays`](https://github.com/JuliaArrays/AxisArrays.jl). On top of this distributed-array-like model, JuliaDB also provides all the familiar relational database operations that are optimized to use the index.
 
-# Getting started
+## Getting started
 
 JuliaDB works on Julia 0.6 or higher. To install it, run:
 
@@ -35,9 +35,9 @@ using JuliaDB
 
 Multiple processes may not be benificial for datasets with less than a few million rows. Communication costs are eliminated on a single process, but of course you will be using a single CPU.
 
-# Loading and saving data
+## Loading and saving data
 
-## Loading CSV files
+### Loading CSV files
 
 Given a set of CSV files, JuliaDB builds and saves an index that allows the data to be accessed efficiently in the future. The "ingest" operation converts data to an efficient memory-mappable binary format.
 
@@ -59,7 +59,7 @@ Notice that the output says `DTable with 288 rows in 6 chunks`. `loadfiles` crea
 
 Another way to load data into JuliaDB is using [`ingest`](@ref ingest). `ingest` reads and saves the data in an efficient memory-mappable binary storage format for fast reloading. You can also add new files to an existing dataset using [`ingest!`](@ref ingest!).
 
-## Saving and loading JuliaDB tables
+### Saving and loading JuliaDB tables
 
 You can save a `DTable` to disk at any point:
 
@@ -75,9 +75,9 @@ A saved dataset can be loaded with `load`:
 data = load("<outpudir>")
 ```
 
-# Filtering
+## Filtering
 
-## Indexing
+### Indexing
 
 Most lookup and filtering operations on `DTable` can be done via indexing _into_ it. Our `sampledata` object behaves like a 2-d array, accepting two indices, each a value, a range or a vector of values from the corresponding index columns.
 
@@ -114,7 +114,7 @@ Range indexing always returns a `DTable` so that you can apply any other JuliaDB
 !!! note
     Minutiae: notice the range we have used in the last example: `Date("2012-01"):Dates.Month(1):Date("2014-12")`. This says "from 2012-01-01 to 2014-12-01 in steps of 1 month". Date/DateTime ranges in Julia need to be specified with an increment such as `Dates.Month(1)`. If your dataset contains timestamps in the millisecond resolution, for example, you'd need to specify `Dates.Millisecond(1)` as the increment, and so on.
 
-## `select`
+### `select`
 
 If you want to apply a custom predicate on index values to filter the data, you can do so with `select` by passing `column=>predicate` pairs:
 
@@ -133,7 +133,7 @@ select(sampledata, 1=>Dates.ismonday, 2=>x->startswith(x, "G"))
 
 `select` is similar to a `where` clause in traditional SQL/relational databases.
 
-## `filter`
+### `filter`
 
 `filter` lets you filter based on the data values as opposed to `select` which filters based on the index values.
 
@@ -145,7 +145,7 @@ filter(x->x.low > 10.0, sampledata)
 
 Notice the use of `x.low` in the predicate. This is because `x` is a [`NamedTuple`](https://github.com/blackrock/NamedTuples.jl) having the same fields as the columns of the data. If the data columns are not labeled (say because `header_exists` was set to true in `loadfiles` and headers were not manually provided), then the `x` will be a tuple.
 
-# Map and Reduce
+## Map and Reduce
 
 Good ol' `map` and `reduce` behave as you'd expect them to. `map` applies a function to every data point in the table. The input to `map` and `reduce` is of the same type as the output of scalar indexing on the table -- it's either a `NamedTuple`, a `Tuple` or a scalar value (see note in the [Indexing](@ref) section).
 
@@ -181,7 +181,7 @@ Or equivalently,
 reduce(+, map(pick(:volume), sampledata))
 ```
 
-# Aggregation
+## Aggregation
 
 ## `reducedim` and `select`
 
@@ -247,7 +247,7 @@ end
 reducedim_vec(mean_diff, sampledata, 1)
 ```
 
-## Aggregation by converting a dimension
+### Aggregation by converting a dimension
 
 A location in the coordinate space of an array often has multiple possible descriptions.  This is especially common when describing data at different levels of detail.  For example, a point in time can be expressed at the level of seconds, minutes, or hours.
 
@@ -265,7 +265,7 @@ convertdim(sampledata, 1, Dates.firstdayofquarter,
 
 First every value in dimension `1` is converted using the function `Dates.firstdayofquarter`, i.e. to the first day of the quarter that date falls in. Next, the values in the table which correspond to the same indices (e.g. all values for the GOOGL stock in 1st quarter of 2010) are aggregated together using `agg`.
 
-# Permuting dimensions
+## Permuting dimensions
 
 As with other multi-dimensional arrays, dimensions can be permuted to change the sort order of the data. In the context of our sample dataset, interchanging the dimensions would result in the data being sorted first by the stock symbol, and then within each stock symbol, it would be sorted by the date.
 
@@ -278,6 +278,6 @@ In some cases, such dimension permutations are needed for performance. The leftm
 !!! note
     JuliaDB can perform a distributed sort to keep the resultant data still distributed. Note that this operations can be expensive to do every time you load a dataset (a billion rows take a few minutes to reshuffle), hence it's advisable to do it once and save the result in a separate output directory for re-reading later. (See saving and loading section below).
 
-# Joins
+## Joins
 
 JuliaDB provides several `join` operations to combine two or more `DTable`s into one, namely [`naturaljoin`](@ref), [`leftjoin`](@ref), [`merge`](@ref), and [`asofjoin`](@ref).
