@@ -1,6 +1,104 @@
-@import url('https://fonts.googleapis.com/css?family=Source+Code+Pro');
+@import url('https://fonts.googleapis.com/css?family=Source+Code+Pro|Source+Sans+Pro|Muli:400,600');
 
 
 pre, code {
   font-family: 'Source Code Pro', monospace !important;
+  font-size: 0.95em;
+}
+
+pre {
+    padding: 1.5em;
+}
+
+code {
+    padding: 0.1em 0.25em;
+}
+
+body {
+    font-family: 'Source Sans Pro';
+    color: #333;
+}
+
+
+li > p {
+    margin: 0;
+}
+li {
+    margin: 0.5em 0;
+}
+a {
+    color: #3B8686;
+}
+
+a:visited {
+    color: #79BD9A;
+}
+
+#version-selector {
+    display: none;
+}
+#search-query {
+    background-color: #fff;
+    border: 1px solid #dfdfdf;
+    border-radius: 8px;
+    height: 32px;
+}
+nav.toc ul a.toctext {
+    color: #3B8686;
+}
+nav.toc {
+    background: #fff;
+    box-shadow: none;
+    font-family: Muli;
+}
+.admonition-title {
+    font-family: Muli;
+}
+#docs header hr {
+    display: none;
+}
+
+#docs header {
+    font-family: Muli;
+}
+
+nav.toc li.current > .toctext {
+    color: #0B486B;
+    border: none;
+    border-bottom: 1px solid #A8DBA8;
+}
+nav.toc ul.internal {
+    background: #ffffff;
+    box-shadow: none;
+}
+nav.toc ul.internal a.toctext {
+    color: #0B486B;
+}
+nav.toc ul.internal a.toctext:hover {
+    background: #3B8686;
+    color: #fff;
+}
+h1,h2,h3{
+    font-family: 'Muli';
+}
+h2 {
+    margin-top: 32px;
+    font-size: 1.66em;
+    padding-bottom: 8px;
+    border-bottom: 1px solid #eeeeee;
+}
+.toc h1 {
+    font-size: 40px;
+    font-family: Muli;
+    color: #79BD9A;
+}
+h2 a.nav-anchor, h2 a.nav-anchor:visited {
+    color: #0B486B;
+}
+h3 a.nav-anchor, h3 a.nav-anchor:visited, h2 a.nav-anchor:hover {
+    color: #3B8686;
+}
+
+p {
+    line-height: 1.66em;
 }

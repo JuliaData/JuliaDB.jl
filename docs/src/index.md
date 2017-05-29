@@ -4,7 +4,7 @@ CurrentModule = JuliaDB
 
 ## Overview
 
-**JuliaDB is a package for working with large persistent data sets.**
+*JuliaDB is a package for working with persistent data sets.*
 
 We recognized the need for an all-Julia, end-to-end tool that can
 
@@ -51,7 +51,7 @@ sampledata = loadfiles(path, indexcols=["date", "ticker"])
 
 `loadfiles` loads all files under a given directory. If you started julia with many processes, `loadfiles` will enlist the available workers to read the files in parallel. If you wanted to specify a subset of files to load or files in different directories, you can pass the file names as a vector in place of the directory path. JuliaDB exports the `glob` function from [Glob.jl](https://github.com/vtjnash/Glob.jl) to help you with this.
 
-Using the `indexcols` option, here we specified that `loadfiles` should use `date` and `ticker` columns as the index for the data. See [the API reference for `loadfiles`](apireference.html#JuliaDB.loadfiles) for all available options.
+Using the `indexcols` option, here we specified that `loadfiles` should use `date` and `ticker` columns as the index for the data. If `indexcols` is omitted, then an implicit index of integers ranging from 1 to length of the dataset is created. See [the API reference for `loadfiles`](apireference.html#JuliaDB.loadfiles) for all available options.
 
 Notice that the output says `DTable with 288 rows in 6 chunks`. `loadfiles` creates a distributed table (`DTable`) with as many chunks as the input files. The loaded chunks are distributed across available worker processes. Below this line are the first 5 rows of the table giving a peek of what's in it, the data is sorted by the index columns which are to the left of the vertical line cutting through the table.
 
@@ -183,7 +183,7 @@ reduce(+, map(pick(:volume), sampledata))
 
 ## Aggregation
 
-## `reducedim` and `select`
+### `reducedim` and `select`
 
 One way to get a simplified summary of the data is by removing a dimension and then aggregating all remaining rows that have the same index values.
 
