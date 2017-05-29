@@ -66,14 +66,14 @@ _readstr(f) = open(f) do fh
 end
 readfiles(fs) = reduce(string, vcat(readstring(fs[1]), _readstr.(fs[2:end])))
 allcsv = reduce(string, readfiles(files))
-const spdata, _ = loadTable(allcsv;
+const spdata, _ = load_table(allcsv;
                             csvread=TextParse._csvread,
                             header_exists=true,
                             indexcols=1:2)
 
 shuffle_files = shuffle(files)
 shuffle_allcsv = reduce(string, readfiles(shuffle_files))
-const spdata_unordered, ii = loadTable(shuffle_allcsv;
+const spdata_unordered, ii = load_table(shuffle_allcsv;
                                       csvread=TextParse._csvread,
                                       indexcols=[])
 

@@ -95,7 +95,7 @@ function ingest!(files::Union{AbstractVector,String}, outputdir::AbstractString;
     println("Reading $(length(files)) csv files totalling $(format_bytes(sz))...")
 
     function load_and_save(file)
-        data, ii = loadTable(file, delim; opts...)
+        data, ii = load_table(file, delim; opts...)
         save_as_chunk(data, joinpath(outputdir, normalize_filepath(file)), implicit_index=ii)
     end
 

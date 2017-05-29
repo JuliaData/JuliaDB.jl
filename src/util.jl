@@ -122,10 +122,10 @@ end
 using TextParse
 using Glob
 
-export @dateformat_str, load, csvread, loadTable, glob
+export @dateformat_str, load, csvread, load_table, glob
 
 """
-    loadTable(file::AbstractString;
+    load_table(file::AbstractString;
               indexcols, datacols, agg, presorted, copy, kwargs...)
 
 Load a CSV file into an Table data. `indexcols` (AbstractArray)
@@ -139,7 +139,7 @@ indicates that a single implicit dimension with values 1:N
 was added (e.g. if `indexcols=[]` is specified, or if the file
 only has one column).
 """
-function loadTable(file::AbstractString, delim=',';
+function load_table(file::AbstractString, delim=',';
                       indexcols=nothing,
                       datacols=nothing,
                       agg=nothing,
