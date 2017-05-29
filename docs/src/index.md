@@ -17,7 +17,7 @@ We built JuliaDB to fill this void.
 
 JuliaDB is Julia all the way down. This means queries can be composed with Julia code that may use a vast ecosystem of packages.
 
-JuliaDB is based on [Dagger](https://github.com/JuliaParallel/Dagger.jl) and [IndexedTables](https://github.com/JuliaComputing/IndexedTables.jl). It provides a distributed-array-like data model where the sorted index data comprises the dimensions of the array. Over time, we hope to extend the data model to represent dense arrays and other Julia array types like [`AxisArrays`](https://github.com/JuliaArrays/AxisArrays.jl). On top of this distributed-array-like model, JuliaDB also provides all the familiar relational database operations that are optimized to use the index.
+JuliaDB provides a distributed-array-like data model where the sorted index data comprises the dimensions of the array. It is based on [Dagger](https://github.com/JuliaParallel/Dagger.jl) and [IndexedTables](https://github.com/JuliaComputing/IndexedTables.jl).  Over time, we hope to extend the data model to represent dense arrays and other Julia array types like [`AxisArrays`](https://github.com/JuliaArrays/AxisArrays.jl). On top of this distributed-array-like model, JuliaDB also provides all the familiar relational database operations that are optimized to use the index.
 
 # Getting started
 
@@ -99,15 +99,15 @@ Above, we are indexing the table with a specific index value (`2010-06-01`, `"GO
 One can also get a subset of the `DTable` by indexing into it with a range or a sorted vector of index values:
 
 ```@repl sampledata
-sampledata[Date("2012-01"):Dates.Month(1):Date("2014-12"), ["GOOG", "KO"]]
+sampledata[Date("2012-01"):Dates.Month(1):Date("2014-12"), ["GOOGL", "KO"]]
 ```
 
-Fetches all values in the data for the stock symbols GOOG and KO in the years 2012 - 2014
+Fetches all values in the data for the stock symbols GOOGL and KO in the years 2012 - 2014
 ```@repl sampledata
-sampledata[:, ["GOOG", "KO"]]
+sampledata[:, ["GOOGL", "KO"]]
 ```
 
-Fetches all values in the data for the stock symbols GOOG and KO.
+Fetches all values in the data for the stock symbols GOOGL and KO.
 
 Range indexing always returns a `DTable` so that you can apply any other JuliaDB operation on the result of indexing.
 
@@ -263,7 +263,7 @@ convertdim(sampledata, 1, Dates.firstdayofquarter,
                      agg=agg_ohlcv, name=:quarter)
 ```
 
-First every value in dimension `1` is converted using the function `Dates.firstdayofquarter`, i.e. to the first day of the quarter that date falls in. Next, the values in the table which correspond to the same indices (e.g. all values for the GOOG stock in 1st quarter of 2010) are aggregated together using `agg`.
+First every value in dimension `1` is converted using the function `Dates.firstdayofquarter`, i.e. to the first day of the quarter that date falls in. Next, the values in the table which correspond to the same indices (e.g. all values for the GOOGL stock in 1st quarter of 2010) are aggregated together using `agg`.
 
 # Permuting dimensions
 
