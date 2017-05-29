@@ -116,7 +116,7 @@ import JuliaDB: OnDisk
     @test fieldnames(nds.data.columns) == [:open, :high, :low, :close, :volume]
     @test length(nds.data.columns) == 5
 
-    dt = loadfiles(shuffle_files, indexcols=[], usecache=false)
+    dt = loadfiles(shuffle_files, usecache=false)
     @test gather(dt) == spdata_unordered
     @test issorted(gather(getindexcol(dt, 1)))
     # reuses csv read cache:

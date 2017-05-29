@@ -140,7 +140,7 @@ was added (e.g. if `indexcols=[]` is specified, or if the file
 only has one column).
 """
 function load_table(file::AbstractString, delim=',';
-                      indexcols=nothing,
+                      indexcols=[],
                       datacols=nothing,
                       agg=nothing,
                       presorted=false,
@@ -154,18 +154,8 @@ function load_table(file::AbstractString, delim=',';
     implicitindex = false
 
     if datacols === nothing
-        if indexcols === nothing
-            indexcols = 1:(length(cols)-1)
-            datacols  = [length(cols)]
-        else
-            # all columns that aren't index
-            _indexcols = map(i->getbyheader(1:length(cols), header, i), indexcols)
-            datacols = [x for x in 1:length(cols) if !(x in _indexcols)]
-        end
-    elseif indexcols === nothing
-        # all columns that aren't data
-        _datacols = map(i->getbyheader(1:length(cols), header, i), datacols)
-        indexcols = [x for x in 1:length(cols) if !(x in _datacols)]
+        _indexcols = map(i->getbyheader(1:length(cols), header, i), indexcols)
+        datacols = [x for x in 1:length(cols) if !(x in _indexcols)]
     end
 
     if isempty(datacols)
