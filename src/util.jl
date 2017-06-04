@@ -349,8 +349,8 @@ function Base.deserialize(io::AbstractSerializer, ::Type{NTType})
         return Union{types...}
    else
        ftypes = deserialize(io)
-       NT =  eval(:(NamedTuples.$(NamedTuples.create_tuple(fnames))))
-       return NT{ftypes...}
+       NT = Expr(:macrocall, :(NamedTuples.$(Symbol("@NT"))), fnames...)
+       return eval(:($NT{$ftypes...}))
    end
 end
 
