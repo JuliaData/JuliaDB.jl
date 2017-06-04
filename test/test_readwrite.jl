@@ -97,6 +97,7 @@ import JuliaDB: OnDisk
     if isfile(cache)
         rm(cache)
     end
+    @test_throws ErrorException load_table("a,b\n,2", csvread=TextParse._csvread, indexcols=[1])
     @test gather(spdata_dist) == spdata
     @test gather(spdata_dist_path) == spdata
     @test gather(spdata_ingest) == spdata

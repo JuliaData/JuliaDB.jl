@@ -176,6 +176,11 @@ function _load_table(file::Union{IO, AbstractString}, delim=',';
         index = getcolsubset(cols, header, indexcols)
     end
 
+    idxs = isa(index, Vector) ? (index,) : astuple(index.columns)
+    if any(x->eltype(x) <: Nullable, idxs)
+        error("Index columns may not contain Nullables")
+    end
+
     Table(index, data), implicitindex
 end
 
