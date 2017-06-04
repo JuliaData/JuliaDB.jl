@@ -182,7 +182,7 @@ function _gather(ctx, csv::CSVChunk)
     else
         #println("CACHE MISS $csv")
         #@show myid()
-        data, ii = load_table(csv.filename, csv.delim; csv.opts...)
+        data, ii = _load_table(csv.filename, csv.delim; csv.opts...)
 
         if ii && isnull(csv.offset)
             csv.offset = 1

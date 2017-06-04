@@ -134,12 +134,16 @@ specifies which columns form the index of the data, `datacols`
 `agg`, `presorted`, `copy` options are passed on to `Table`
 constructor, any other keyword argument is passed on to `readcsv`
 
-Returns `data, implicit_index::Bool`, where the second value
-indicates that a single implicit dimension with values 1:N
-was added (e.g. if `indexcols=[]` is specified, or if the file
-only has one column).
+Returns an IndexedTable. A single implicit dimension with
+values 1:N will be added if no `indexcols` (or `indexcols=[]`)
+is specified.
 """
-function load_table(file::AbstractString, delim=',';
+function load_table(args...;kwargs...)
+    # just return the table
+    _load_table(args...; kwargs...)[1]
+end
+
+function _load_table(file::Union{IO, AbstractString}, delim=',';
                       indexcols=[],
                       datacols=nothing,
                       agg=nothing,
