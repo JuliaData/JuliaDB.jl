@@ -103,7 +103,7 @@ import JuliaDB: OnDisk
     @test gather(spdata_ingest) == spdata
     @test gather(load(ingest_output)) == spdata
     @test gather(load(ingest_output_unordered)) == spdata_unordered
-    @test issorted(gather(getindexcol(load(ingest_output_unordered), 1)))
+    @test issorted(gather(dindex(load(ingest_output_unordered), 1)))
     c = first(load(ingest_output).chunks)
     @test typeof(c.handle) == OnDisk
     d = load(ingest_output,tomemory=true)
@@ -122,7 +122,7 @@ import JuliaDB: OnDisk
 
     dt = loadfiles(shuffle_files, usecache=false)
     @test gather(dt) == spdata_unordered
-    @test issorted(gather(getindexcol(dt, 1)))
+    @test issorted(gather(dindex(dt, 1)))
     # reuses csv read cache:
     dt = loadfiles(shuffle_files, indexcols=[], usecache=false)
     @test gather(dt) == spdata_unordered

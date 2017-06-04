@@ -1,5 +1,5 @@
 # Extract a column as a Dagger array
-export getindexcol, getdatacol, dindex, ddata
+export dindex, ddata
 
 import IndexedTables: DimName
 import Dagger: DomainBlocks, ArrayDomain, Cat, ComputedArray
@@ -16,18 +16,16 @@ function extractarray(t::DTable, accessor)
     ComputedArray(compute(delayed(arraymaker;meta=true)(cs...)))
 end
 
-function getindexcol(t::DTable, dim::DimName)
-    extractarray(t, nd -> nd.index.columns[dim])
+dindex(t::DTable) = extractarray(t, nd -> nd.index)
+ddata(t::DTable) = extractarray(t, nd -> nd.data)
+function ddata(t::DTable, dim::DimName)
+    extractarray(t, nd -> dim == 1 && isa(nd.data, Vector) ?
+                          nd : nd.data.columns[dim])
+end
+function dindex(t::DTable, dim::DimName)
+    extractarray(t, nd -> dim == 1 && isa(nd.index, Vector) ?
+                          nd : nd.index.columns[dim])
 end
 
-function getdatacol(t::DTable, dim::DimName)
-    extractarray(t, nd -> nd.data.columns[dim])
-end
-
-function dindex(t::DTable)
-    extractarray(t, nd -> nd.index)
-end
-
-function ddata(t::DTable)
-    extractarray(t, nd -> nd.data)
-end
+Base.@deprecate getdatacol(t, dim) ddata(t, dim)
+Base.@deprecate getindexcol(t, dim) dindex(t, dim)

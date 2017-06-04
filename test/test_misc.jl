@@ -8,9 +8,9 @@ using Base.Test
     for i=[2, 3, 5]
         d = compute(distribute(t, i))
         dist = map(get, map(JuliaDB.nrows, d.subdomains))
-        @test map(length, Dagger.domainchunks(getindexcol(d, 1).result)) == dist
-        @test gather(getindexcol(d, 2)) == t.index.columns[2]
-        @test gather( getdatacol(d, 2)) == t.data.columns[2]
+        @test map(length, Dagger.domainchunks(dindex(d, 1).result)) == dist
+        @test gather(dindex(d, 2)) == t.index.columns[2]
+        @test gather( ddata(d, 2)) == t.data.columns[2]
     end
 end
 
