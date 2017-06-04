@@ -60,6 +60,9 @@ path = joinpath(dirname(@__FILE__), "..","test", "sample")
 files = glob("*.csv", path)
 const spdata_dist = loadfiles(files, type_detect_rows=4,
                               indexcols=1:2, usecache=false)
+const spdata_dist_path = loadfiles(path, type_detect_rows=4,
+                              indexcols=1:2, usecache=false)
+
 _readstr(f) = open(f) do fh
     readline(fh)
     readstring(fh)
@@ -95,7 +98,7 @@ import JuliaDB: OnDisk
         rm(cache)
     end
     @test gather(spdata_dist) == spdata
-    @test gather(spdata_dist) == spdata
+    @test gather(spdata_dist_path) == spdata
     @test gather(spdata_ingest) == spdata
     @test gather(load(ingest_output)) == spdata
     @test gather(load(ingest_output_unordered)) == spdata_unordered
