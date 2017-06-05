@@ -3,6 +3,7 @@ import Base.Sort: Forward, Ordering, Algorithm
 export rechunk
 
 function rechunk{K,V}(t::DTable{K,V}, lengths = nothing;
+               select=sampleselect,
                closed=false,
                merge=_merge)
 
@@ -27,7 +28,7 @@ function rechunk{K,V}(t::DTable{K,V}, lengths = nothing;
     idx = dindex(computed_t).result
     Dagger.persist!(idx)
     # select elements of required ranks in parallel:
-    splitters = Dagger.pselect(ctx, idx, ranks, order)
+    splitters = select(ctx, idx, ranks, order)
 
     thunks, subspaces = shuffle_merge(ctx, computed_t.chunks,
                                       merge, ranks, closed, 
@@ -36,15 +37,20 @@ function rechunk{K,V}(t::DTable{K,V}, lengths = nothing;
     fromchunks(thunks, subspaces; KV=(K,V))
 end
 
-function sampleselect(ctx, idx, cumweights, order; samples=32)
+function sampleselect(ctx, idx, ranks, order; samples=32)
 
     sample(n) = x -> x[randomsample(n, 1:length(x))]
     sample_chunks = map(delayed(sample(samples)), idx.chunks)
     sampleidx = sort!(gather(delayed(vcat)(sample_chunks...)), order=order)
 
-    samplecuts = round.(Int, (cumweights ./ sum(cumweights)) .* length(sampleidx))
-    splitteridxs = min.(samplecuts, length(sampleidx))
-    sampleidxs[splitteridxs]
+    samplecuts = round.(Int, (ranks ./ length(domain(idx))) .* length(sampleidx))
+    splitteridxs = max.(1, min.(samplecuts, length(sampleidx)))
+    splitters = sampleidx[splitteridxs]
+    find_ranges(x) = map(splitters) do s
+        searchsorted(x, s)
+    end
+    xs = gather(delayed(hcat)(map(delayed(find_ranges), idx.chunks)...))
+    [splitters[i]=>xs[i, :] for i in 1:size(xs,1)]
 end
 
 function merge_thunk(cs::AbstractArray, merge::Function, starts::AbstractArray, lasts::AbstractArray, empty, ord::Base.Sort.Ordering)
