@@ -10,13 +10,10 @@ function rechunk{K,V}(t::DTable{K,V}, lengths = nothing;
 
     order = Forward
     ctx = Dagger.Context()
+
     # This might have overlapping chunks
+    # We cache the chunks and use them in the final result
     computed_t = compute(ctx, cache_thunks(t), allowoverlap=true)
-    # We need to persist all the chunks since computation
-    # of any subset of the final chunks in this function
-    # might cause required chunks to be gc'd.
-    # we need to find ways to fix exactly this though
-    foreach(Dagger.persist!, computed_t.chunks)
 
     chunk_lengths = get.(nrows.(computed_t.subdomains))
     if lengths === nothing
@@ -31,7 +28,8 @@ function rechunk{K,V}(t::DTable{K,V}, lengths = nothing;
     # select elements of required ranks in parallel:
     splitters = select(ctx, idx, ranks, order)
 
-    thunks, subspaces = shuffle_merge(ctx, computed_t.chunks,
+    Dagger.free!(idx, force=true, cache=false) # no more useful
+    thunks, subspaces = shuffle_merge(ctx, t.chunks, computed_t.subdomains,
                                       merge, ranks, closed, 
                                       splitters, chunk_lengths, order)
 
@@ -58,7 +56,7 @@ immutable All
 end
 subtable(t::IndexedTable, ::All) = t
 
-function merge_thunk(cs::AbstractArray, merge::Function, starts::AbstractArray, lasts::AbstractArray, empty, ord::Base.Sort.Ordering)
+function merge_thunk(cs::AbstractArray, subdomains::AbstractArray, merge::Function, starts::AbstractArray, lasts::AbstractArray, empty, ord::Base.Sort.Ordering)
     ranges = map(UnitRange, starts, lasts)
     nonempty = find(map(x->!isempty(x), ranges))
     if isempty(nonempty)
@@ -66,8 +64,9 @@ function merge_thunk(cs::AbstractArray, merge::Function, starts::AbstractArray, 
     else
         cs1 = Any[]
         ds = Any[]
-        for (c, r) in zip(cs[nonempty], ranges[nonempty])
-            n = nrows(domain(c))
+        for i in nonempty
+            c,d,r = cs[i], subdomains[i], ranges[i]
+            n = nrows(d)
             if !isnull(n) && get(n) == length(r)
                 push!(cs1, (c, All()))
                 push!(ds, domain(c))
@@ -81,6 +80,7 @@ function merge_thunk(cs::AbstractArray, merge::Function, starts::AbstractArray, 
 end
 
 function shuffle_merge(ctx::Dagger.Context, cs::AbstractArray,
+                       subdomains::AbstractArray,
                        merge::Function, ranks::AbstractArray,
                        closed::Bool, splitter_indices::AbstractArray,
                        ls::AbstractArray, ord::Base.Sort.Ordering)
@@ -91,7 +91,6 @@ function shuffle_merge(ctx::Dagger.Context, cs::AbstractArray,
     empty = compute(delayed(x->subtable(x, 1:0))(cs[1])) # An empty table with the right types
 
     subparts = Any[]
-    subdomains = Any[]
     for (rank, idxs) in zip(ranks, map(last, splitter_indices))
         if closed
             include_rank  = map(last, idxs)     # include elements of rank r
@@ -117,14 +116,14 @@ function shuffle_merge(ctx::Dagger.Context, cs::AbstractArray,
             end
         end
 
-        subps = merge_thunk(cs, merge, starts, lasts, empty, ord)
+        subps = merge_thunk(cs, subdomains, merge, starts, lasts, empty, ord)
         starts = lasts.+1
 
         push!(subparts, subps)
     end
 
     # trailing sub-chunks make up the last chunk:
-    subps = merge_thunk(cs, merge, starts, ls, empty, ord)
+    subps = merge_thunk(cs, subdomains, merge, starts, ls, empty, ord)
 
 
     push!(subparts, subps)
