@@ -44,14 +44,14 @@ function sampleselect(ctx, idx, ranks, order; samples=32)
     sample_chunks = map(delayed(sample(samples)), idx.chunks)
     sampleidx = sort!(gather(delayed(vcat)(sample_chunks...)), order=order)
 
-    samplecuts = round.(Int, (ranks ./ length(domain(idx))) .* length(sampleidx))
+    samplecuts = map(x->round(Int, x), (ranks ./ length(domain(idx))) .* length(sampleidx))
     splitteridxs = max.(1, min.(samplecuts, length(sampleidx)))
     splitters = sampleidx[splitteridxs]
     find_ranges(x) = map(splitters) do s
         searchsorted(x, s)
     end
     xs = gather(delayed(hcat)(map(delayed(find_ranges), idx.chunks)...))
-    [splitters[i]=>xs[i, :] for i in 1:size(xs,1)]
+    Pair[splitters[i]=>xs[i, :] for i in 1:size(xs,1)]
 end
 
 immutable All
