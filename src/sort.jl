@@ -9,7 +9,7 @@ function rechunk{K,V}(t::DTable{K,V}, lengths = nothing;
                merge=_merge)
 
     order = Forward
-    ctx = Dagger.Context()
+    ctx = get_context()
 
     # This might have overlapping chunks
     # We cache the chunks and use them in the final result
@@ -40,7 +40,7 @@ function sampleselect(ctx, idx, ranks, order; samples=32)
 
     sample(n) = x -> x[randomsample(n, 1:length(x))]
     sample_chunks = map(delayed(sample(samples)), idx.chunks)
-    sampleidx = sort!(gather(delayed(vcat)(sample_chunks...)), order=order)
+    sampleidx = sort!(gather(ctx, delayed(vcat)(sample_chunks...)), order=order)
 
     samplecuts = map(x->round(Int, x), (ranks ./ length(domain(idx))) .* length(sampleidx))
     splitteridxs = max.(1, min.(samplecuts, length(sampleidx)))
@@ -48,7 +48,7 @@ function sampleselect(ctx, idx, ranks, order; samples=32)
     find_ranges(x) = map(splitters) do s
         searchsorted(x, s)
     end
-    xs = gather(delayed(hcat)(map(delayed(find_ranges), idx.chunks)...))
+    xs = gather(ctx, delayed(hcat)(map(delayed(find_ranges), idx.chunks)...))
     Pair[splitters[i]=>xs[i, :] for i in 1:size(xs,1)]
 end
 
@@ -88,7 +88,7 @@ function shuffle_merge(ctx::Dagger.Context, cs::AbstractArray,
     starts = ones(Int, length(cs))
     lasts = copy(starts)
 
-    empty = compute(delayed(x->subtable(x, 1:0))(cs[1])) # An empty table with the right types
+    empty = compute(ctx, delayed(x->subtable(x, 1:0))(cs[1])) # An empty table with the right types
 
     subparts = Any[]
     for (rank, idxs) in zip(ranks, map(last, splitter_indices))

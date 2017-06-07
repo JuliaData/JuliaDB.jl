@@ -101,7 +101,7 @@ function ingest!(files::Union{AbstractVector,String}, outputdir::AbstractString;
 
     saved = map(delayed(load_and_save), files)
 
-    chunkrefs = gather(delayed(vcat)(saved...))
+    chunkrefs = gather(get_context(), delayed(vcat)(saved...))
 
     if !isnull(chunkrefs[1].handle.offset)
         offset = existing_dtable===nothing ? 1 :

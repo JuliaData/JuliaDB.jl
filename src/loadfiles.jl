@@ -107,7 +107,7 @@ function loadfiles(files::Union{AbstractVector,String}, delim=','; usecache=true
     load_f(f) = makecsvchunk(f, delim; opts...)
     data = map(delayed(load_f), unknown)
 
-    chunkrefs = gather(delayed(vcat)(data...))
+    chunkrefs = gather(get_context(), delayed(vcat)(data...))
 
     if !isnull(chunkrefs[1].handle.offset)
         lastidx = reduce(max, 0, first.(last.(domain.(validcache)))) + 1
@@ -207,7 +207,7 @@ function makecsvchunk(file, delim; cache=true, opts...)
     handle = CSVChunk(file, cache, delim, Dict(opts), nothing)
     # We need to actually load the data to get things like
     # the type and Domain. It will get cached if cache is true
-    nds, ii = _gather(Context(), handle)
+    nds, ii = _gather(get_context(), handle)
     if ii
         handle.offset = 1
     end
