@@ -1,5 +1,5 @@
 import Base.Sort: Forward, Ordering, Algorithm
-import Dagger: affinity
+import Dagger: affinity, @dbg, OSProc, timespan_start, timespan_end
 
 export rechunk
 
@@ -152,16 +152,23 @@ function shuffle_merge(ctx::Dagger.Context, cs::AbstractArray,
         dest_chunk_ids = first.(subchunks)
         actual_data = last.(subchunks)
         @async begin
-            part_chunks = remotecall_fetch(to_pid) do
-                parts = remotecall_fetch(from_pid) do
-                    ps = Any[]
-                    for (d, r) in actual_data
-                        push!(ps, subtable(gather(d), r))
+            part_chunks =
+                let id = Dagger.next_id()
+                    remotecall_fetch(to_pid) do
+                        @dbg timespan_start(ctx, :comm, id, OSProc(to_pid))
+                        parts = remotecall_fetch(from_pid) do
+                            ps = Any[]
+                            for (d, r) in actual_data
+                                push!(ps, subtable(gather(ctx, d), r))
+                            end
+                            ps
+                        end
+                        cs = map(tochunk, parts)
+                        @dbg timespan_end(ctx, :comm, id, OSProc(to_pid))
+                        cs
                     end
-                    ps
                 end
-                map(tochunk, parts)
-            end
+
             for (c_id, p) in zip(dest_chunk_ids, part_chunks)
                 if !haskey(dest_chunks, c_id)
                     dest_chunks[c_id] = Any[]
