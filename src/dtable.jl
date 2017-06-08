@@ -1,5 +1,5 @@
 import Dagger: chunktype, domain, tochunk,
-               chunks, compute, gather
+               chunks, Context, compute, gather
 
 
 # re-export the essentials
@@ -39,6 +39,9 @@ Base.eltype{K,V}(dt::DTable{K,V}) = V
 IndexedTables.dimlabels(dt::DTable) = dimlabels(chunktype(first(dt.chunks))) # XXX: doesn't work if first chunk is a thunk
 Base.ndims{K}(dt::DTable{K}) = nfields(K)
 
+const compute_context = Ref{Union{Void, Context}}(nothing)
+get_context() = compute_context[] == nothing ? Context() : compute_context[]
+
 """
     compute(t::DTable; allowoverlap, closed)
 
@@ -60,7 +63,7 @@ See also [`gather`](@ref).
     If the result is expected to be big, try `compute(save(t, "output_dir"))` instead.
     See [`save`](@ref) for more.
 """
-compute(t::DTable; kwargs...) = compute(Dagger.Context(), t; kwargs...)
+compute(t::DTable; kwargs...) = compute(get_context(), t; kwargs...)
 
 function compute(ctx, t::DTable; allowoverlap=false, closed=false)
     if any(Dagger.istask, t.chunks)
@@ -87,7 +90,7 @@ Gets distributed data in a DTable `t` and merges it into
     try `compute(save(t, "output_dir"))` instead. See [`save`](@ref) for more.
     This data can be loaded later using [`load`](@ref).
 """
-gather(t::DTable) = gather(Dagger.Context(), t)
+gather(t::DTable) = gather(get_context(), t)
 
 function gather{T}(ctx, dt::DTable{T})
     cs = dt.chunks
@@ -130,7 +133,7 @@ Base.map(f, dt::DTable) = mapchunks(c->map(f, c), dt)
 
 function Base.reduce(f, dt::DTable)
     cs = map(delayed(c->reduce(f, c)), dt.chunks)
-    gather(treereduce(delayed(f), cs))
+    gather(get_context(), treereduce(delayed(f), cs))
 end
 
 immutable EmptySpace{T} end

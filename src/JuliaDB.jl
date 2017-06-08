@@ -21,4 +21,6 @@ include("indexing.jl")
 include("query.jl")
 include("join.jl")
 
+include("diagnostics.jl")
+
 end # module
