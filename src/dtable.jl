@@ -1,3 +1,5 @@
+import Base: collect
+
 import Dagger: chunktype, domain, tochunk,
                chunks, Context, compute, gather
 
@@ -55,7 +57,7 @@ chunks with overlapping index ranges if necessary.
 If `closed` is true then the computed data is re-sorted if required to have no
 chunks with overlapping OR continuous boundaries.
 
-See also [`gather`](@ref).
+See also [`collect`](@ref).
 
 !!! warning
     `compute(t)` requires at least as much memory as the size of the
@@ -79,23 +81,23 @@ function compute(ctx, t::DTable; allowoverlap=false, closed=false)
 end
 
 """
-    gather(t::DTable)
+    collect(t::DTable)
 
 Gets distributed data in a DTable `t` and merges it into
 [IndexedTable](#IndexedTables.IndexedTable) object
 
 !!! warning
-    `gather(t)` requires at least as much memory as the size of the
+    `collect(t)` requires at least as much memory as the size of the
     result of the computing `t`. If the result is expected to be big,
     try `compute(save(t, "output_dir"))` instead. See [`save`](@ref) for more.
     This data can be loaded later using [`load`](@ref).
 """
-gather(t::DTable) = gather(get_context(), t)
+collect(t::DTable) = collect(get_context(), t)
 
-function gather{T}(ctx, dt::DTable{T})
+function collect{T}(ctx::Context, dt::DTable{T})
     cs = dt.chunks
     if length(cs) > 0
-        gather(ctx, treereduce(delayed(_merge), cs))
+        collect(ctx, treereduce(delayed(_merge), cs))
     else
         error("Empty table")
     end
@@ -133,7 +135,7 @@ Base.map(f, dt::DTable) = mapchunks(c->map(f, c), dt)
 
 function Base.reduce(f, dt::DTable)
     cs = map(delayed(c->reduce(f, c)), dt.chunks)
-    gather(get_context(), treereduce(delayed(f), cs))
+    collect(get_context(), treereduce(delayed(f), cs))
 end
 
 immutable EmptySpace{T} end

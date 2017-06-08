@@ -107,7 +107,7 @@ function loadfiles(files::Union{AbstractVector,String}, delim=','; usecache=true
     load_f(f) = makecsvchunk(f, delim; opts...)
     data = map(delayed(load_f), unknown)
 
-    chunkrefs = gather(get_context(), delayed(vcat)(data...))
+    chunkrefs = collect(get_context(), delayed(vcat)(data...))
 
     if !isnull(chunkrefs[1].handle.offset)
         lastidx = reduce(max, 0, first.(last.(domain.(validcache)))) + 1
@@ -161,11 +161,11 @@ function Dagger.affinity(c::CSVChunk)
     end
 end
 
-function gather(ctx, csv::CSVChunk)
-    _gather(ctx, csv)[1]
+function collect(ctx::Context, csv::CSVChunk)
+    _collect(ctx, csv)[1]
 end
 
-function _gather(ctx, csv::CSVChunk)
+function _collect(ctx, csv::CSVChunk)
     key = csvkey(csv)
     cached_on = remotecall_fetch(()->get(_cached_on, key, Int[]), 1)
     if csv.cache && haskey(_read_cache, key)
@@ -173,7 +173,7 @@ function _gather(ctx, csv::CSVChunk)
     elseif !isempty(cached_on) && (myid() in cached_on)
         #println("Having to fetch data from $(csv.cached_on)")
         pid = first(cached_on)
-        data, ii = remotecall_fetch(c -> _gather(ctx, c), pid, csv)
+        data, ii = remotecall_fetch(c -> _collect(ctx, c), pid, csv)
         _read_cache[key] = data, ii
         mypid = myid() # tell master you've got it too
         remotecall(1) do
@@ -207,7 +207,7 @@ function makecsvchunk(file, delim; cache=true, opts...)
     handle = CSVChunk(file, cache, delim, Dict(opts), nothing)
     # We need to actually load the data to get things like
     # the type and Domain. It will get cached if cache is true
-    nds, ii = _gather(get_context(), handle)
+    nds, ii = _collect(get_context(), handle)
     if ii
         handle.offset = 1
     end

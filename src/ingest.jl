@@ -101,7 +101,7 @@ function ingest!(files::Union{AbstractVector,String}, outputdir::AbstractString;
 
     saved = map(delayed(load_and_save), files)
 
-    chunkrefs = gather(get_context(), delayed(vcat)(saved...))
+    chunkrefs = collect(get_context(), delayed(vcat)(saved...))
 
     if !isnull(chunkrefs[1].handle.offset)
         offset = existing_dtable===nothing ? 1 :
@@ -199,7 +199,7 @@ end
 ## TODO: Can make this an LRU cache
 const _ondisk_cache = Dict{String, Any}()
 
-function gather(ctx, d::OnDisk)
+function collect(ctx::Context, d::OnDisk)
     if d.cache && haskey(_ondisk_cache, d.filename)
         data = _ondisk_cache[d.filename]
     else

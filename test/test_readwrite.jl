@@ -98,21 +98,21 @@ import JuliaDB: OnDisk
         rm(cache)
     end
     @test_throws ErrorException load_table("a,b\n,2", csvread=TextParse._csvread, indexcols=[1])
-    @test gather(spdata_dist) == spdata
-    @test gather(spdata_dist_path) == spdata
-    @test gather(spdata_ingest) == spdata
-    @test gather(load(ingest_output)) == spdata
-    @test gather(load(ingest_output_unordered)) == spdata_unordered
-    @test issorted(gather(getindexcol(load(ingest_output_unordered), 1)))
+    @test collect(spdata_dist) == spdata
+    @test collect(spdata_dist_path) == spdata
+    @test collect(spdata_ingest) == spdata
+    @test collect(load(ingest_output)) == spdata
+    @test collect(load(ingest_output_unordered)) == spdata_unordered
+    @test issorted(collect(getindexcol(load(ingest_output_unordered), 1)))
     c = first(load(ingest_output).chunks)
     @test typeof(c.handle) == OnDisk
     d = load(ingest_output,tomemory=true)
-    @test gather(d) == spdata
+    @test collect(d) == spdata
     c2 = first(d.chunks)
     @test typeof(c2.handle) == MemToken
-    #@test gather(dt[["blah"], :,:]) == spdata
+    #@test collect(dt[["blah"], :,:]) == spdata
     dt = loadfiles(files, indexcols=[("date", "dummy"), ("dummy", "ticker")], usecache=false)
-    nds=gather(dt)
+    nds=collect(dt)
     @test haskey(nds.index.columns, :date)
     @test haskey(nds.index.columns, :dummy)
     @test !haskey(nds.index.columns, :ticker)
@@ -121,9 +121,9 @@ import JuliaDB: OnDisk
     @test length(nds.data.columns) == 5
 
     dt = loadfiles(shuffle_files, usecache=false)
-    @test gather(dt) == spdata_unordered
-    @test issorted(gather(getindexcol(dt, 1)))
+    @test collect(dt) == spdata_unordered
+    @test issorted(collect(getindexcol(dt, 1)))
     # reuses csv read cache:
     dt = loadfiles(shuffle_files, indexcols=[], usecache=false)
-    @test gather(dt) == spdata_unordered
+    @test collect(dt) == spdata_unordered
 end

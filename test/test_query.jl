@@ -1,7 +1,7 @@
 @testset "map & reduce" begin
     t = IndexedTable(Columns([1,1,2,2], [1,2,1,2]), [1,2,3,4])
     d = distribute(t, 2)
-    @test gather(map(-, d)) == map(-, t)
+    @test collect(map(-, d)) == map(-, t)
     @test reduce(+, d) == 10
 end
 
@@ -14,11 +14,11 @@ end
         @test d[1,3] == t[1,3]
         @test d[2,2] == t[2,2]
 
-        @test gather(d[1:1, 1:1]) == t[1:1, 1:1]
-        @test gather(d[1:2, 2:3]) == t[1:2, 2:3]
+        @test collect(d[1:1, 1:1]) == t[1:1, 1:1]
+        @test collect(d[1:2, 2:3]) == t[1:2, 2:3]
         # FIXME
-        @test_throws ErrorException gather(d[1:2, 4:3])
-        @test gather(d[:, 3]) == t[:, 3]
+        @test_throws ErrorException collect(d[1:2, 4:3])
+        @test collect(d[:, 3]) == t[:, 3]
     end
 end
 
@@ -29,8 +29,8 @@ end
         d = distribute(t, i)
 
         res = select(t, 1=>x->true, 2=>x->x%2 == 0)
-        @test gather(select(d, 1=>x->true, 2=>x->x%2 == 0)) == res
-        @test gather(select(d, :a=>x->true, :b => x->x%2 == 0)) == res
+        @test collect(select(d, 1=>x->true, 2=>x->x%2 == 0)) == res
+        @test collect(select(d, :a=>x->true, :b => x->x%2 == 0)) == res
     end
 end
 
@@ -48,9 +48,9 @@ end
 
     for i=[2, 3, 5]
         d = distribute(t, i)
-        @test gather(convertdim(d, 2, x->x>=2)) == convertdim(t, 2, x->x>=2)
-        @test gather(convertdim(d, 2, x->x>=2, agg=_plus)) == convertdim(t, 2, x->x>=2, agg=_plus)
-        @test gather(convertdim(d, 2, x->x>=2, vecagg=length)) ==
+        @test collect(convertdim(d, 2, x->x>=2)) == convertdim(t, 2, x->x>=2)
+        @test collect(convertdim(d, 2, x->x>=2, agg=_plus)) == convertdim(t, 2, x->x>=2, agg=_plus)
+        @test collect(convertdim(d, 2, x->x>=2, vecagg=length)) ==
                 convertdim(t, 2, x->x>=2, vecagg=length)
     end
 end
@@ -64,11 +64,11 @@ end
 
     for n=1:5
         d1 = distribute(t1, n)
-        @test gather(reducedim(+, d1, 1)) == rd1
-        @test gather(reducedim(+, d1, 2)) == rd2
+        @test collect(reducedim(+, d1, 1)) == rd1
+        @test collect(reducedim(+, d1, 2)) == rd2
 
-        @test gather(reducedim_vec(length, d1, 1)) == rdv1
-        @test gather(reducedim_vec(length, d1, 2)) == rdv2
+        @test collect(reducedim_vec(length, d1, 1)) == rdv1
+        @test collect(reducedim_vec(length, d1, 2)) == rdv2
     end
 end
 
@@ -76,6 +76,6 @@ end
     t = IndexedTable(Columns([1,1,2,2], ["a","b","a","b"]), [1,2,3,4])
     for n=1:5
         d = distribute(t, n)
-        @test gather(permutedims(d, [2,1])) == permutedims(t, [2,1])
+        @test collect(permutedims(d, [2,1])) == permutedims(t, [2,1])
     end
 end

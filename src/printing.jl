@@ -1,7 +1,7 @@
 const TextMIME = Union{MIME"text/plain", MIME"text/html"}
 function take_n(t::DTable, n)
     required = n
-    getter(required, c) = gather(delayed(x->subtable(x, 1:min(required, length(x))))(c))
+    getter(required, c) = collect(delayed(x->subtable(x, 1:min(required, length(x))))(c))
 
     i = 1
     top = getter(required, t.chunks[i])

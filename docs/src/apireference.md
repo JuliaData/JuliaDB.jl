@@ -38,16 +38,16 @@ load
 distribute
 ```
 
-## Compute and gather
+## Compute and collect
 
-Operations in JuliaDB are out-of-core in nature. They return `DTable` objects which can contain parts that are not yet evaluated. `compute` and `gather` are ways to force evaluation.
+Operations in JuliaDB are out-of-core in nature. They return `DTable` objects which can contain parts that are not yet evaluated. `compute` and `collect` are ways to force evaluation.
 
 ```@docs
 compute(t::DTable)
 ```
 
 ```@docs
-gather(t::DTable)
+collect(t::DTable)
 ```
 
 ## Indexing
