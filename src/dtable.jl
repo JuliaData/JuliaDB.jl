@@ -1,4 +1,4 @@
-import Dagger: Domain, chunktype, domain, tochunk,
+import Dagger: chunktype, domain, tochunk,
                chunks, compute, gather
 
 
@@ -133,7 +133,7 @@ function Base.reduce(f, dt::DTable)
     gather(treereduce(delayed(f), cs))
 end
 
-immutable EmptySpace{T} <: Domain end
+immutable EmptySpace{T} end
 
 # Teach dagger how to automatically figure out the
 # metadata (in dagger parlance "domain") about an Table chunk.

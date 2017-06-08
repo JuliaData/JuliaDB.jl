@@ -2,18 +2,20 @@
 export getindexcol, getdatacol, dindex, ddata
 
 import IndexedTables: DimName
-import Dagger: DomainBlocks, ArrayDomain, Cat, ComputedArray
+import Dagger: DomainBlocks, ArrayDomain, DArray
 
 function extractarray(t::DTable, accessor)
     arraymaker = function (cs_tup...)
         cs = [cs_tup...]
         lengths = length.(domain.(cs))
         dmnchunks = DomainBlocks((1,), (cumsum(lengths),))
-        Cat(chunktype(cs[1]), ArrayDomain(1:sum(lengths)), dmnchunks, [cs...])
+        T = eltype(chunktype(cs[1]))
+        n = ndims(chunktype(cs[1]))
+        DArray{T,n}(ArrayDomain(1:sum(lengths)), dmnchunks, [cs...])
     end
 
     cs = map(delayed(accessor), t.chunks)
-    ComputedArray(compute(delayed(arraymaker;meta=true)(cs...)))
+    compute(delayed(arraymaker; meta=true)(cs...))
 end
 
 function getindexcol(t::DTable, dim::DimName)

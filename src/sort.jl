@@ -23,8 +23,8 @@ function rechunk{K,V}(t::DTable{K,V}, lengths = nothing;
     # Get ranks for splitting at
     ranks = cumsum(lengths)[1:end-1]
 
-    idx = dindex(computed_t).result
-    Dagger.persist!(idx)
+    idx = dindex(computed_t)
+    map(Dagger.persist!, idx.chunks)
     # select elements of required ranks in parallel:
     splitters = select(ctx, idx, ranks, order)
 
