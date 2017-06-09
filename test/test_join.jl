@@ -19,14 +19,14 @@ using Base.Test
         d1 = distribute(t1, n)
         for n2 = 1:5
             d2 = distribute(t2, n2)
-            @test gather(innerjoin(d1, d2)) == j1
-            @test gather(innerjoin(d1, d2, +)) == j2
+            @test collect(innerjoin(d1, d2)) == j1
+            @test collect(innerjoin(d1, d2, +)) == j2
 
-            @test gather(leftjoin(d1, d2)) == lj1
-            @test gather(leftjoin(d1, d2, +)) == lj2
+            @test collect(leftjoin(d1, d2)) == lj1
+            @test collect(leftjoin(d1, d2, +)) == lj2
 
-            @test gather(merge(d1, d2)) == mj1
-            @test gather(merge(d2, d1)) == mj2
+            @test collect(merge(d1, d2)) == mj1
+            @test collect(merge(d2, d1)) == mj2
         end
     end
 
@@ -39,7 +39,7 @@ using Base.Test
         d1 = distribute(t1, n)
         for n2 = 1:5
             d2 = distribute(t2, n2)
-            @test gather(asofjoin(d1, d2)) == aj
+            @test collect(asofjoin(d1, d2)) == aj
         end
     end
 end

@@ -15,7 +15,7 @@ function _getindex{K,V}(t::DTable{K,V}, idxs::K)
     brects = boundingrect.(t.subdomains)
     subchunk_idxs = find(c->all(map(in, idxs, map(Interval, c.first, c.last))), brects)
     t1 = DTable{K,V}(t.subdomains[subchunk_idxs], t.chunks[subchunk_idxs])
-    gather(t1)[idxs...]
+    collect(t1)[idxs...]
 end
 
 function _getindex{K,V}(t::DTable{K,V}, idxs)

@@ -1,5 +1,7 @@
-import Dagger: Domain, chunktype, domain, tochunk,
-               chunks, compute, gather
+import Base: collect
+
+import Dagger: chunktype, domain, tochunk,
+               chunks, Context, compute, gather
 
 
 # re-export the essentials
@@ -39,6 +41,9 @@ Base.eltype{K,V}(dt::DTable{K,V}) = V
 IndexedTables.dimlabels(dt::DTable) = dimlabels(chunktype(first(dt.chunks))) # XXX: doesn't work if first chunk is a thunk
 Base.ndims{K}(dt::DTable{K}) = nfields(K)
 
+const compute_context = Ref{Union{Void, Context}}(nothing)
+get_context() = compute_context[] == nothing ? Context() : compute_context[]
+
 """
     compute(t::DTable; allowoverlap, closed)
 
@@ -52,7 +57,7 @@ chunks with overlapping index ranges if necessary.
 If `closed` is true then the computed data is re-sorted if required to have no
 chunks with overlapping OR continuous boundaries.
 
-See also [`gather`](@ref).
+See also [`collect`](@ref).
 
 !!! warning
     `compute(t)` requires at least as much memory as the size of the
@@ -60,7 +65,7 @@ See also [`gather`](@ref).
     If the result is expected to be big, try `compute(save(t, "output_dir"))` instead.
     See [`save`](@ref) for more.
 """
-compute(t::DTable; kwargs...) = compute(Dagger.Context(), t; kwargs...)
+compute(t::DTable; kwargs...) = compute(get_context(), t; kwargs...)
 
 function compute(ctx, t::DTable; allowoverlap=false, closed=false)
     if any(Dagger.istask, t.chunks)
@@ -76,23 +81,23 @@ function compute(ctx, t::DTable; allowoverlap=false, closed=false)
 end
 
 """
-    gather(t::DTable)
+    collect(t::DTable)
 
 Gets distributed data in a DTable `t` and merges it into
 [IndexedTable](#IndexedTables.IndexedTable) object
 
 !!! warning
-    `gather(t)` requires at least as much memory as the size of the
+    `collect(t)` requires at least as much memory as the size of the
     result of the computing `t`. If the result is expected to be big,
     try `compute(save(t, "output_dir"))` instead. See [`save`](@ref) for more.
     This data can be loaded later using [`load`](@ref).
 """
-gather(t::DTable) = gather(Dagger.Context(), t)
+collect(t::DTable) = collect(get_context(), t)
 
-function gather{T}(ctx, dt::DTable{T})
+function collect{T}(ctx::Context, dt::DTable{T})
     cs = dt.chunks
     if length(cs) > 0
-        gather(ctx, treereduce(delayed(_merge), cs))
+        collect(ctx, treereduce(delayed(_merge), cs))
     else
         error("Empty table")
     end
@@ -130,10 +135,10 @@ Base.map(f, dt::DTable) = mapchunks(c->map(f, c), dt)
 
 function Base.reduce(f, dt::DTable)
     cs = map(delayed(c->reduce(f, c)), dt.chunks)
-    gather(treereduce(delayed(f), cs))
+    collect(get_context(), treereduce(delayed(f), cs))
 end
 
-immutable EmptySpace{T} <: Domain end
+immutable EmptySpace{T} end
 
 # Teach dagger how to automatically figure out the
 # metadata (in dagger parlance "domain") about an Table chunk.

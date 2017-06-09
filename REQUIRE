@@ -2,5 +2,5 @@ julia 0.5
 IndexedTables
 NamedTuples
 TextParse
-Dagger
+Dagger 0.2.0
 Glob
