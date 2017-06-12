@@ -1,11 +1,11 @@
 import Base: collect
 
 import Dagger: chunktype, domain, tochunk,
-               chunks, Context, compute, gather
+               chunks, Context, compute, gather, free!
 
 
 # re-export the essentials
-export distribute, chunks, compute, gather
+export distribute, chunks, compute, gather, free!
 
 const IndexTuple = Union{Tuple, NamedTuple}
 
@@ -73,11 +73,14 @@ function compute(ctx, t::DTable; allowoverlap=false, closed=false)
         # are thunks and they need to be staged for scheduling
         vec_thunk = delayed((refs...) -> [refs...]; meta=true)(t.chunks...)
         cs = compute(ctx, vec_thunk) # returns a vector of Chunk objects
-        t = fromchunks(cs, allowoverlap=allowoverlap, closed=closed)
-        cache_thunks(t)
+        fromchunks(cs, allowoverlap=allowoverlap, closed=closed)
     else
         t
     end
+end
+
+function free!(t::DTable)
+    foreach(c -> free!(c, force=true), t.chunks)
 end
 
 """
