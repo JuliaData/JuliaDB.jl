@@ -25,17 +25,6 @@ end
     end
 end
 
-function Base.isless(t1::NamedTuple, t2::NamedTuple)
-    n1, n2 = length(t1), length(t2)
-    for i = 1:min(n1, n2)
-        a, b = t1[i], t2[i]
-        if !isequal(a, b)
-            return isless(a, b)
-        end
-    end
-    return n1 < n2
-end
-
 function treereduce(f, xs, v0=xs[1])
     length(xs) == 0 && return v0
     length(xs) == 1 && return xs[1]
@@ -336,32 +325,6 @@ end
 
 unwrap_mmap(arr::AbstractArray) = arr
 
-
-#### Fix serialization of NamedTuple types ####
-immutable NTType end
-
-function Base.serialize{NT<:NamedTuple}(io::AbstractSerializer, ::Type{NT})
-    Base.serialize_type(io, NTType)
-    if isa(NT, Union)
-        serialize(io, Union)
-        serialize(io, [NT.types...])
-    else
-        serialize(io, fieldnames(NT))
-        serialize(io, NT.parameters)
-    end
-end
-
-function Base.deserialize(io::AbstractSerializer, ::Type{NTType})
-   fnames = deserialize(io)
-   if fnames == Union
-        types = deserialize(io)
-        return Union{types...}
-   else
-       ftypes = deserialize(io)
-       NT = Expr(:macrocall, :(NamedTuples.$(Symbol("@NT"))), fnames...)
-       return eval(:($NT{$ftypes...}))
-   end
-end
 
 if VERSION < v"0.6.0-dev"
     function _repeated(x, n)
