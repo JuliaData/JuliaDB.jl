@@ -89,13 +89,13 @@ end
 Track the time spent on different processes in different
 categories in running `f`.
 """
-function tracktime(f; profile=false)
+function tracktime(f; profile=false, maxdepth=5)
     start_tracking_time(profile=profile)
     res = f()
     ctx = compute_context[]
     stop_tracking_time()
     t = fetch_timings!(ctx, profile=profile)
-    show_timings(t)
+    show_timings(t, maxdepth=maxdepth)
     t, res
 end
 
