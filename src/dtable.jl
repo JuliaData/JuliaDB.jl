@@ -262,6 +262,31 @@ function has_overlaps(subdomains, closed=false)
     return false
 end
 
+function with_overlaps{K,V}(f, t::DTable{K,V}, closed=false)
+    subdomains = t.subdomains
+    chunks = t.chunks
+    if !issorted(subdomains, by=first)
+        perm = sortperm(subdomains, by = first)
+        subdomains = subdomains[perm]
+        chunks = chunks[perm]
+    end
+
+    stack = [subdomains[1]]
+    groups = [[1]]
+    for i in 2:length(subdomains)
+        sub = subdomains[i]
+        if hasoverlap(stack[end].interval, sub.interval)
+            stack[end] = merge(stack[end], sub)
+            push!(groups[end], i)
+        else
+            push!(stack, sub)
+            push!(groups, [i])
+        end
+    end
+
+    DTable{K,V}(stack, [f(chunks[group]) for group in groups])
+end
+
 """
 `fromchunks(chunks::AbstractArray, [subdomains::AbstracArray]; allowoverlap=false)`
 

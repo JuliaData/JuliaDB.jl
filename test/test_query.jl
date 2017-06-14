@@ -1,3 +1,6 @@
+using JuliaDB
+using Base.Test
+
 @testset "map & reduce" begin
     t = IndexedTable(Columns([1,1,2,2], [1,2,1,2]), [1,2,3,4])
     d = distribute(t, 2)
@@ -63,7 +66,7 @@ end
     rdv2 = reducedim_vec(length, t1, 2)
 
     for n=1:5
-        d1 = distribute(t1, n)
+        d1 = distribute(t1, n, allowoverlap=true)
         @test collect(reducedim(+, d1, 1)) == rd1
         @test collect(reducedim(+, d1, 2)) == rd2
 

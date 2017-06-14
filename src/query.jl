@@ -37,14 +37,14 @@ function Base.select{K,V}(t::DTable{K,V}, which::DimName...; agg=nothing)
                    Nullable{Int}())
     end
 
-    t = mapchunks(x -> select(x, which...; agg=agg), t)
+    chunks = map(delayed(x -> select(x, which...; agg=agg)), t.chunks)
 
-    t1 = DTable{eltype(subdomains[1]), V}(subdomains, t.chunks)
+    t1 = DTable{eltype(subdomains[1]), V}(subdomains, chunks)
 
-    if has_overlaps(subdomains, true)
-        overlap_merge(x, y) = merge(x, y, agg=agg)
-        chunk_merge(ts...) = _merge(overlap_merge, ts...)
-        rechunk(t1, merge=chunk_merge, closed=true)
+    if agg !== nothing && has_overlaps(subdomains, true)
+        with_overlaps(t1) do cs
+            treereduce(delayed((x,y) -> merge(x, y, agg=agg)), cs)
+        end
     else
         t1
     end |> cache_thunks
