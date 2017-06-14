@@ -78,10 +78,11 @@ function merge_thunk(cs::AbstractArray, subdomains::AbstractArray, merge::Functi
         cs1
     end
 end
-function all_to_all(transfers, ctx, result_ref)
+function all_to_all(transfers, id, ctx, result_ref)
     for (from_pid, to_pid) in keys(transfers)
         if from_pid == myid()
             #println("Sending to $to_pid from $from_pid")
+            @dbg timespan_start(ctx, :compute, id, OSProc(myid()))
             subchunks = transfers[from_pid=>to_pid]
             ps = Any[]
             for (chunk_id, subchunk) in subchunks
@@ -89,25 +90,36 @@ function all_to_all(transfers, ctx, result_ref)
                 push!(ps, chunk_id => subtable(collect(ctx, d), r))
             end
             ps
+            @dbg timespan_end(ctx, :compute, id, OSProc(myid()))
+            @dbg timespan_start(ctx, :comm, id, OSProc(myid()))
             SPMD.sendto(to_pid, ps)
+            @dbg timespan_end(ctx, :comm, id, OSProc(myid()))
         end
     end
     for (from_pid, to_pid) in keys(transfers)
         if to_pid == myid()
             #println("Receiving on $to_pid from $from_pid")
+            @dbg timespan_start(ctx, :comm, id, OSProc(myid()))
             parts = SPMD.recvfrom(from_pid)
+            @dbg timespan_end(ctx, :comm, id, OSProc(myid()))
             chunk_ids = first.(parts)
+            @dbg timespan_end(ctx, :compute, id, OSProc(myid()))
             cs = map(tochunk, last.(parts))
+            @dbg timespan_end(ctx, :compute, id, OSProc(myid()))
+            @dbg timespan_start(ctx, :comm, id, OSProc(myid()))
             SPMD.sendto(1, map(Pair, chunk_ids, cs))
+            @dbg timespan_end(ctx, :comm, id, OSProc(myid()))
         end
     end
     if myid() == 1
         dest_chunks = Dict()
         refs = []
+        @dbg timespan_start(ctx, :comm, id, OSProc(myid()))
         for k in keys(transfers)
             #println("Receive any")
             append!(refs, last(SPMD.recvfrom_any()))
         end
+        @dbg timespan_end(ctx, :comm, id, OSProc(myid()))
 
         for (c_id, p) in refs
             if !haskey(dest_chunks, c_id)
@@ -188,7 +200,7 @@ function shuffle_merge(ctx::Dagger.Context, cs::AbstractArray,
 
 
     res_ref = Ref{Any}()
-    SPMD.spmd(all_to_all, transfers, ctx, res_ref)
+    SPMD.spmd(all_to_all, transfers, Dagger.next_id(), ctx, res_ref)
     dest_chunks = res_ref[]
 
     result = [begin
