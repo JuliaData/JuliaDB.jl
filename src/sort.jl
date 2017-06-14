@@ -79,9 +79,11 @@ function merge_thunk(cs::AbstractArray, subdomains::AbstractArray, merge::Functi
     end
 end
 function all_to_all(transfers, id, ctx, result_ref)
-    for (from_pid, to_pid) in keys(transfers)
+    for (idx, pair) in enumerate(keys(transfers))
+        (from_pid, to_pid) = pair
         if from_pid == myid()
             #println("Sending to $to_pid from $from_pid")
+            id = rand(Int)
             @dbg timespan_start(ctx, :compute, id, OSProc(myid()))
             subchunks = transfers[from_pid=>to_pid]
             ps = Any[]
@@ -96,8 +98,10 @@ function all_to_all(transfers, id, ctx, result_ref)
             @dbg timespan_end(ctx, :comm, id, OSProc(myid()))
         end
     end
-    for (from_pid, to_pid) in keys(transfers)
+    for (idx, pair) in enumerate(keys(transfers))
+        (from_pid, to_pid) = pair
         if to_pid == myid()
+            id = rand(Int)
             #println("Receiving on $to_pid from $from_pid")
             @dbg timespan_start(ctx, :comm, id, OSProc(myid()))
             parts = SPMD.recvfrom(from_pid)
@@ -106,14 +110,13 @@ function all_to_all(transfers, id, ctx, result_ref)
             @dbg timespan_end(ctx, :compute, id, OSProc(myid()))
             cs = map(tochunk, last.(parts))
             @dbg timespan_end(ctx, :compute, id, OSProc(myid()))
-            @dbg timespan_start(ctx, :comm, id, OSProc(myid()))
             SPMD.sendto(1, map(Pair, chunk_ids, cs))
-            @dbg timespan_end(ctx, :comm, id, OSProc(myid()))
         end
     end
     if myid() == 1
         dest_chunks = Dict()
         refs = []
+        id = rand(Int)
         @dbg timespan_start(ctx, :comm, id, OSProc(myid()))
         for k in keys(transfers)
             #println("Receive any")
@@ -200,7 +203,10 @@ function shuffle_merge(ctx::Dagger.Context, cs::AbstractArray,
 
 
     res_ref = Ref{Any}()
+    id = Dagger.next_id()
+    @dbg timespan_start(ctx, :comm, id, OSProc(myid()))
     SPMD.spmd(all_to_all, transfers, Dagger.next_id(), ctx, res_ref)
+    @dbg timespan_start(ctx, :comm, id, OSProc(myid()))
     dest_chunks = res_ref[]
 
     result = [begin
