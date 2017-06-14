@@ -78,6 +78,46 @@ function merge_thunk(cs::AbstractArray, subdomains::AbstractArray, merge::Functi
         cs1
     end
 end
+function all_to_all(transfers, ctx, result_ref)
+    for (from_pid, to_pid) in keys(transfers)
+        if from_pid == myid()
+            #println("Sending to $to_pid from $from_pid")
+            subchunks = transfers[from_pid=>to_pid]
+            ps = Any[]
+            for (chunk_id, subchunk) in subchunks
+                (d, r) = subchunk
+                push!(ps, chunk_id => subtable(collect(ctx, d), r))
+            end
+            ps
+            SPMD.sendto(to_pid, ps)
+        end
+    end
+    for (from_pid, to_pid) in keys(transfers)
+        if to_pid == myid()
+            #println("Receiving on $to_pid from $from_pid")
+            parts = SPMD.recvfrom(from_pid)
+            chunk_ids = first.(parts)
+            cs = map(tochunk, last.(parts))
+            SPMD.sendto(1, map(Pair, chunk_ids, cs))
+        end
+    end
+    if myid() == 1
+        dest_chunks = Dict()
+        refs = []
+        for k in keys(transfers)
+            #println("Receive any")
+            append!(refs, last(SPMD.recvfrom_any()))
+        end
+
+        for (c_id, p) in refs
+            if !haskey(dest_chunks, c_id)
+                dest_chunks[c_id] = Any[]
+            end
+            push!(dest_chunks[c_id], p)
+        end
+        result_ref[] = dest_chunks
+    end
+end
 
 function shuffle_merge(ctx::Dagger.Context, cs::AbstractArray,
                        subdomains::AbstractArray,
@@ -146,37 +186,10 @@ function shuffle_merge(ctx::Dagger.Context, cs::AbstractArray,
         end
     end
 
-    dest_chunks = Dict()
-    @sync for (from_pid, to_pid) in sort(collect(keys(transfers)))
-        subchunks = transfers[from_pid=>to_pid]
-        dest_chunk_ids = first.(subchunks)
-        actual_data = last.(subchunks)
-        @async begin
-            part_chunks =
-                let id = Dagger.next_id()
-                    remotecall_fetch(to_pid) do
-                        @dbg timespan_start(ctx, :comm, id, OSProc(to_pid))
-                        parts = remotecall_fetch(from_pid) do
-                            ps = Any[]
-                            for (d, r) in actual_data
-                                push!(ps, subtable(collect(ctx, d), r))
-                            end
-                            ps
-                        end
-                        cs = map(tochunk, parts)
-                        @dbg timespan_end(ctx, :comm, id, OSProc(to_pid))
-                        cs
-                    end
-                end
 
-            for (c_id, p) in zip(dest_chunk_ids, part_chunks)
-                if !haskey(dest_chunks, c_id)
-                    dest_chunks[c_id] = Any[]
-                end
-                push!(dest_chunks[c_id], p)
-            end
-        end
-    end
+    res_ref = Ref{Any}()
+    SPMD.spmd(all_to_all, transfers, ctx, res_ref)
+    dest_chunks = res_ref[]
 
     result = [begin
         delayed(merge)(sort(dest_chunks[k], by=x->first(domain(x)))...) =>

@@ -10,6 +10,7 @@ export IndexedTable, Columns
 include("util.jl")
 include("interval.jl")
 include("dtable.jl")
+include("spmd.jl")
 include("sort.jl")
 
 include("loadfiles.jl")
