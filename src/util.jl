@@ -196,7 +196,7 @@ end
 
 @inline Base.size(arr::MmappableArray) = arr.size
 @inline Base.getindex(arr::MmappableArray, idx...) = arr.data[idx...]
-if VERSION < v"0.6.0-dev"
+if VERSION < v"0.6.0-dev.2840"
     Base.linearindexing(arr::MmappableArray) = Base.linearindexing(arr.data)
 else
     Base.IndexStyle{T,N,A}(::Type{MmappableArray{T,N,A}}) = Base.IndexStyle(A)
@@ -326,7 +326,7 @@ end
 unwrap_mmap(arr::AbstractArray) = arr
 
 
-if VERSION < v"0.6.0-dev"
+if VERSION < v"0.6.0-dev.1024"
     function _repeated(x, n)
         repeated(x, n)
     end
