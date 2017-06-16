@@ -4,5 +4,4 @@ NamedTuples 4.0.0
 TextParse 0.1.6
 Dagger 0.2.0
 Glob 1.1.1
-NamedTuples
-PooledArrays
+PooledArrays 0.0.2

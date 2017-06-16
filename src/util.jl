@@ -370,15 +370,16 @@ end
 
 # The following is not inferable, this is OK because the only place we use
 # this doesn't need it.
-import Base: tuple_type_head, tuple_type_tail
 
 function _map_params(f, T, S)
-    (f(tuple_type_head(T), tuple_type_head(S)), _map_params(f, tuple_type_tail(T), tuple_type_tail(S))...)
+    (f(_tuple_type_head(T), _tuple_type_head(S)), _map_params(f, _tuple_type_tail(T), _tuple_type_tail(S))...)
 end
 
 _map_params(f, T::Type{Tuple{}},S::Type{Tuple{}}) = ()
 
 map_params{T,S}(f, ::Type{T}, ::Type{S}) = f(T,S)
+@inline _tuple_type_head{T<:Tuple}(::Type{T}) = Base.tuple_type_head(T)
+@inline _tuple_type_tail{T<:Tuple}(::Type{T}) = Base.tuple_type_tail(T)
 
 #function map_params{N}(f, T::Type{T} where T<:Tuple{Vararg{Any,N}}, S::Type{S} where S<: Tuple{Vararg{Any,N}})
 Base.@pure function map_params{T<:Tuple,S<:Tuple}(f, ::Type{T}, ::Type{S})
@@ -388,8 +389,12 @@ Base.@pure function map_params{T<:Tuple,S<:Tuple}(f, ::Type{T}, ::Type{S})
     Tuple{_map_params(f, T,S)...}
 end
 
-tuple_type_head{NT<: NamedTuple}(T::Type{NT}) = fieldtype(NT, 1)
-Base.@pure function tuple_type_tail{NT<: NamedTuple}(T::Type{NT})
+_tuple_type_head{NT<: NamedTuple}(T::Type{NT}) = fieldtype(NT, 1)
+Base.@pure function _tuple_type_tail{NT<: NamedTuple}(T::Type{NT})
+    Tuple{Base.argtail(NT.parameters...)...}
+end
+
+Base.@pure function _tuple_type_tail{NT<: NamedTuple}(T::Type{NT})
     Tuple{Base.argtail(NT.parameters...)...}
 end
 

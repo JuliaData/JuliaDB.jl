@@ -15,6 +15,8 @@ import JuliaDB: MmappableArray, copy_mmap, unwrap_mmap
         M2 = open(deserialize, sf)
         @test X == M
         @test M == M2
+        rm(sf)
+        rm(f)
     end
 
     @testset "PooledArray" begin
@@ -26,6 +28,8 @@ import JuliaDB: MmappableArray, copy_mmap, unwrap_mmap
         @test filesize(psf) < 10^3
         P2 = open(deserialize, psf)
         @test P2 == P1
+        rm(psf)
+        rm(f)
     end
 
     @testset "DataTime Array" begin
@@ -37,6 +41,8 @@ import JuliaDB: MmappableArray, copy_mmap, unwrap_mmap
         open(io -> serialize(io, M), sf, "w")
         @test filesize(sf) < 1000
         @test open(deserialize, sf) == T
+        rm(sf)
+        rm(f)
     end
 
     @testset "IndexedTable" begin
@@ -53,6 +59,8 @@ import JuliaDB: MmappableArray, copy_mmap, unwrap_mmap
         nd2 = open(deserialize, ndsf)
         @test nd == unwrap_mmap(nd2)
         @test typeof(nd) == typeof(unwrap_mmap(nd2))
+        rm(ndsf)
+        rm(ndf)
     end
 end
 
@@ -127,3 +135,6 @@ import JuliaDB: OnDisk
     dt = loadfiles(shuffle_files, indexcols=[], usecache=false)
     @test collect(dt) == spdata_unordered
 end
+
+rm(ingest_output, recursive=true)
+rm(ingest_output_unordered, recursive=true)
