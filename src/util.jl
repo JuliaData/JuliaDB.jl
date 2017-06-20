@@ -88,8 +88,9 @@ end
 function getbyheader_canonical(cols, header, oneof)
     str = getbyheader(cols, header, oneof)
     if isa(str, AbstractString)
-        replace(str, r"\s", "_")
+        return replace(str, r"\s", "_")
     end
+    return str
 end
 
 """
@@ -390,9 +391,6 @@ Base.@pure function map_params{T<:Tuple,S<:Tuple}(f, ::Type{T}, ::Type{S})
 end
 
 _tuple_type_head{NT<: NamedTuple}(T::Type{NT}) = fieldtype(NT, 1)
-Base.@pure function _tuple_type_tail{NT<: NamedTuple}(T::Type{NT})
-    Tuple{Base.argtail(NT.parameters...)...}
-end
 
 Base.@pure function _tuple_type_tail{NT<: NamedTuple}(T::Type{NT})
     Tuple{Base.argtail(NT.parameters...)...}
