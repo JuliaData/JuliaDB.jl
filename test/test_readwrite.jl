@@ -134,6 +134,13 @@ import JuliaDB: OnDisk
     # reuses csv read cache:
     dt = loadfiles(shuffle_files, indexcols=[], usecache=false)
     @test collect(dt) == spdata_unordered
+
+    # test specifying column names
+    dt = loadfiles(files[1:2], indexcols=[1,2], colnames=[:a,:b,:c,:d,:e,:f,:g], usecache=false, header_exists=false)
+    nds = collect(dt)
+    @test haskey(nds.index.columns, :a)
+    @test haskey(nds.index.columns, :b)
+    @test fieldnames(nds.data.columns) == [:c,:d,:e,:f,:g]
 end
 
 rm(ingest_output, recursive=true)
