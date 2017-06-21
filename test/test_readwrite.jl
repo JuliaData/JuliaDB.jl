@@ -136,7 +136,7 @@ import JuliaDB: OnDisk
     @test collect(dt) == spdata_unordered
 
     # test specifying column names
-    dt = loadfiles(files[1:2], indexcols=[1,2], colnames=[:a,:b,:c,:d,:e,:f,:g], usecache=false, header_exists=false)
+    dt = loadfiles(files[1:2], indexcols=[:a,:b], colnames=[:a,:b,:c,:d,:e,:f,:g], usecache=false, header_exists=false)
     nds = collect(dt)
     @test haskey(nds.index.columns, :a)
     @test haskey(nds.index.columns, :b)

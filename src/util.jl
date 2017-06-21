@@ -54,7 +54,7 @@ function extrema_range{T}(x::AbstractArray{T}, r::UnitRange)
 end
 
 getbyheader(cols, header, i::Int) = cols[i]
-getbyheader(cols, header, i::Symbol) = getcol(cols, header, string(i))
+getbyheader(cols, header, i::Symbol) = getbyheader(cols, header, string(i))
 function getbyheader(cols, header, i::AbstractString)
     if !(i in header)
         throw(ArgumentError("Unknown column $i"))
