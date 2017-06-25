@@ -1,4 +1,4 @@
-export select, convertdim, aggregate, reducedim_vec
+export select, convertdim, aggregate, reducedim_vec, aggregate_vec
 
 import IndexedTables: convertdim, aggregate, aggregate_vec, reducedim_vec, pick
 import Base: reducedim
