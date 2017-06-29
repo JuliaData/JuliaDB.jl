@@ -194,7 +194,7 @@ function Base.merge(d1::IndexSpace, d2::IndexSpace, collisions=true)
         Nullable(get(d1.nrows) + get(d2.nrows))
 
     interval = merge(d1.interval, d2.interval)
-    boundingrect = merge(d1.boundingrect, d2.boundingrect)
+    boundingrect = boxmerge(d1.boundingrect, d2.boundingrect)
     IndexSpace(interval, boundingrect, n)
 end
 Base.merge(d1::IndexSpace, d2::EmptySpace) = d1

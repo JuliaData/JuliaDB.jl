@@ -29,22 +29,17 @@ function hasoverlap(i1::Interval, i2::Interval)
     (first(i1) <= last(i2) && first(i2) <= last(i1))
 end
 
+boxintervals(i) = map(Interval, first(i), last(i))
+
 function boxhasoverlap(a,b)
-    all(map(in, map(Interval, first(a), last(a)),
-                map(Interval, first(b), last(b))))
+    all(map(hasoverlap, boxintervals(a), boxintervals(b)))
 end
 
-# KIND OF A HACK: Interval of Intervals - used for indexing into a table of Intervals
+function boxmerge(a, b)
+    c = map(merge, boxintervals(a), boxintervals(b))
+    Interval(map(first, c), map(last, c))
+end
 
-# convert a thing to an interval of its own
-Interval(x) = Interval(x,x)
-
-# An interval of intervals can be used to do binary search on
-# a sorted list of intervals. If you just give an interval, Table is going
-# to think you are doing scalar indexing.
-IntervalInterval(x, y) = Interval(Interval(x), Interval(y))
-Base.in{T}(x::Interval{T}, y::Interval{T}) = hasoverlap(x,y)
-Base.in{T}(x::Interval{T}, y::Interval{Interval{T}}) = x in Interval(first(first(y)),last(last(y)))
 
 function Base.intersect(i1::Interval, i2::Interval)
     Interval(max(first(i1), first(i2)), min(last(i1), last(i2)))
