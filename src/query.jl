@@ -32,9 +32,11 @@ function Base.select{K,V}(t::DTable{K,V}, which::DimName...; agg=nothing)
     sub_dims = [which...]
     subinterval(intv, idx) = Interval(first(intv)[idx], last(intv)[idx])
     subdomains = map(t.subdomains) do idxspace
-        IndexSpace(subinterval(idxspace.interval, sub_dims),
-                   subinterval(idxspace.boundingrect, sub_dims),
-                   Nullable{Int}())
+        # We replace the interval with the sub-bounding box as a conservative
+        # estimate of the interval...
+        # `subinterval(idxspace.interval, sub_dims)` would be wrong
+        subbox = subinterval(idxspace.boundingrect, sub_dims)
+        IndexSpace(subbox, subbox, Nullable{Int}())
     end
 
     chunks = map(delayed(x -> select(x, which...; agg=agg)), t.chunks)

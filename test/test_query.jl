@@ -75,6 +75,12 @@ end
     end
 end
 
+@testset "select" begin
+    t1 = IndexedTable(Columns([1,2,3,4], [2,1,1,2]), [1,2,3,4])
+    d1 = distribute(t1, 2)
+    @test collect(select(d1, 2, agg=+)) == select(t1, 2, agg=+)
+end
+
 @testset "permutedims" begin
     t = IndexedTable(Columns([1,1,2,2], ["a","b","a","b"]), [1,2,3,4])
     for n=1:5
