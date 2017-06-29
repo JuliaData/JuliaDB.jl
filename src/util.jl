@@ -145,6 +145,8 @@ function _load_table(file::Union{IO, AbstractString}, delim=',';
     #println("LOADING ", file)
     cols,header = csvread(file, delim; kwargs...)
 
+    header = map(string, header)
+
     implicitindex = false
 
     if datacols === nothing
