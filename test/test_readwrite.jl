@@ -114,6 +114,7 @@ import JuliaDB: OnDisk
     @test issorted(collect(getindexcol(load(ingest_output_unordered), 1)))
     c = first(load(ingest_output).chunks)
     @test typeof(c.handle) == OnDisk
+    @test c.handle.cached_on == []
     d = load(ingest_output,tomemory=true)
     @test collect(d) == spdata
     c2 = first(d.chunks)
@@ -141,6 +142,16 @@ import JuliaDB: OnDisk
     @test haskey(nds.index.columns, :a)
     @test haskey(nds.index.columns, :b)
     @test fieldnames(nds.data.columns) == [:c,:d,:e,:f,:g]
+end
+
+@testset "save" begin
+    t = IndexedTable([1,2,3,4], [1,2,3,4])
+    n = tempname()
+    x = JuliaDB.save(distribute(t, 4), n)
+    @test !any(c->isempty(c.handle.cached_on), x.chunks)
+    t1 = load(n)
+    @test all(c->isempty(c.handle.cached_on), t1.chunks)
+    rm(n, recursive=true)
 end
 
 rm(ingest_output, recursive=true)

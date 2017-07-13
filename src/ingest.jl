@@ -148,8 +148,14 @@ See also [`ingest`](@ref), [`save`](@ref)
 function load(dir::AbstractString; tomemory=false)
     dtable_file = joinpath(dir, JULIADB_INDEXFILE)
     dtable = open(deserialize, dtable_file)
+    for c in dtable.chunks
+        if isa(c.handle, OnDisk)
+            # clear out any affinity
+            empty!(c.handle.cached_on)
+        end
+    end
     if tomemory
-        compute(mapchunks(identity, dtable; keeplengths=true))
+        compute(mapchunks(copy, dtable; keeplengths=true))
     else
         dtable
     end
@@ -159,7 +165,7 @@ end
     save(t::DTable, outputdir::AbstractString)
 
 Saves a `DTable` to disk. This function blocks till all
-files data has been computed and saved. Saved data can
+chunks have been computed and saved. Saved data can
 be loaded with `load`.
 
 See also [`ingest`](@ref), [`load`](@ref)
@@ -178,7 +184,20 @@ function save{K,V}(t::DTable{K,V}, outputdir::AbstractString)
     saved_t = DTable{K,V}(t.subdomains, chunks)
 
     final = compute(saved_t)
+    cached_on = map(c->copy(c.handle.cached_on), final.chunks)
+    for c in final.chunks
+        if isa(c.handle, OnDisk)
+            # clear out any affinity
+            c.handle.cached_on = []
+        end
+    end
     open(io -> serialize(io, final), joinpath(outputdir, JULIADB_INDEXFILE), "w")
+    for (c, pids) in zip(final.chunks, cached_on)
+        if isa(c.handle, OnDisk)
+            # restore old affinity
+            c.handle.cached_on = pids
+        end
+    end
     final
 end
 
