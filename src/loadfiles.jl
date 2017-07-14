@@ -93,16 +93,24 @@ function loadfiles(files::Union{AbstractVector,String}, delim=','; usecache=true
 
     # Give an idea of what we're up against, we should probably also show a
     # progress meter.
-    println("Metadata for ", length(files)-length(unknown), " / ",
+     if length(files)>1
+        println("Metadata for ", length(files)-length(unknown), " / ",
             length(files), " files can be loaded from cache.")
-
+     elseif length(files)==1
+        println("Metadata for ", length(files)-length(unknown), " / ",
+            length(files), " file can be loaded from cache.")
+    end
     if isempty(unknown)
         # we read all required metadata from cache
         return cache_thunks(fromchunks(validcache))
     end
 
     sz = sum(map(filesize, unknown))
-    println("Reading $(length(unknown)) csv files totalling $(format_bytes(sz))...")
+    if length(unknown)>1
+        println("Reading $(length(unknown)) csv files totalling $(format_bytes(sz))...")
+    elseif length(unknown)==1
+        println("Reading $(length(unknown)) csv file totalling $(format_bytes(sz))...")
+    end 
     # Load the data first into memory
     load_f(f) = makecsvchunk(f, delim; opts...)
     data = map(delayed(load_f), unknown)
