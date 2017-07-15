@@ -277,6 +277,11 @@ end
 function with_overlaps{K,V}(f, t::DTable{K,V}, closed=false)
     subdomains = t.subdomains
     chunks = t.chunks
+
+    if isempty(subdomains)
+        return t
+    end
+
     if !issorted(subdomains, by=first)
         perm = sortperm(subdomains, by = first)
         subdomains = subdomains[perm]
@@ -357,7 +362,7 @@ rows in the chunks.
 
 Returns a `DTable`.
 """
-function distribute{V,K}(nds::Table{V,K}, rowgroups::AbstractArray;
+function distribute{V}(nds::Table{V}, rowgroups::AbstractArray;
                         allowoverlap = false, closed = false)
     splits = cumsum([0, rowgroups;])
 

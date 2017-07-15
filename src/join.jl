@@ -1,4 +1,5 @@
 import IndexedTables: naturaljoin, _naturaljoin, leftjoin, similarz, asofjoin, merge
+import Base: broadcast
 
 export naturaljoin, innerjoin, leftjoin, asofjoin, merge
 
@@ -186,4 +187,72 @@ function merge{I1,I2,D1,D2}(left::DTable{I1,D1}, right::DTable{I2,D2}; agg=Index
     end
 
     return cache_thunks(t)
+end
+
+function subbox(i::Interval, idx)
+    Interval(i.first[idx], i.last[idx])
+end
+
+function bcast_narrow_space(d, idxs, fst, lst)
+    intv = Interval(
+        tuplesetindex(d.interval.first, fst, idxs),
+        tuplesetindex(d.interval.last, lst, idxs)
+    )
+
+    box = Interval(
+        tuplesetindex(d.boundingrect.first, fst, idxs),
+        tuplesetindex(d.boundingrect.last, lst, idxs)
+    )
+    IndexSpace(intv, box, Nullable{Int}())
+end
+
+function broadcast{K1,K2,V1,V2}(f, A::DTable{K1,V1}, B::DTable{K2,V2}; dimmap=nothing)
+    if ndims(A) < ndims(B)
+        broadcast((x,y)->f(y,x), B, A; dimmap=dimmap)
+    end
+
+    if dimmap === nothing
+        dimmap = match_indices(A, B)
+    end
+
+    common_A = Iterators.filter(i->dimmap[i] > 0, 1:ndims(A)) |> collect
+    common_B = Iterators.filter(i -> i>0, dimmap) |> collect
+    #@assert length(common_B) == length(common_A)
+
+    # for every bounding box in A, take compare common_A
+    # bounding boxes vs. every common_B bounding box
+
+    out_chunks = []
+    innerbcast(a, b) = broadcast(f, a, b; dimmap=dimmap)
+    out_subdomains = []
+    for (dA, cA) in zip(A.subdomains, A.chunks)
+        for (dB, cB) in zip(B.subdomains, B.chunks)
+            boxA = subbox(dA.boundingrect, common_A)
+            boxB = subbox(dB.boundingrect, common_B)
+
+            fst = map(max, boxA.first, boxB.first)
+            lst = map(min, boxA.last, boxB.last)
+            dmn = bcast_narrow_space(dA, common_A, fst, lst)
+            if boxhasoverlap(boxA, boxB)
+                push!(out_chunks, delayed(innerbcast)(cA, cB))
+                push!(out_subdomains, dmn)
+            end
+        end
+    end
+    V = IndexedTables._promote_op(f, V1, V2)
+    t1 = DTable{K1, V}(out_subdomains, out_chunks)
+    with_overlaps(t1) do chunks
+        treereduce(delayed(_merge), chunks)
+    end
+end
+
+function match_indices{K1,K2}(A::DTable{K1},B::DTable{K2})
+    if K1 <: NamedTuple && K2 <: NamedTuple
+        Ap = dimlabels(A)
+        Bp = dimlabels(B)
+    else
+        Ap = K1.parameters
+        Bp = K2.parameters
+    end
+    IndexedTables.find_corresponding(Ap, Bp)
 end

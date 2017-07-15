@@ -25,6 +25,10 @@ end
     end
 end
 
+function tuplesetindex(x::Union{NamedTuple, Tuple}, v::Tuple, i::Tuple)
+    reduce((t, j)->tuplesetindex(t, v[j], i[j]), x, 1:length(i))
+end
+
 function treereduce(f, xs, v0=xs[1])
     length(xs) == 0 && return v0
     length(xs) == 1 && return xs[1]
