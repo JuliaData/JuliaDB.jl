@@ -3,6 +3,8 @@ import Base: collect
 import Dagger: chunktype, domain, tochunk,
                chunks, Context, compute, gather, free!
 
+import IndexedTables: eltypes, astuple
+
 
 # re-export the essentials
 export distribute, chunks, compute, gather, free!
@@ -38,8 +40,9 @@ immutable DTable{K,V}
 end
 
 Base.eltype{K,V}(dt::DTable{K,V}) = V
-IndexedTables.dimlabels(dt::DTable) = dimlabels(chunktype(first(dt.chunks))) # XXX: doesn't work if first chunk is a thunk
+IndexedTables.dimlabels{K}(dt::DTable{K}) = fieldnames(K)
 Base.ndims{K}(dt::DTable{K}) = nfields(K)
+keytype{K}(dt::DTable{K}) = astuple(K)
 
 const compute_context = Ref{Union{Void, Context}}(nothing)
 get_context() = compute_context[] == nothing ? Context() : compute_context[]
@@ -146,27 +149,36 @@ immutable EmptySpace{T} end
 # Teach dagger how to automatically figure out the
 # metadata (in dagger parlance "domain") about an Table chunk.
 function Dagger.domain(nd::Table)
+    T = eltypes(typeof(nd.index.columns))
+
     if isempty(nd)
-        return EmptySpace{eltype(nd.index)}()
+        return EmptySpace{T}()
     end
 
-    interval = Interval(first(nd.index), last(nd.index))
+    wrap = T<:NamedTuple ? T : tuple
+
+    interval = Interval(wrap(first(nd.index)...), wrap(last(nd.index)...))
     cs = astuple(nd.index.columns)
     extr = map(extrema, cs[2:end]) # we use first and last value of first column
-    boundingrect = Interval((first(cs[1]), map(first, extr)...),
-                            (last(cs[1]), map(last, extr)...))
+    boundingrect = Interval(wrap(first(cs[1]), map(first, extr)...),
+                            wrap(last(cs[1]), map(last, extr)...))
     return IndexSpace(interval, boundingrect, Nullable{Int}(length(nd)))
 end
 
 function subindexspace(nd::IndexedTable, r)
+    T = eltypes(typeof(nd.index.columns))
+    wrap = T<:NamedTuple ? T : tuple
+
     if isempty(r)
-        return EmptySpace{eltype(nd.index)}()
+        return EmptySpace{T}()
     end
-    interval = Interval(nd.index[first(r)], nd.index[last(r)])
+
+    interval = Interval(wrap(nd.index[first(r)]...), wrap(nd.index[last(r)]...))
     cs = astuple(nd.index.columns)
     extr = map(c -> extrema_range(c, r), cs[2:end])
-    boundingrect = Interval((cs[1][first(r)], map(first, extr)...),
-                            (cs[1][last(r)], map(last, extr)...))
+
+    boundingrect = Interval(wrap(cs[1][first(r)], map(first, extr)...),
+                            wrap(cs[1][last(r)], map(last, extr)...))
     return IndexSpace(interval, boundingrect, Nullable{Int}(length(r)))
 end
 
@@ -321,7 +333,7 @@ function cache_thunks(dt::DTable)
 end
 
 function getkvtypes{N<:Table}(::Type{N})
-    N.parameters[2], N.parameters[1]
+    eltypes(N.parameters[3]), N.parameters[1]
 end
 
 function getkvtypes(xs::AbstractArray)
@@ -331,7 +343,7 @@ function getkvtypes(xs::AbstractArray)
         K = map_params(promote_type, Tk, K)
         V = map_params(promote_type, Tv, V)
     end
-    K, V
+    (K, V)
 end
 
 ### Distribute a Table into a DTable
@@ -360,7 +372,8 @@ function distribute{V,K}(nds::Table{V,K}, rowgroups::AbstractArray;
     # the master process - which would lead to all operations being serial.
     chunks = map(r->delayed(identity)(subtable(nds, r)), ranges)
     subdomains = map(r->subindexspace(nds, r), ranges)
-    cache_thunks(fromchunks(chunks, subdomains, KV = (K, V),
+    realK = eltypes(typeof(nds.index.columns))
+    cache_thunks(fromchunks(chunks, subdomains, KV = (realK, V),
                             allowoverlap=allowoverlap, closed=closed))
 end
 
