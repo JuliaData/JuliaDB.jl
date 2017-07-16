@@ -30,6 +30,10 @@ function dindex(t::DTable)
     extractarray(t, nd -> nd.index)
 end
 
+function dindex(t::DTable, dims::Vector)
+    extractarray(t, nd -> Columns(nd.index.columns[[dims...]]))
+end
+
 function ddata(t::DTable)
     extractarray(t, nd -> nd.data)
 end

@@ -255,13 +255,15 @@ function Base.length(t::DTable)
     end
 end
 
-function has_overlaps(subdomains, closed=false)
-    if !issorted(subdomains, by=first)
-        subdomains = sort(subdomains, by = first)
+function _has_overlaps(firsts, lasts, closed)
+    if !issorted(firsts)
+        p = sortperm(firsts)
+        firsts = firsts[p]
+        lasts = lasts[p]
     end
-    lasts = map(last, subdomains)
-    for i = 1:length(subdomains)
-        s_i = first(subdomains[i])
+
+    for i = 1:length(firsts)
+        s_i = firsts[i]
         j = searchsortedfirst(lasts, s_i)
 
         # allow repeated indices between chunks
@@ -272,6 +274,17 @@ function has_overlaps(subdomains, closed=false)
         end
     end
     return false
+end
+
+function has_overlaps(subdomains, closed=false)
+    _has_overlaps(first.(subdomains), last.(subdomains), closed)
+end
+
+function has_overlaps(subdomains, dims::AbstractVector)
+    sub(x) = x[dims]
+    fs = sub.(first.(subdomains))
+    ls = sub.(last.(subdomains))
+    _has_overlaps(fs, ls, true)
 end
 
 function with_overlaps{K,V}(f, t::DTable{K,V}, closed=false)
