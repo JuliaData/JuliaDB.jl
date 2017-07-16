@@ -88,3 +88,21 @@ end
         @test collect(permutedims(d, [2,1])) == permutedims(t, [2,1])
     end
 end
+
+@testset "mapslices" begin
+    t = IndexedTable(Columns(x=[1,1,2,2], y=[1,2,3,4]), [1,2,3,4])
+
+    for (dist, nchunks) in zip(Any[1, 2, [1,3], [3,1], [1,2,1]],
+                               [1,2,2,1,2])
+        d = distribute(t, dist)
+        res = mapslices(collect, d, :y)
+        @test collect(res) == mapslices(collect, t, 2)
+        @test length(res.chunks) == nchunks
+        f = x->IndexedTable(Columns(z=[1,2]), [3,4])
+        res2 = mapslices(f, d, 2)
+        @test collect(res2) == mapslices(f, t, 2)
+        g = x->IndexedTable(Columns(z=[1,2]), [x[1][1],x[2]])
+        res3 = mapslices(g, d, ())
+        @test collect(res3) == mapslices(g, t, ())
+    end
+end

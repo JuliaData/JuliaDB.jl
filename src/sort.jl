@@ -23,14 +23,18 @@ function rechunk{K,V}(t::DTable{K,V}, lengths = nothing;
     # Get ranks for splitting at
     ranks = cumsum(lengths)[1:end-1]
 
-    idx = dindex(computed_t)
+    if isa(closed, Vector)
+        idx = dindex(computed_t, closed)
+    else
+        idx = dindex(computed_t)
+    end
     map(Dagger.persist!, idx.chunks)
     # select elements of required ranks in parallel:
     splitters = select(ctx, idx, ranks, order)
 
     Dagger.free!(idx, force=true, cache=false) # no more useful
     thunks, subspaces = shuffle_merge(ctx, t.chunks, computed_t.subdomains,
-                                      merge, ranks, closed, 
+                                      merge, ranks, isa(closed, Vector) || closed,
                                       splitters, chunk_lengths, order)
 
     fromchunks(thunks, subspaces; KV=(K,V))

@@ -1,7 +1,7 @@
 export select, convertdim, aggregate, reducedim_vec, aggregate_vec
 
 import IndexedTables: convertdim, aggregate, aggregate_vec, reducedim_vec, pick
-import Base: reducedim
+import Base: reducedim, mapslices
 
 # re-export
 export pick
@@ -177,4 +177,21 @@ end
 
 reducedim_vec(f, x::DTable, dims::Symbol) = reducedim_vec(f, x, [dims])
 
+keyindex(t::DTable, i::Int) = i
+keyindex{K}(t::DTable{K}, i::Symbol) = findfirst(x->x===i, fieldnames(K))
 
+function mapslices(f, x::DTable, dims; name=nothing)
+    iterdims = setdiff([1:ndims(x);], map(d->keyindex(x, d), dims))
+    if iterdims != [1:length(iterdims);]
+        throw(ArgumentError("$dims must be the trailing dimensions of the table. You can use `permutedims` first to permute the dimensions."))
+    end
+
+    t = has_overlaps(x.subdomains, iterdims) ?
+        rechunk(x, closed=iterdims) : x
+
+    cache_thunks(mapchunks(y -> mapslices(f, y, dims, name=name),
+                           t, keeplengths=false))
+end
+
+mapslices(f, x::DTable, dims::Symbol; name=nothing) =
+    mapslices(f, x, (dims,); name=name)
