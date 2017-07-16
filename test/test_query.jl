@@ -101,8 +101,9 @@ end
         f = x->IndexedTable(Columns(z=[1,2]), [3,4])
         res2 = mapslices(f, d, 2)
         @test collect(res2) == mapslices(f, t, 2)
-        g = x->IndexedTable(Columns(z=[1,2]), [x[1][1],x[2]])
-        res3 = mapslices(g, d, ())
-        @test collect(res3) == mapslices(g, t, ())
+        # uncomment when breaking API for mapslices () is released
+        #g = x->IndexedTable(Columns(z=[1,2]), [x[1][1],x[2]])
+        #res3 = mapslices(g, d, ())
+        #@test collect(res3) == mapslices(g, t, ())
     end
 end
