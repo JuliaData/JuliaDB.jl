@@ -24,9 +24,9 @@ function rechunk{K,V}(t::DTable{K,V}, lengths = nothing;
     ranks = cumsum(lengths)[1:end-1]
 
     if isa(closed, Vector)
-        idx = dindex(computed_t, closed)
+        idx = keys(computed_t, closed...)
     else
-        idx = dindex(computed_t)
+        idx = keys(computed_t)
     end
     map(Dagger.persist!, idx.chunks)
     # select elements of required ranks in parallel:
