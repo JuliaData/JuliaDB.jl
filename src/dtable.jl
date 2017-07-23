@@ -351,7 +351,7 @@ function cache_thunks(dt::DTable)
 end
 
 function getkvtypes{N<:Table}(::Type{N})
-    eltypes(N.parameters[3]), N.parameters[1]
+    eltype(N.parameters[3]), N.parameters[1]
 end
 
 function getkvtypes(xs::AbstractArray)
