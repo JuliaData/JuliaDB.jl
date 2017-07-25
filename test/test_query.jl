@@ -9,7 +9,7 @@ using Base.Test
 end
 
 @testset "getindex" begin
-    t = IndexedTable(Columns([1,1,1,2,2], [1,2,3,1,2]), [1,2,3,4,5])
+    t = IndexedTable(Columns(x=[1,1,1,2,2], y=[1,2,3,1,2]), [1,2,3,4,5])
     for n=1:5
         d = distribute(t, n)
 
