@@ -8,12 +8,26 @@ considered a scalar indexing (indexing of a single value). In this case the valu
 itself is looked up and returned.
 
 """
-Base.getindex(t::DTable, idxs...) = _getindex(t, idxs)
+function Base.getindex{K}(t::DTable{K}, idxs...)
+    if typeof(idxs) <: astuple(K)
+        _getindex_scalar(t, idxs)
+    else
+        _getindex(t, idxs)
+    end
+end
 
-function _getindex{K,V}(t::DTable{K,V}, idxs::K)
+function _getindex_scalar{K,V}(t::DTable{K,V}, idxs)
     # scalar getindex
     brects = boundingrect.(t.subdomains)
-    subchunk_idxs = find(c->all(map(in, idxs, map(Interval, c.first, c.last))), brects)
+    function shouldlook(rect)
+        for i in 1:nfields(idxs)
+            if !(idxs[i] in Interval(rect.first[i], rect.last[i]))
+                return false
+            end
+        end
+        return true
+    end
+    subchunk_idxs = find(shouldlook, brects)
     t1 = DTable{K,V}(t.subdomains[subchunk_idxs], t.chunks[subchunk_idxs])
     collect(t1)[idxs...]
 end
