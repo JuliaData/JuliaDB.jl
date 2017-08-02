@@ -4,7 +4,7 @@ export getindexcol, getdatacol, dindex, ddata,
 
 import Base: keys, values
 import IndexedTables: DimName, Columns, column, columns,
-       rows, pairs, as, Tup, namedtuple, itable
+       rows, pairs, as, As, Tup, namedtuple, itable
 
 import Dagger: DomainBlocks, ArrayDomain, DArray,
                 ArrayOp, domainchunks, chunks, Distribute
@@ -55,7 +55,7 @@ function itable(keycols::DArray, valuecols::DArray)
     fromchunks(cs1)
 end
 
-function extractarray(t::DTable, accessor)
+function extractarray(t::Union{DTable,DArray}, accessor)
     arraymaker = function (cs_tup...)
         cs = [cs_tup...]
         lengths = length.(domain.(cs))
@@ -73,10 +73,69 @@ function column(t::DTable, name)
     extractarray(t, x -> column(x, name))
 end
 
-for f in [:columns, :rows, :keys, :values]
-    @eval function $f(t::DTable, which...)
-        extractarray(t, x -> $f(x, which...))
+isas(d) = isa(d, As) && d.f !== identity
+
+function columns(t::Union{DTable, DArray}, which::Tuple)
+    if any(isas, which)
+        _columns_as(t, which)
     end
+
+    cs = map(delayed(x->columns(x, which)), t.chunks)
+    f = delayed() do c
+        map(tochunk, c)
+    end
+
+    tuples = collect(get_context(), treereduce(delayed(vcat), map(f, cs)))
+
+    # tuples is a vector of tuples
+    map(tuples...) do cstup...
+        cs = [cstup...]
+        T = chunktype(cs[1])
+        ls = length.(domain.(cs))
+        d = ArrayDomain((1:sum(ls),))
+        dchunks = DomainBlocks((1,), (cumsum(ls),))
+        DArray{eltype(T), 1}(d, dchunks, cs)
+    end
+end
+
+function _columns_as(t, which)
+    stripas(w) = isa(w, As) ? w.src : w
+    which_ = ntuple(i->as(stripas(which[i]), i), length(which))
+    cs = columns(t, which_)
+    asvecs = find(isas, which)
+    outvecs = Any[cs...]
+    outvecs[asvecs] = map((w,x) -> w.f(x), which[asvecs], cs[asvecs])
+    tup = IndexedTables._output_tuple(which)
+    tup(outvecs...)
+end
+
+for f in [:rows, :keys, :values]
+    @eval function $f(t::Union{DTable, ArrayOp}, which::Tuple)
+        if !any(isas, which)
+            # easy
+            extractarray(t, x -> $f(x, which))
+        else
+            DColumns(columns($f(t), which))
+        end
+    end
+end
+
+for f in [:columns, :rows, :keys, :values]
+    @eval function $f(t::DTable)
+        extractarray(t, x -> $f(x))
+    end
+
+    @eval function $f(t::DTable, which::Union{Int, Symbol})
+        extractarray(t, x -> $f(x, which))
+    end
+
+    @eval function $f(t::DTable, which::As)
+        which.f($f(t, which.src))
+    end
+end
+
+function pairs(t::DTable)
+    extractarray(t, x -> map(Pair, x.index, x.data))
 end
 
 Base.@deprecate getindexcol(t::DTable, dim) keys(t, dim)

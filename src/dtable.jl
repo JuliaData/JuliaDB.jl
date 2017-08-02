@@ -1,6 +1,6 @@
 import Base: collect
 
-import Dagger: chunktype, domain, tochunk,
+import Dagger: chunktype, domain, tochunk, distribute,
                chunks, Context, compute, gather, free!
 
 import IndexedTables: eltypes, astuple
