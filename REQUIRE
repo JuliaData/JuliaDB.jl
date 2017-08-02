@@ -1,5 +1,5 @@
 julia 0.6
-IndexedTables 0.2.1
+IndexedTables 0.3.0
 NamedTuples 4.0.0
 TextParse 0.1.6
 Dagger 0.2.2
