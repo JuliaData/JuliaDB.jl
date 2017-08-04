@@ -26,7 +26,7 @@ The `agg` keyword argument is a function which specifies how entries with
 equal indices should be aggregated. If `agg` is unspecified, then the repeating
 indices are kept in the output, you can then aggregate using [`aggregate`](@ref)
 """
-function Base.select{K,V}(t::DTable{K,V}, which::DimName...; agg=nothing)
+function Base.select(t::DTable{K,V}, which::DimName...; agg=nothing) where {K,V}
 
     # remove dimensions from bounding boxes
     sub_dims = [which...]
@@ -103,8 +103,8 @@ monotonically increasing function.
 
 See also [`reducedim`](@ref) and [`aggregate`](@ref)
 """
-function convertdim{K,V}(t::DTable{K,V}, d::DimName, xlat;
-                    agg=nothing, vecagg=nothing, name=nothing)
+function convertdim(t::DTable{K,V}, d::DimName, xlat;
+               agg=nothing, vecagg=nothing, name=nothing) where {K,V}
 
     if isa(d, Symbol)
         dn = findfirst(dimlabels(t), d)
@@ -178,7 +178,7 @@ end
 reducedim_vec(f, x::DTable, dims::Symbol) = reducedim_vec(f, x, [dims])
 
 keyindex(t::DTable, i::Int) = i
-keyindex{K}(t::DTable{K}, i::Symbol) = findfirst(x->x===i, fieldnames(K))
+keyindex(t::DTable{K}, i::Symbol) where {K} = findfirst(x->x===i, fieldnames(K))
 
 function mapslices(f, x::DTable, dims; name=nothing)
     iterdims = setdiff([1:ndims(x);], map(d->keyindex(x, d), dims))

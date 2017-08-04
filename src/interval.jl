@@ -5,13 +5,13 @@ An interval type tailored specifically to store intervals of
 indices of an Table object. Some of the operations on this
 like `in` or `<` may be controversial for a generic Interval type.
 """
-immutable Interval{T}
+struct Interval{T}
     first::T
     last::T
 end
 
 # desired properties:
-Base.eltype{T}(int::Interval{T}) = T
+Base.eltype(int::Interval{T}) where {T} = T
 Base.first(int::Interval) = int.first
 Base.last(int::Interval) = int.last
 Base.isempty(int::Interval) = first(int) > last(int)

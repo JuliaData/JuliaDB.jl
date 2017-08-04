@@ -21,7 +21,7 @@ Metadata about an `IndexedTable`, a chunk of a DTable.
 - `nrows`: A `Nullable{Int}` of number of rows in the Table, if knowable
            (See design doc section on "Knowability of chunk size")
 """
-immutable IndexSpace{T<:IndexTuple}
+struct IndexSpace{T<:IndexTuple}
     interval::Interval{T}
     boundingrect::Interval{T}
     nrows::Nullable{Int}
@@ -34,15 +34,15 @@ interval(x::IndexSpace) = x.interval
 A distributed table. Can be constructed using [loadfiles](@ref),
 [ingest](@ref) or [distribute](@ref)
 """
-immutable DTable{K,V}
+struct DTable{K,V}
     subdomains::Vector{IndexSpace{K}}
     chunks::Vector
 end
 
-Base.eltype{K,V}(dt::DTable{K,V}) = V
-IndexedTables.dimlabels{K}(dt::DTable{K}) = fieldnames(K)
-Base.ndims{K}(dt::DTable{K}) = nfields(K)
-keytype{K}(dt::DTable{K}) = astuple(K)
+Base.eltype(dt::DTable{K,V}) where {K,V} = V
+IndexedTables.dimlabels(dt::DTable{K}) where {K} = fieldnames(K)
+Base.ndims(dt::DTable{K}) where {K} = nfields(K)
+keytype(dt::DTable{K}) where {K} = astuple(K)
 
 const compute_context = Ref{Union{Void, Context}}(nothing)
 get_context() = compute_context[] == nothing ? Context() : compute_context[]
@@ -100,7 +100,7 @@ Gets distributed data in a DTable `t` and merges it into
 """
 collect(t::DTable) = collect(get_context(), t)
 
-function collect{T}(ctx::Context, dt::DTable{T})
+function collect(ctx::Context, dt::DTable{T}) where T
     cs = dt.chunks
     if length(cs) > 0
         collect(ctx, treereduce(delayed(_merge), cs))
@@ -144,7 +144,7 @@ function Base.reduce(f, dt::DTable)
     collect(get_context(), treereduce(delayed(f), cs))
 end
 
-immutable EmptySpace{T} end
+struct EmptySpace{T} end
 
 # Teach dagger how to automatically figure out the
 # metadata (in dagger parlance "domain") about an Table chunk.
@@ -287,7 +287,7 @@ function has_overlaps(subdomains, dims::AbstractVector)
     _has_overlaps(fs, ls, true)
 end
 
-function with_overlaps{K,V}(f, t::DTable{K,V}, closed=false)
+function with_overlaps(f, t::DTable{K,V}, closed=false) where {K,V}
     subdomains = t.subdomains
     chunks = t.chunks
 
@@ -376,8 +376,8 @@ rows in the chunks.
 
 Returns a `DTable`.
 """
-function distribute{V}(nds::Table{V}, rowgroups::AbstractArray;
-                        allowoverlap = false, closed = false)
+function distribute(nds::Table{V}, rowgroups::AbstractArray;
+                     allowoverlap = false, closed = false) where V
     splits = cumsum([0, rowgroups;])
 
     if splits[end] != length(nds)
@@ -421,7 +421,7 @@ If `keeplength` is false, this means that the lengths of the output
 chunks is unknown before [`compute`](@ref). This function is used
 internally by many DTable operations.
 """
-function mapchunks{K,V}(f, t::DTable{K,V}; keeplengths=true)
+function mapchunks(f, t::DTable{K,V}; keeplengths=true) where {K,V}
     chunks = map(delayed(f), t.chunks)
     if keeplengths
         DTable{K, V}(t.subdomains, chunks)
