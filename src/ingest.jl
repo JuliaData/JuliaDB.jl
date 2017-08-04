@@ -170,7 +170,7 @@ be loaded with `load`.
 
 See also [`ingest`](@ref), [`load`](@ref)
 """
-function save{K,V}(t::DTable{K,V}, outputdir::AbstractString)
+function save(t::DTable{K,V}, outputdir::AbstractString) where {K,V}
 
     if !isdir(outputdir)
         mkdir(outputdir)
@@ -201,7 +201,7 @@ function save{K,V}(t::DTable{K,V}, outputdir::AbstractString)
     final
 end
 
-type OnDisk
+mutable struct OnDisk
     filename::String
     cached_on::Vector{Int}
     cache::Bool

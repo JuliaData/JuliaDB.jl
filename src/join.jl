@@ -9,7 +9,7 @@ export naturaljoin, innerjoin, leftjoin, asofjoin, merge
 Returns a new `DTable` containing only rows where the indices are present both in
 `left` AND `right` tables. The data columns are concatenated.
 """
-function naturaljoin{I,J,D1,D2}(left::DTable{I,D1}, right::DTable{J,D2})
+function naturaljoin(left::DTable{I,D1}, right::DTable{J,D2}) where {I,J,D1,D2}
     op = combine_op_t(D1, D2)
     naturaljoin(left, right, op, true)
 end
@@ -23,9 +23,9 @@ rows from `left` and `right` are combined using `op`. If `op` returns a tuple or
 NamedTuple, and `ascolumns` is set to true, the output table will contain the tuple
 elements as separate data columns instead as a single column of resultant tuples.
 """
-function naturaljoin{I1, I2, D1, D2}(left::DTable{I1,D1},
-                                     right::DTable{I2,D2},
-                                     op, ascolumns=false)
+function naturaljoin(left::DTable{I1,D1},
+                     right::DTable{I2,D2},
+                     op, ascolumns=false) where {I1, I2, D1, D2}
     out_subdomains = Any[]
     out_chunks = Any[]
 
@@ -73,11 +73,11 @@ function naturaljoin{I1, I2, D1, D2}(left::DTable{I1,D1},
 end
 
 combine_op_t(a, b) = tuple
-combine_op_t{T<:Tuple, U<:Tuple}(a::Type{T}, b::Type{U}) = (l, r)->(l..., r...)
-combine_op_t{T<:Tuple}(a, b::Type{T}) = (l, r)->(l, r...)
-combine_op_t{T<:Tuple}(a::Type{T}, b) = (l, r)->(l..., r)
+combine_op_t(a::Type{T}, b::Type{U}) where {T<:Tuple, U<:Tuple} = (l, r)->(l..., r...)
+combine_op_t(a, b::Type{T}) where {T<:Tuple} = (l, r)->(l, r...)
+combine_op_t(a::Type{T}, b) where {T<:Tuple} = (l, r)->(l..., r)
 
-Base.map{I}(f, x::DTable{I}, y::DTable{I}) = naturaljoin(x, y, f)
+Base.map(f, x::DTable{I}, y::DTable{I}) where {I} = naturaljoin(x, y, f)
 
 
 # left join
@@ -89,10 +89,10 @@ Keeps only rows with indices in `left`. If rows of the same index are
 present in `right`, then they are combined using `op`. `op` by default
 picks the value from `right`.
 """
-function leftjoin{K,V}(left::DTable{K,V}, right::DTable,
-                  op = IndexedTables.right,
-                  joinwhen = boxhasoverlap,
-                  chunkjoin = leftjoin)
+function leftjoin(left::DTable{K,V}, right::DTable,
+             op = IndexedTables.right,
+             joinwhen = boxhasoverlap,
+             chunkjoin = leftjoin) where {K,V}
 
     out_chunks = Any[]
 
@@ -141,7 +141,7 @@ end
 Merges `left` and `right` combining rows with matching indices using `agg`.
 By default `agg` picks the value from `right`.
 """
-function merge{I1,I2,D1,D2}(left::DTable{I1,D1}, right::DTable{I2,D2}; agg=IndexedTables.right)
+function merge(left::DTable{I1,D1}, right::DTable{I2,D2}; agg=IndexedTables.right) where {I1,I2,D1,D2}
     out_subdomains = Any[]
     out_chunks = Any[]
     usedup_right = Array{Bool}(length(right.subdomains))
@@ -179,7 +179,7 @@ function bcast_narrow_space(d, idxs, fst, lst)
     IndexSpace(intv, box, Nullable{Int}())
 end
 
-function broadcast{K1,K2,V1,V2}(f, A::DTable{K1,V1}, B::DTable{K2,V2}; dimmap=nothing)
+function broadcast(f, A::DTable{K1,V1}, B::DTable{K2,V2}; dimmap=nothing) where {K1,K2,V1,V2}
     if ndims(A) < ndims(B)
         broadcast((x,y)->f(y,x), B, A; dimmap=dimmap)
     end
@@ -219,7 +219,7 @@ function broadcast{K1,K2,V1,V2}(f, A::DTable{K1,V1}, B::DTable{K2,V2}; dimmap=no
     end
 end
 
-function match_indices{K1,K2}(A::DTable{K1},B::DTable{K2})
+function match_indices(A::DTable{K1},B::DTable{K2}) where {K1,K2}
     if K1 <: NamedTuple && K2 <: NamedTuple
         Ap = dimlabels(A)
         Bp = dimlabels(B)

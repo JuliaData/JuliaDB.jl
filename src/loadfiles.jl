@@ -141,7 +141,7 @@ end
 const _read_cache = Dict{Tuple{String, Dict},Any}()
 const _cached_on = Dict{Tuple{String, Dict},Any}() # workers register here once they have read a file
 
-type CSVChunk
+mutable struct CSVChunk
     filename::String
     cache::Bool
     delim::Char

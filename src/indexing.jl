@@ -8,7 +8,7 @@ considered a scalar indexing (indexing of a single value). In this case the valu
 itself is looked up and returned.
 
 """
-function Base.getindex{K}(t::DTable{K}, idxs...)
+function Base.getindex(t::DTable{K}, idxs...) where K
     if typeof(idxs) <: astuple(K)
         _getindex_scalar(t, idxs)
     else
@@ -16,7 +16,7 @@ function Base.getindex{K}(t::DTable{K}, idxs...)
     end
 end
 
-function _getindex_scalar{K,V}(t::DTable{K,V}, idxs)
+function _getindex_scalar(t::DTable{K,V}, idxs) where {K,V}
     # scalar getindex
     brects = boundingrect.(t.subdomains)
     function shouldlook(rect)
@@ -32,7 +32,7 @@ function _getindex_scalar{K,V}(t::DTable{K,V}, idxs)
     collect(t1)[idxs...]
 end
 
-function _getindex{K,V}(t::DTable{K,V}, idxs)
+function _getindex(t::DTable{K,V}, idxs) where {K,V}
     if length(idxs) != ndims(t)
         error("wrong number of indices")
     end

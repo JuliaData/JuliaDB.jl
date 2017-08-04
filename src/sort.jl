@@ -3,10 +3,10 @@ import Dagger: affinity, @dbg, OSProc, timespan_start, timespan_end
 
 export rechunk
 
-function rechunk{K,V}(t::DTable{K,V}, lengths = nothing;
-               select=sampleselect,
-               closed=false,
-               merge=_merge)
+function rechunk(t::DTable{K,V}, lengths = nothing;
+          select=sampleselect,
+          closed=false,
+          merge=_merge) where {K,V}
 
     order = Forward
     ctx = get_context()
@@ -56,7 +56,7 @@ function sampleselect(ctx, idx, ranks, order; samples=32)
     Pair[splitters[i]=>xs[i, :] for i in 1:size(xs,1)]
 end
 
-immutable All
+struct All
 end
 subtable(t::IndexedTable, ::All) = t
 
@@ -195,7 +195,7 @@ end
 
 ### Permutedims
 
-function Base.permutedims{K,V}(t::DTable{K,V}, p::AbstractVector)
+function Base.permutedims(t::DTable{K,V}, p::AbstractVector) where {K,V}
     if !(length(p) == ndims(t) && isperm(p))
         throw(ArgumentError("argument to permutedims must be a valid permutation"))
     end
