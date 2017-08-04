@@ -149,41 +149,14 @@ function merge{I1,I2,D1,D2}(left::DTable{I1,D1}, right::DTable{I2,D2}; agg=Index
     I = promote_type(I1, I2)        # output index type
     D = promote_type(D1, D2)        # output data type
 
-    cols(v) = (v,)
-    cols(v::Columns) = v.columns
+    t = DTable{I,D}(vcat(left.subdomains, right.subdomains),
+                    vcat(left.chunks, right.chunks))
 
-    for i in 1:length(left.chunks)
-        lchunk = left.chunks[i]
-        subdomain = left.subdomains[i]
-        lbrect = subdomain.boundingrect
-        # for each chunk in `left`
-        # find all the overlapping chunks from `right`
-        overlapping = map(boundingrect.(right.subdomains)) do rbrect
-            boxhasoverlap(lbrect, rbrect)
-        end
-        overlapping_chunks = right.chunks[overlapping]
-
-        broadcast!(&, usedup_right, usedup_right, overlapping)
-
-        # all overlapping chunk from `right` should be merged
-        # with the chunk `lchunk`
-        out_chunk = treereduce(delayed((x,y)->merge(x, y; agg=agg)),
-                               [lchunk, overlapping_chunks...], lchunk)
-        push!(out_chunks, out_chunk)
-
-        merged_subdomain = reduce(merge, subdomain, right.subdomains[overlapping])
-        push!(out_subdomains, merged_subdomain)
-    end
-    leftout_right = broadcast(!, usedup_right)
-    out_subdomains = vcat(out_subdomains, right.subdomains[leftout_right])
-
-    out_chunks = vcat(out_chunks, right.chunks[leftout_right])
-
-    t = DTable{I, D}(out_subdomains, out_chunks)
-
-    if agg !== nothing && has_overlaps(out_subdomains, true)
-        overlap_merge = (x, y) -> merge(x, y, agg=agg)
-        t = rechunk(t, merge=(ts...) -> _merge(overlap_merge, ts...), closed=true)
+    overlap_merge(x, y) = merge(x, y, agg=agg)
+    if has_overlaps(t.subdomains)
+        t = rechunk(t,
+                    merge = (x...)->_merge(overlap_merge, x...),
+                    closed=agg!==nothing)
     end
 
     return cache_thunks(t)

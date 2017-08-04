@@ -314,7 +314,8 @@ function with_overlaps{K,V}(f, t::DTable{K,V}, closed=false)
         end
     end
 
-    DTable{K,V}(stack, [f(chunks[group]) for group in groups])
+    cs = collect(flatten([f(chunks[group]) for group in groups]))
+    DTable{K,V}(stack, cs)
 end
 
 """
