@@ -104,7 +104,7 @@ monotonically increasing function.
 See also [`reducedim`](@ref) and [`aggregate`](@ref)
 """
 function convertdim(t::DTable{K,V}, d::DimName, xlat;
-               agg=nothing, vecagg=nothing, name=nothing) where {K,V}
+                    agg=nothing, vecagg=nothing, name=nothing) where {K,V}
 
     if isa(d, Symbol)
         dn = findfirst(dimlabels(t), d)
