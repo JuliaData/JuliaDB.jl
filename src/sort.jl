@@ -4,9 +4,9 @@ import Dagger: affinity, @dbg, OSProc, timespan_start, timespan_end
 export rechunk
 
 function rechunk(t::DTable{K,V}, lengths = nothing;
-          select=sampleselect,
-          closed=false,
-          merge=_merge) where {K,V}
+                 select=sampleselect,
+                 closed=false,
+                 merge=_merge) where {K,V}
 
     order = Forward
     ctx = get_context()

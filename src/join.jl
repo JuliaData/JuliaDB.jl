@@ -90,9 +90,9 @@ present in `right`, then they are combined using `op`. `op` by default
 picks the value from `right`.
 """
 function leftjoin(left::DTable{K,V}, right::DTable,
-             op = IndexedTables.right,
-             joinwhen = boxhasoverlap,
-             chunkjoin = leftjoin) where {K,V}
+                  op = IndexedTables.right,
+                  joinwhen = boxhasoverlap,
+                  chunkjoin = leftjoin) where {K,V}
 
     out_chunks = Any[]
 
