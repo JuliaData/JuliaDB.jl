@@ -153,9 +153,9 @@ function merge{I1,I2,D1,D2}(left::DTable{I1,D1}, right::DTable{I2,D2}; agg=Index
                     vcat(left.chunks, right.chunks))
 
     overlap_merge(x, y) = merge(x, y, agg=agg)
-    if has_overlaps(t.subdomains)
+    if has_overlaps(t.subdomains, agg!==nothing)
         t = rechunk(t,
-                    merge = (x...)->_merge(overlap_merge, x...),
+                    merge=(x...)->_merge(overlap_merge, x...),
                     closed=agg!==nothing)
     end
 
