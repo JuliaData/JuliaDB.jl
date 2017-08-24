@@ -120,7 +120,7 @@ export @dateformat_str, load, csvread, load_table, glob
 
 """
     load_table(file::AbstractString;
-              indexcols, datacols, agg, presorted, copy, kwargs...)
+              indexcols, datacols, filenamecol, agg, presorted, copy, kwargs...)
 
 Load a CSV file into an Table data. `indexcols` (AbstractArray)
 specifies which columns form the index of the data, `datacols`
@@ -132,14 +132,23 @@ Returns an IndexedTable. A single implicit dimension with
 values 1:N will be added if no `indexcols` (or `indexcols=[]`)
 is specified.
 """
-function load_table(args...;kwargs...)
+function load_table(args...; kwargs...)
     # just return the table
     _load_table(args...; kwargs...)[1]
+end
+
+function prettify_filename(f)
+    f = basename(f)
+    if endswith(lowercase(f), ".csv")
+        f = f[1:end-4]
+    end
+    return f
 end
 
 function _load_table(file::Union{IO, AbstractString}, delim=',';
                       indexcols=[],
                       datacols=nothing,
+                      filenamecol=nothing,
                       agg=nothing,
                       presorted=false,
                       copy=false,
@@ -150,6 +159,14 @@ function _load_table(file::Union{IO, AbstractString}, delim=',';
     cols,header = csvread(file, delim; kwargs...)
 
     header = map(string, header)
+
+    if filenamecol !== nothing
+        # mimick a file name column
+        cols = (fill(prettify_filename(file), length(cols[1])), cols...)
+        if !isempty(header)
+            unshift!(header, string(filenamecol))
+        end
+    end
 
     implicitindex = false
 

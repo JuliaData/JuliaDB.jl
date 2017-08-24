@@ -105,6 +105,8 @@ import JuliaDB: OnDisk
     if isfile(cache)
         rm(cache)
     end
+    # file name as a column:
+    @test unique(keys(loadfiles(path, indexcols=[:year, :date, :ticker],filenamecol=:year, usecache=false), :year)) == string.(2010:2015)
     @test_throws ErrorException load_table("a,b\n,2", csvread=TextParse._csvread, indexcols=[1])
     @test collect(spdata_dist) == spdata
     @test collect(spdata_dist_path) == spdata
