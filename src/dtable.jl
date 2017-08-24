@@ -355,12 +355,15 @@ function getkvtypes{N<:Table}(::Type{N})
     eltype(N.parameters[3]), N.parameters[1]
 end
 
+_promote_type(T,S) = promote_type(T,S)
+_promote_type(T::Type{<:IndexTuple}, S::Type{<:IndexTuple}) = map_params(_promote_type, T, S)
+
 function getkvtypes(xs::AbstractArray)
     kvtypes = getkvtypes.(chunktype.(xs))
     K, V = kvtypes[1]
     for (Tk, Tv) in kvtypes[2:end]
-        K = map_params(promote_type, Tk, K)
-        V = map_params(promote_type, Tv, V)
+        K = _promote_type(Tk, K)
+        V = _promote_type(Tv, V)
     end
     (K, V)
 end

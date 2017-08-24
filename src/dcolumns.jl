@@ -45,7 +45,8 @@ function DColumns(arrays::Tup)
         map(chunks, darrays)...)
     T = isa(arrays, Tuple) ? Tuple{map(eltype, arrays)...} :
         wrap{map(eltype, arrays)...}
-    DArray{T, 1}(domain(darrays[1]), domainchunks(darrays[1]), cs)
+
+    DArray(T, domain(darrays[1]), domainchunks(darrays[1]), cs, (i, x...)->vcat(x...))
 end
 
 function itable(keycols::DArray, valuecols::DArray)
@@ -60,9 +61,8 @@ function extractarray(t::Union{DTable,DArray}, accessor)
         cs = [cs_tup...]
         lengths = length.(domain.(cs))
         dmnchunks = DomainBlocks((1,), (cumsum(lengths),))
-        T = eltype(chunktype(cs[1]))
-        n = ndims(chunktype(cs[1]))
-        DArray{T,n}(ArrayDomain(1:sum(lengths)), dmnchunks, [cs...])
+        T = reduce(_promote_type, eltype(chunktype(cs[1])), eltype.(chunktype.(cs)))
+        DArray(T, ArrayDomain(1:sum(lengths)), dmnchunks, [cs...], (i, x...)->vcat(x...))
     end
 
     cs = map(delayed(accessor), t.chunks)
@@ -94,7 +94,7 @@ function columns(t::Union{DTable, DArray}, which::Tuple)
         ls = length.(domain.(cs))
         d = ArrayDomain((1:sum(ls),))
         dchunks = DomainBlocks((1,), (cumsum(ls),))
-        DArray{eltype(T), 1}(d, dchunks, cs)
+        DArray(eltype(T), d, dchunks, cs, (i, x...) -> vcat(x...))
     end
 end
 
