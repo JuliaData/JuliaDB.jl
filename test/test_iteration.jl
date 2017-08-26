@@ -9,6 +9,7 @@
     @test column(y, 3) == [3,4]
 
     @test columns(x, :a) == [1,1]
+    @test columns(x) == @NT(a=[1,1], b=[1,2], c=[3,4])
     @test columns(x, (:a,:c)) == @NT(a=[1,1], c=[3,4])
     @test columns(y, (1, 3)) == ([1,1], [3,4])
 

@@ -69,18 +69,14 @@ function extractarray(t::Union{DTable,DArray}, accessor)
     compute(delayed(arraymaker; meta=true)(cs...))
 end
 
-function column(t::DTable, name)
-    extractarray(t, x -> column(x, name))
-end
-
 isas(d) = isa(d, As) && d.f !== identity
 
-function columns(t::Union{DTable, DArray}, which::Tuple)
-    if any(isas, which)
-        _columns_as(t, which)
+function columns(t::Union{DTable, DArray}, which::Tuple...)
+    if !isempty(which) && any(isas, which[1])
+        return _columns_as(t, which...)
     end
 
-    cs = map(delayed(x->columns(x, which)), t.chunks)
+    cs = map(delayed(x->columns(x, which...)), t.chunks)
     f = delayed() do c
         map(tochunk, c)
     end
@@ -104,7 +100,7 @@ function _columns_as(t, which)
     cs = columns(t, which_)
     asvecs = find(isas, which)
     outvecs = Any[cs...]
-    outvecs[asvecs] = map((w,x) -> w.f(x), which[asvecs], cs[asvecs])
+    outvecs[asvecs] = map((w,x) -> w.f(x), [which[asvecs]...], outvecs[asvecs])
     tup = IndexedTables._output_tuple(which)
     tup(outvecs...)
 end
@@ -120,7 +116,7 @@ for f in [:rows, :keys, :values]
     end
 end
 
-for f in [:columns, :rows, :keys, :values]
+for f in [:rows, :keys, :values]
     @eval function $f(t::DTable)
         extractarray(t, x -> $f(x))
     end
@@ -133,6 +129,12 @@ for f in [:columns, :rows, :keys, :values]
         which.f($f(t, which.src))
     end
 end
+
+function column(t::DTable, name)
+    extractarray(t, x -> column(x, name))
+end
+
+columns(t::DTable, which::Union{Int,Symbol,As}) = column(t, which)
 
 function pairs(t::DTable)
     extractarray(t, x -> map(Pair, x.index, x.data))
