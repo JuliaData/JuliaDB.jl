@@ -5,6 +5,7 @@ using IndexedTables
 using NamedTuples
 using PooledArrays
 
+include("test_iteration.jl")
 include("test_util.jl")
 include("test_query.jl")
 include("test_join.jl")

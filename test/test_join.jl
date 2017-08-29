@@ -43,3 +43,18 @@ using Base.Test
         end
     end
 end
+
+@testset "broadcast" begin
+    t1 = IndexedTable(Columns([1,2,3,4],[1,1,2,2]), [5,6,7,8])
+    t2 = IndexedTable(Columns([0,1,2,4]),[0,10,100,10000])
+
+    for n=1:4
+        for m=1:4
+            d1 = distribute(t1, n)
+            d2 = distribute(t2, m)
+
+            @test collect(d1 .+ d2) == t1 .+ t2
+            @test collect(broadcast(+, d1, d2, dimmap=(0,1))) == broadcast(+, t1, t2, dimmap=(0,1))
+        end
+    end
+end

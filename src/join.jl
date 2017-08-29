@@ -1,4 +1,5 @@
 import IndexedTables: naturaljoin, _naturaljoin, leftjoin, similarz, asofjoin, merge
+import Base: broadcast
 
 export naturaljoin, innerjoin, leftjoin, asofjoin, merge
 
@@ -8,7 +9,7 @@ export naturaljoin, innerjoin, leftjoin, asofjoin, merge
 Returns a new `DTable` containing only rows where the indices are present both in
 `left` AND `right` tables. The data columns are concatenated.
 """
-function naturaljoin{I,J,D1,D2}(left::DTable{I,D1}, right::DTable{J,D2})
+function naturaljoin(left::DTable{I,D1}, right::DTable{J,D2}) where {I,J,D1,D2}
     op = combine_op_t(D1, D2)
     naturaljoin(left, right, op, true)
 end
@@ -22,9 +23,9 @@ rows from `left` and `right` are combined using `op`. If `op` returns a tuple or
 NamedTuple, and `ascolumns` is set to true, the output table will contain the tuple
 elements as separate data columns instead as a single column of resultant tuples.
 """
-function naturaljoin{I1, I2, D1, D2}(left::DTable{I1,D1},
-                                     right::DTable{I2,D2},
-                                     op, ascolumns=false)
+function naturaljoin(left::DTable{I1,D1},
+                     right::DTable{I2,D2},
+                     op, ascolumns=false) where {I1, I2, D1, D2}
     out_subdomains = Any[]
     out_chunks = Any[]
 
@@ -72,11 +73,11 @@ function naturaljoin{I1, I2, D1, D2}(left::DTable{I1,D1},
 end
 
 combine_op_t(a, b) = tuple
-combine_op_t{T<:Tuple, U<:Tuple}(a::Type{T}, b::Type{U}) = (l, r)->(l..., r...)
-combine_op_t{T<:Tuple}(a, b::Type{T}) = (l, r)->(l, r...)
-combine_op_t{T<:Tuple}(a::Type{T}, b) = (l, r)->(l..., r)
+combine_op_t(a::Type{T}, b::Type{U}) where {T<:Tuple, U<:Tuple} = (l, r)->(l..., r...)
+combine_op_t(a, b::Type{T}) where {T<:Tuple} = (l, r)->(l, r...)
+combine_op_t(a::Type{T}, b) where {T<:Tuple} = (l, r)->(l..., r)
 
-Base.map{I}(f, x::DTable{I}, y::DTable{I}) = naturaljoin(x, y, f)
+Base.map(f, x::DTable{I}, y::DTable{I}) where {I} = naturaljoin(x, y, f)
 
 
 # left join
@@ -88,10 +89,10 @@ Keeps only rows with indices in `left`. If rows of the same index are
 present in `right`, then they are combined using `op`. `op` by default
 picks the value from `right`.
 """
-function leftjoin{K,V}(left::DTable{K,V}, right::DTable,
+function leftjoin(left::DTable{K,V}, right::DTable,
                   op = IndexedTables.right,
                   joinwhen = boxhasoverlap,
-                  chunkjoin = leftjoin)
+                  chunkjoin = leftjoin) where {K,V}
 
     out_chunks = Any[]
 
@@ -140,7 +141,7 @@ end
 Merges `left` and `right` combining rows with matching indices using `agg`.
 By default `agg` picks the value from `right`.
 """
-function merge{I1,I2,D1,D2}(left::DTable{I1,D1}, right::DTable{I2,D2}; agg=IndexedTables.right)
+function merge(left::DTable{I1,D1}, right::DTable{I2,D2}; agg=IndexedTables.right) where {I1,I2,D1,D2}
     out_subdomains = Any[]
     out_chunks = Any[]
     usedup_right = Array{Bool}(length(right.subdomains))
@@ -148,42 +149,83 @@ function merge{I1,I2,D1,D2}(left::DTable{I1,D1}, right::DTable{I2,D2}; agg=Index
     I = promote_type(I1, I2)        # output index type
     D = promote_type(D1, D2)        # output data type
 
-    cols(v) = (v,)
-    cols(v::Columns) = v.columns
+    t = DTable{I,D}(vcat(left.subdomains, right.subdomains),
+                    vcat(left.chunks, right.chunks))
 
-    for i in 1:length(left.chunks)
-        lchunk = left.chunks[i]
-        subdomain = left.subdomains[i]
-        lbrect = subdomain.boundingrect
-        # for each chunk in `left`
-        # find all the overlapping chunks from `right`
-        overlapping = map(boundingrect.(right.subdomains)) do rbrect
-            boxhasoverlap(lbrect, rbrect)
-        end
-        overlapping_chunks = right.chunks[overlapping]
-
-        broadcast!(&, usedup_right, usedup_right, overlapping)
-
-        # all overlapping chunk from `right` should be merged
-        # with the chunk `lchunk`
-        out_chunk = treereduce(delayed((x,y)->merge(x, y; agg=agg)),
-                               [lchunk, overlapping_chunks...], lchunk)
-        push!(out_chunks, out_chunk)
-
-        merged_subdomain = reduce(merge, subdomain, right.subdomains[overlapping])
-        push!(out_subdomains, merged_subdomain)
-    end
-    leftout_right = broadcast(!, usedup_right)
-    out_subdomains = vcat(out_subdomains, right.subdomains[leftout_right])
-
-    out_chunks = vcat(out_chunks, right.chunks[leftout_right])
-
-    t = DTable{I, D}(out_subdomains, out_chunks)
-
-    if agg !== nothing && has_overlaps(out_subdomains, true)
-        overlap_merge = (x, y) -> merge(x, y, agg=agg)
-        t = rechunk(t, merge=(ts...) -> _merge(overlap_merge, ts...), closed=true)
+    overlap_merge(x, y) = merge(x, y, agg=agg)
+    if has_overlaps(t.subdomains, agg!==nothing)
+        t = rechunk(t,
+                    merge=(x...)->_merge(overlap_merge, x...),
+                    closed=agg!==nothing)
     end
 
     return cache_thunks(t)
+end
+
+function subbox(i::Interval, idx)
+    Interval(i.first[idx], i.last[idx])
+end
+
+function bcast_narrow_space(d, idxs, fst, lst)
+    intv = Interval(
+        tuplesetindex(d.interval.first, fst, idxs),
+        tuplesetindex(d.interval.last, lst, idxs)
+    )
+
+    box = Interval(
+        tuplesetindex(d.boundingrect.first, fst, idxs),
+        tuplesetindex(d.boundingrect.last, lst, idxs)
+    )
+    IndexSpace(intv, box, Nullable{Int}())
+end
+
+function broadcast(f, A::DTable{K1,V1}, B::DTable{K2,V2}; dimmap=nothing) where {K1,K2,V1,V2}
+    if ndims(A) < ndims(B)
+        broadcast((x,y)->f(y,x), B, A; dimmap=dimmap)
+    end
+
+    if dimmap === nothing
+        dimmap = match_indices(A, B)
+    end
+
+    common_A = Iterators.filter(i->dimmap[i] > 0, 1:ndims(A)) |> collect
+    common_B = Iterators.filter(i -> i>0, dimmap) |> collect
+    #@assert length(common_B) == length(common_A)
+
+    # for every bounding box in A, take compare common_A
+    # bounding boxes vs. every common_B bounding box
+
+    out_chunks = []
+    innerbcast(a, b) = broadcast(f, a, b; dimmap=dimmap)
+    out_subdomains = []
+    for (dA, cA) in zip(A.subdomains, A.chunks)
+        for (dB, cB) in zip(B.subdomains, B.chunks)
+            boxA = subbox(dA.boundingrect, common_A)
+            boxB = subbox(dB.boundingrect, common_B)
+
+            fst = map(max, boxA.first, boxB.first)
+            lst = map(min, boxA.last, boxB.last)
+            dmn = bcast_narrow_space(dA, common_A, fst, lst)
+            if boxhasoverlap(boxA, boxB)
+                push!(out_chunks, delayed(innerbcast)(cA, cB))
+                push!(out_subdomains, dmn)
+            end
+        end
+    end
+    V = IndexedTables._promote_op(f, V1, V2)
+    t1 = DTable{K1, V}(out_subdomains, out_chunks)
+    with_overlaps(t1) do chunks
+        treereduce(delayed(_merge), chunks)
+    end
+end
+
+function match_indices(A::DTable{K1},B::DTable{K2}) where {K1,K2}
+    if K1 <: NamedTuple && K2 <: NamedTuple
+        Ap = dimlabels(A)
+        Bp = dimlabels(B)
+    else
+        Ap = K1.parameters
+        Bp = K2.parameters
+    end
+    IndexedTables.find_corresponding(Ap, Bp)
 end

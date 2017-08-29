@@ -1,7 +1,9 @@
 import Base: collect
 
-import Dagger: chunktype, domain, tochunk,
+import Dagger: chunktype, domain, tochunk, distribute,
                chunks, Context, compute, gather, free!
+
+import IndexedTables: eltypes, astuple
 
 
 # re-export the essentials
@@ -19,7 +21,7 @@ Metadata about an `IndexedTable`, a chunk of a DTable.
 - `nrows`: A `Nullable{Int}` of number of rows in the Table, if knowable
            (See design doc section on "Knowability of chunk size")
 """
-immutable IndexSpace{T<:IndexTuple}
+struct IndexSpace{T<:IndexTuple}
     interval::Interval{T}
     boundingrect::Interval{T}
     nrows::Nullable{Int}
@@ -32,14 +34,15 @@ interval(x::IndexSpace) = x.interval
 A distributed table. Can be constructed using [loadfiles](@ref),
 [ingest](@ref) or [distribute](@ref)
 """
-immutable DTable{K,V}
+struct DTable{K,V}
     subdomains::Vector{IndexSpace{K}}
     chunks::Vector
 end
 
-Base.eltype{K,V}(dt::DTable{K,V}) = V
-IndexedTables.dimlabels(dt::DTable) = dimlabels(chunktype(first(dt.chunks))) # XXX: doesn't work if first chunk is a thunk
-Base.ndims{K}(dt::DTable{K}) = nfields(K)
+Base.eltype(dt::DTable{K,V}) where {K,V} = V
+IndexedTables.dimlabels(dt::DTable{K}) where {K} = fieldnames(K)
+Base.ndims(dt::DTable{K}) where {K} = nfields(K)
+keytype(dt::DTable{K}) where {K} = astuple(K)
 
 const compute_context = Ref{Union{Void, Context}}(nothing)
 get_context() = compute_context[] == nothing ? Context() : compute_context[]
@@ -97,7 +100,7 @@ Gets distributed data in a DTable `t` and merges it into
 """
 collect(t::DTable) = collect(get_context(), t)
 
-function collect{T}(ctx::Context, dt::DTable{T})
+function collect(ctx::Context, dt::DTable{T}) where T
     cs = dt.chunks
     if length(cs) > 0
         collect(ctx, treereduce(delayed(_merge), cs))
@@ -141,32 +144,41 @@ function Base.reduce(f, dt::DTable)
     collect(get_context(), treereduce(delayed(f), cs))
 end
 
-immutable EmptySpace{T} end
+struct EmptySpace{T} end
 
 # Teach dagger how to automatically figure out the
 # metadata (in dagger parlance "domain") about an Table chunk.
 function Dagger.domain(nd::Table)
+    T = eltypes(typeof(nd.index.columns))
+
     if isempty(nd)
-        return EmptySpace{eltype(nd.index)}()
+        return EmptySpace{T}()
     end
 
-    interval = Interval(first(nd.index), last(nd.index))
+    wrap = T<:NamedTuple ? T : tuple
+
+    interval = Interval(wrap(first(nd.index)...), wrap(last(nd.index)...))
     cs = astuple(nd.index.columns)
     extr = map(extrema, cs[2:end]) # we use first and last value of first column
-    boundingrect = Interval((first(cs[1]), map(first, extr)...),
-                            (last(cs[1]), map(last, extr)...))
+    boundingrect = Interval(wrap(first(cs[1]), map(first, extr)...),
+                            wrap(last(cs[1]), map(last, extr)...))
     return IndexSpace(interval, boundingrect, Nullable{Int}(length(nd)))
 end
 
 function subindexspace(nd::IndexedTable, r)
+    T = eltypes(typeof(nd.index.columns))
+    wrap = T<:NamedTuple ? T : tuple
+
     if isempty(r)
-        return EmptySpace{eltype(nd.index)}()
+        return EmptySpace{T}()
     end
-    interval = Interval(nd.index[first(r)], nd.index[last(r)])
+
+    interval = Interval(wrap(nd.index[first(r)]...), wrap(nd.index[last(r)]...))
     cs = astuple(nd.index.columns)
     extr = map(c -> extrema_range(c, r), cs[2:end])
-    boundingrect = Interval((cs[1][first(r)], map(first, extr)...),
-                            (cs[1][last(r)], map(last, extr)...))
+
+    boundingrect = Interval(wrap(cs[1][first(r)], map(first, extr)...),
+                            wrap(cs[1][last(r)], map(last, extr)...))
     return IndexSpace(interval, boundingrect, Nullable{Int}(length(r)))
 end
 
@@ -194,7 +206,7 @@ function Base.merge(d1::IndexSpace, d2::IndexSpace, collisions=true)
         Nullable(get(d1.nrows) + get(d2.nrows))
 
     interval = merge(d1.interval, d2.interval)
-    boundingrect = merge(d1.boundingrect, d2.boundingrect)
+    boundingrect = boxmerge(d1.boundingrect, d2.boundingrect)
     IndexSpace(interval, boundingrect, n)
 end
 Base.merge(d1::IndexSpace, d2::EmptySpace) = d1
@@ -243,13 +255,15 @@ function Base.length(t::DTable)
     end
 end
 
-function has_overlaps(subdomains, closed=false)
-    if !issorted(subdomains, by=first)
-        subdomains = sort(subdomains, by = first)
+function _has_overlaps(firsts, lasts, closed)
+    if !issorted(firsts)
+        p = sortperm(firsts)
+        firsts = firsts[p]
+        lasts = lasts[p]
     end
-    lasts = map(last, subdomains)
-    for i = 1:length(subdomains)
-        s_i = first(subdomains[i])
+
+    for i = 1:length(firsts)
+        s_i = firsts[i]
         j = searchsortedfirst(lasts, s_i)
 
         # allow repeated indices between chunks
@@ -262,9 +276,25 @@ function has_overlaps(subdomains, closed=false)
     return false
 end
 
-function with_overlaps{K,V}(f, t::DTable{K,V}, closed=false)
+function has_overlaps(subdomains, closed=false)
+    _has_overlaps(first.(subdomains), last.(subdomains), closed)
+end
+
+function has_overlaps(subdomains, dims::AbstractVector)
+    sub(x) = x[dims]
+    fs = sub.(first.(subdomains))
+    ls = sub.(last.(subdomains))
+    _has_overlaps(fs, ls, true)
+end
+
+function with_overlaps(f, t::DTable{K,V}, closed=false) where {K,V}
     subdomains = t.subdomains
     chunks = t.chunks
+
+    if isempty(subdomains)
+        return t
+    end
+
     if !issorted(subdomains, by=first)
         perm = sortperm(subdomains, by = first)
         subdomains = subdomains[perm]
@@ -284,7 +314,8 @@ function with_overlaps{K,V}(f, t::DTable{K,V}, closed=false)
         end
     end
 
-    DTable{K,V}(stack, [f(chunks[group]) for group in groups])
+    cs = collect([f(chunks[group]) for group in groups])
+    DTable{K,V}(stack, cs)
 end
 
 """
@@ -321,17 +352,20 @@ function cache_thunks(dt::DTable)
 end
 
 function getkvtypes{N<:Table}(::Type{N})
-    N.parameters[2], N.parameters[1]
+    eltype(N.parameters[3]), N.parameters[1]
 end
+
+_promote_type(T,S) = promote_type(T,S)
+_promote_type(T::Type{<:IndexTuple}, S::Type{<:IndexTuple}) = map_params(_promote_type, T, S)
 
 function getkvtypes(xs::AbstractArray)
     kvtypes = getkvtypes.(chunktype.(xs))
     K, V = kvtypes[1]
     for (Tk, Tv) in kvtypes[2:end]
-        K = map_params(promote_type, Tk, K)
-        V = map_params(promote_type, Tv, V)
+        K = _promote_type(Tk, K)
+        V = _promote_type(Tv, V)
     end
-    K, V
+    (K, V)
 end
 
 ### Distribute a Table into a DTable
@@ -345,8 +379,8 @@ rows in the chunks.
 
 Returns a `DTable`.
 """
-function distribute{V,K}(nds::Table{V,K}, rowgroups::AbstractArray;
-                        allowoverlap = false, closed = false)
+function distribute(nds::Table{V}, rowgroups::AbstractArray;
+                     allowoverlap = false, closed = false) where V
     splits = cumsum([0, rowgroups;])
 
     if splits[end] != length(nds)
@@ -360,7 +394,8 @@ function distribute{V,K}(nds::Table{V,K}, rowgroups::AbstractArray;
     # the master process - which would lead to all operations being serial.
     chunks = map(r->delayed(identity)(subtable(nds, r)), ranges)
     subdomains = map(r->subindexspace(nds, r), ranges)
-    cache_thunks(fromchunks(chunks, subdomains, KV = (K, V),
+    realK = eltypes(typeof(nds.index.columns))
+    cache_thunks(fromchunks(chunks, subdomains, KV = (realK, V),
                             allowoverlap=allowoverlap, closed=closed))
 end
 
@@ -389,7 +424,7 @@ If `keeplength` is false, this means that the lengths of the output
 chunks is unknown before [`compute`](@ref). This function is used
 internally by many DTable operations.
 """
-function mapchunks{K,V}(f, t::DTable{K,V}; keeplengths=true)
+function mapchunks(f, t::DTable{K,V}; keeplengths=true) where {K,V}
     chunks = map(delayed(f), t.chunks)
     if keeplengths
         DTable{K, V}(t.subdomains, chunks)

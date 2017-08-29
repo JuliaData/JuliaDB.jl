@@ -1,7 +1,7 @@
 export select, convertdim, aggregate, reducedim_vec, aggregate_vec
 
 import IndexedTables: convertdim, aggregate, aggregate_vec, reducedim_vec, pick
-import Base: reducedim
+import Base: reducedim, mapslices
 
 # re-export
 export pick
@@ -26,15 +26,17 @@ The `agg` keyword argument is a function which specifies how entries with
 equal indices should be aggregated. If `agg` is unspecified, then the repeating
 indices are kept in the output, you can then aggregate using [`aggregate`](@ref)
 """
-function Base.select{K,V}(t::DTable{K,V}, which::DimName...; agg=nothing)
+function Base.select(t::DTable{K,V}, which::DimName...; agg=nothing) where {K,V}
 
     # remove dimensions from bounding boxes
     sub_dims = [which...]
     subinterval(intv, idx) = Interval(first(intv)[idx], last(intv)[idx])
     subdomains = map(t.subdomains) do idxspace
-        IndexSpace(subinterval(idxspace.interval, sub_dims),
-                   subinterval(idxspace.boundingrect, sub_dims),
-                   Nullable{Int}())
+        # We replace the interval with the sub-bounding box as a conservative
+        # estimate of the interval...
+        # `subinterval(idxspace.interval, sub_dims)` would be wrong
+        subbox = subinterval(idxspace.boundingrect, sub_dims)
+        IndexSpace(subbox, subbox, Nullable{Int}())
     end
 
     chunks = map(delayed(x -> select(x, which...; agg=agg)), t.chunks)
@@ -101,8 +103,8 @@ monotonically increasing function.
 
 See also [`reducedim`](@ref) and [`aggregate`](@ref)
 """
-function convertdim{K,V}(t::DTable{K,V}, d::DimName, xlat;
-                    agg=nothing, vecagg=nothing, name=nothing)
+function convertdim(t::DTable{K,V}, d::DimName, xlat;
+                    agg=nothing, vecagg=nothing, name=nothing) where {K,V}
 
     if isa(d, Symbol)
         dn = findfirst(dimlabels(t), d)
@@ -175,4 +177,21 @@ end
 
 reducedim_vec(f, x::DTable, dims::Symbol) = reducedim_vec(f, x, [dims])
 
+keyindex(t::DTable, i::Int) = i
+keyindex(t::DTable{K}, i::Symbol) where {K} = findfirst(x->x===i, fieldnames(K))
 
+function mapslices(f, x::DTable, dims; name=nothing)
+    iterdims = setdiff([1:ndims(x);], map(d->keyindex(x, d), dims))
+    if iterdims != [1:length(iterdims);]
+        throw(ArgumentError("$dims must be the trailing dimensions of the table. You can use `permutedims` first to permute the dimensions."))
+    end
+
+    t = has_overlaps(x.subdomains, iterdims) ?
+        rechunk(x, closed=iterdims) : x
+
+    cache_thunks(mapchunks(y -> mapslices(f, y, dims, name=name),
+                           t, keeplengths=false))
+end
+
+mapslices(f, x::DTable, dims::Symbol; name=nothing) =
+    mapslices(f, x, (dims,); name=name)

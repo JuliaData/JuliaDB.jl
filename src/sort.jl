@@ -3,10 +3,10 @@ import Dagger: affinity, @dbg, OSProc, timespan_start, timespan_end
 
 export rechunk
 
-function rechunk{K,V}(t::DTable{K,V}, lengths = nothing;
-               select=sampleselect,
-               closed=false,
-               merge=_merge)
+function rechunk(t::DTable{K,V}, lengths = nothing;
+                 select=sampleselect,
+                 closed=false,
+                 merge=_merge) where {K,V}
 
     order = Forward
     ctx = get_context()
@@ -23,14 +23,18 @@ function rechunk{K,V}(t::DTable{K,V}, lengths = nothing;
     # Get ranks for splitting at
     ranks = cumsum(lengths)[1:end-1]
 
-    idx = dindex(computed_t)
+    if isa(closed, Vector)
+        idx = keys(computed_t, closed...)
+    else
+        idx = keys(computed_t)
+    end
     map(Dagger.persist!, idx.chunks)
     # select elements of required ranks in parallel:
     splitters = select(ctx, idx, ranks, order)
 
     Dagger.free!(idx, force=true, cache=false) # no more useful
     thunks, subspaces = shuffle_merge(ctx, t.chunks, computed_t.subdomains,
-                                      merge, ranks, closed, 
+                                      merge, ranks, isa(closed, Vector) || closed,
                                       splitters, chunk_lengths, order)
 
     fromchunks(thunks, subspaces; KV=(K,V))
@@ -52,29 +56,31 @@ function sampleselect(ctx, idx, ranks, order; samples=32)
     Pair[splitters[i]=>xs[i, :] for i in 1:size(xs,1)]
 end
 
-immutable All
+struct All
 end
 subtable(t::IndexedTable, ::All) = t
 
-function merge_thunk(cs::AbstractArray, subdomains::AbstractArray, merge::Function, starts::AbstractArray, lasts::AbstractArray, empty, ord::Base.Sort.Ordering)
+function merge_thunk(cs::AbstractArray, subdomains::AbstractArray,
+                     merge::Function, starts::AbstractArray,
+                     lasts::AbstractArray, empty, ord::Base.Sort.Ordering)
     ranges = map(UnitRange, starts, lasts)
     nonempty = find(map(x->!isempty(x), ranges))
+
     if isempty(nonempty)
         []
     else
         cs1 = Any[]
-        ds = Any[]
         for i in nonempty
             c,d,r = cs[i], subdomains[i], ranges[i]
             n = nrows(d)
+
             if !isnull(n) && get(n) == length(r)
                 push!(cs1, (c, All()))
-                push!(ds, domain(c))
             else
                 push!(cs1, (c, r))
-                push!(ds, delayed(subindexspace)(c, r))
             end
         end
+
         cs1
     end
 end
@@ -179,7 +185,7 @@ function shuffle_merge(ctx::Dagger.Context, cs::AbstractArray,
     end
 
     result = [begin
-        delayed(merge)(sort(dest_chunks[k], by=x->first(domain(x)))...) =>
+        delayed(merge)(dest_chunks[k]...) =>
         reduce(JuliaDB.merge, domain.(dest_chunks[k]))
     end for k in sort(collect(keys(dest_chunks)))]
 
@@ -189,7 +195,7 @@ end
 
 ### Permutedims
 
-function Base.permutedims{K,V}(t::DTable{K,V}, p::AbstractVector)
+function Base.permutedims(t::DTable{K,V}, p::AbstractVector) where {K,V}
     if !(length(p) == ndims(t) && isperm(p))
         throw(ArgumentError("argument to permutedims must be a valid permutation"))
     end

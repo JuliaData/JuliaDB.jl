@@ -141,7 +141,7 @@ end
 const _read_cache = Dict{Tuple{String, Dict},Any}()
 const _cached_on = Dict{Tuple{String, Dict},Any}() # workers register here once they have read a file
 
-type CSVChunk
+mutable struct CSVChunk
     filename::String
     cache::Bool
     delim::Char
@@ -182,7 +182,13 @@ function _collect(ctx, csv::CSVChunk)
     else
         #println("CACHE MISS $csv")
         #@show myid()
-        data, ii = _load_table(csv.filename, csv.delim; csv.opts...)
+        try
+            data, ii = _load_table(csv.filename, csv.delim; csv.opts...)
+        catch err
+            # show which file failed to load
+            println(STDERR, "Error reading file $(csv.filename)")
+            rethrow(err)
+        end
 
         if ii && isnull(csv.offset)
             csv.offset = 1

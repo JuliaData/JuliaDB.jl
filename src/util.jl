@@ -5,7 +5,7 @@ using NamedTuples
 # re-export
 export @NT
 
-function tuplesetindex{N}(x::Tuple{Vararg{Any,N}}, v, i)
+function tuplesetindex(x::Tuple{Vararg{Any,N}}, v, i) where N
     ntuple(Val{N}) do j
         i == j ? v : x[j]
     end
@@ -25,6 +25,10 @@ end
     end
 end
 
+function tuplesetindex(x::Union{NamedTuple, Tuple}, v::Tuple, i::Tuple)
+    reduce((t, j)->tuplesetindex(t, v[j], i[j]), x, 1:length(i))
+end
+
 function treereduce(f, xs, v0=xs[1])
     length(xs) == 0 && return v0
     length(xs) == 1 && return xs[1]
@@ -38,7 +42,7 @@ function subtable(nds, r)
     Table(nds.index[r], nds.data[r], presorted=true, copy=false)
 end
 
-function extrema_range{T}(x::AbstractArray{T}, r::UnitRange)
+function extrema_range(x::AbstractArray{T}, r::UnitRange) where T
     if !(1 <= first(r) && last(r) <= length(x))
         throw(BoundsError(x, r))
     end
@@ -116,7 +120,7 @@ export @dateformat_str, load, csvread, load_table, glob
 
 """
     load_table(file::AbstractString;
-              indexcols, datacols, agg, presorted, copy, kwargs...)
+              indexcols, datacols, filenamecol, agg, presorted, copy, kwargs...)
 
 Load a CSV file into an Table data. `indexcols` (AbstractArray)
 specifies which columns form the index of the data, `datacols`
@@ -128,14 +132,23 @@ Returns an IndexedTable. A single implicit dimension with
 values 1:N will be added if no `indexcols` (or `indexcols=[]`)
 is specified.
 """
-function load_table(args...;kwargs...)
+function load_table(args...; kwargs...)
     # just return the table
     _load_table(args...; kwargs...)[1]
+end
+
+function prettify_filename(f)
+    f = basename(f)
+    if endswith(lowercase(f), ".csv")
+        f = f[1:end-4]
+    end
+    return f
 end
 
 function _load_table(file::Union{IO, AbstractString}, delim=',';
                       indexcols=[],
                       datacols=nothing,
+                      filenamecol=nothing,
                       agg=nothing,
                       presorted=false,
                       copy=false,
@@ -144,6 +157,16 @@ function _load_table(file::Union{IO, AbstractString}, delim=',';
 
     #println("LOADING ", file)
     cols,header = csvread(file, delim; kwargs...)
+
+    header = map(string, header)
+
+    if filenamecol !== nothing
+        # mimick a file name column
+        cols = (fill(prettify_filename(file), length(cols[1])), cols...)
+        if !isempty(header)
+            unshift!(header, string(filenamecol))
+        end
+    end
 
     implicitindex = false
 
@@ -188,7 +211,7 @@ When serialized, this only writes the metadata and leaves out the data.
 
 copy_mmap(io::IO, file::String, x::T) # =>
 """
-type MmappableArray{T, N, A} <: AbstractArray{T, N}
+mutable struct MmappableArray{T, N, A} <: AbstractArray{T, N}
     file::String
     offset::Int
     size::NTuple{N, Int}
@@ -197,24 +220,20 @@ end
 
 @inline Base.size(arr::MmappableArray) = arr.size
 @inline Base.getindex(arr::MmappableArray, idx...) = arr.data[idx...]
-if VERSION < v"0.6.0-dev.2840"
-    Base.linearindexing(arr::MmappableArray) = Base.linearindexing(arr.data)
-else
-    Base.IndexStyle{T,N,A}(::Type{MmappableArray{T,N,A}}) = Base.IndexStyle(A)
-end
+Base.IndexStyle{T,N,A}(::Type{MmappableArray{T,N,A}}) = Base.IndexStyle(A)
 
-function Base.similar{M<:MmappableArray}(A::M, sz::Int...)
+function Base.similar(A::M, sz::Int...) where M<:MmappableArray
     # this is to keep Table constructor happy
     M("__unmmapped__", 0, sz, similar(A.data, sz...))
 end
 
-function Base.similar{T,R,N,M<:MmappableArray}(pa::PooledArray{T,R,N,M}, S::Type, dims::Dims)
+function Base.similar(pa::PooledArray{T,R,N,M}, S::Type, dims::Dims) where {T,R,N,M<:MmappableArray}
     z = M("__unmmapped__", 0, dims, zeros(R, dims))
     PooledArray(PooledArrays.RefArray(z), S[])
 end
 
 # construct an MmappableArray from a normal array, writing it to file
-function MmappableArray{T}(io::IO, file::String, data::Array{T})
+function MmappableArray(io::IO, file::String, data::Array{T}) where T
     if !isbits(T)
         error("Cannot Mmap non-bits array $T")
     end
@@ -239,7 +258,7 @@ function MmappableArray(file::String, data)
 end
 
 # Load an Mmap array from file
-function MmappableArray{A}(file::String, ::Type{A}, offset::Int, dims)
+function MmappableArray(file::String, ::Type{A}, offset::Int, dims) where A
     MmappableArray{eltype(A), ndims(A), A}(file, offset, dims, Mmap.mmap(file, A, dims, offset))
 end
 
@@ -252,7 +271,7 @@ function Base.serialize(io::AbstractSerializer, arr::MmappableArray)
     end
 end
 
-function Base.deserialize{T, N, A}(io::AbstractSerializer, ::Type{MmappableArray{T,N,A}})
+function Base.deserialize(io::AbstractSerializer, ::Type{MmappableArray{T,N,A}}) where {T, N, A}
     (file, offset, dims)  = deserialize(io)
     if file == "__unmmapped__"
         data = deserialize(io)
@@ -268,7 +287,7 @@ const MmappableTypes = Union{Integer, AbstractFloat, Complex, Char, DateTime, Da
 
 ### Wrap arrays in Mmappable wrapper. Do this before serializing
 copy_mmap(io, file, arr::PooledArray) = MmappableArray(io, file, arr)
-copy_mmap{T<:MmappableTypes}(io, file, arr::Array{T}) = MmappableArray(io, file, arr)
+copy_mmap(io, file, arr::Array{T}) where {T<:MmappableTypes} = MmappableArray(io, file, arr)
 function copy_mmap(io, file, arr::Columns)
     cs = map(x->copy_mmap(io, file, x), arr.columns)
     if all(x->isa(x, Int), fieldnames(cs))
@@ -327,14 +346,8 @@ end
 unwrap_mmap(arr::AbstractArray) = arr
 
 
-if VERSION < v"0.6.0-dev.1024"
-    function _repeated(x, n)
-        repeated(x, n)
-    end
-else
-    function _repeated(x, n)
-        Iterators.repeated(x,n)
-    end
+function _repeated(x, n)
+    Iterators.repeated(x,n)
 end
 
 
@@ -378,25 +391,25 @@ end
 
 _map_params(f, T::Type{Tuple{}},S::Type{Tuple{}}) = ()
 
-map_params{T,S}(f, ::Type{T}, ::Type{S}) = f(T,S)
+map_params(f, ::Type{T}, ::Type{S}) where {T,S} = f(T,S)
 @inline _tuple_type_head{T<:Tuple}(::Type{T}) = Base.tuple_type_head(T)
 @inline _tuple_type_tail{T<:Tuple}(::Type{T}) = Base.tuple_type_tail(T)
 
 #function map_params{N}(f, T::Type{T} where T<:Tuple{Vararg{Any,N}}, S::Type{S} where S<: Tuple{Vararg{Any,N}})
-Base.@pure function map_params{T<:Tuple,S<:Tuple}(f, ::Type{T}, ::Type{S})
+Base.@pure function map_params(f, ::Type{T}, ::Type{S}) where {T<:Tuple,S<:Tuple}
     if nfields(T) != nfields(S)
         MethodError(map_params, (typeof(f), T,S))
     end
     Tuple{_map_params(f, T,S)...}
 end
 
-_tuple_type_head{NT<: NamedTuple}(T::Type{NT}) = fieldtype(NT, 1)
+_tuple_type_head(T::Type{NT}) where {NT<: NamedTuple} = fieldtype(NT, 1)
 
-Base.@pure function _tuple_type_tail{NT<: NamedTuple}(T::Type{NT})
+Base.@pure function _tuple_type_tail(T::Type{NT}) where NT<: NamedTuple
     Tuple{Base.argtail(NT.parameters...)...}
 end
 
-Base.@pure @generated function map_params{T<:NamedTuple,S<:NamedTuple}(f, ::Type{T}, ::Type{S})
+Base.@pure @generated function map_params(f, ::Type{T}, ::Type{S}) where {T<:NamedTuple,S<:NamedTuple}
     if fieldnames(T) != fieldnames(S)
         MethodError(map_params, (T,S))
     end
