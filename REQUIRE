@@ -6,3 +6,4 @@ Dagger 0.3.0
 Glob 1.1.1
 PooledArrays 0.0.2
 NullableArrays
+OnlineStats
