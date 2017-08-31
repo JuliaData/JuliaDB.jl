@@ -5,7 +5,7 @@ const JULIADB_FILECACHE = "filemeta.dat"
 
 function files_from_dir(dir)
     dir = abspath(dir)
-    filter(isfile, [ joinpath(dir, f) for f in readdir(dir) ])
+    filter(isfile, [ joinpath(dir, f) for f in readdir(dir) if !startswith(f, ".") ])
 end
 
 function format_bytes(nb)
