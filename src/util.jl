@@ -57,61 +57,6 @@ function extrema_range(x::AbstractArray{T}, r::UnitRange) where T
     mn, mx
 end
 
-getbyheader(cols, header, i::Int) = cols[i]
-getbyheader(cols, header, i::Symbol) = getbyheader(cols, header, string(i))
-function getbyheader(cols, header, i::AbstractString)
-    if !(i in header)
-        throw(ArgumentError("Unknown column $i"))
-    end
-    getbyheader(cols, header, findfirst(header, i))
-end
-
-# pick the first of many columns
-function getbyheader(cols, header, oneof::Tuple)
-    for c in oneof
-        try
-            return getbyheader(cols, header, c)
-        catch err
-        end
-    end
-    throw(ArgumentError("Couldn't find any of the columns in $cs"))
-end
-
-function getbyheader_canonical(cols, header, oneof::Tuple)
-
-    for c in oneof
-        try
-            getbyheader(cols, header, c)
-            return first(oneof)
-        catch err
-        end
-    end
-    throw(ArgumentError("Couldn't find any of the columns in $oneof"))
-end
-
-function getbyheader_canonical(cols, header, oneof)
-    str = getbyheader(cols, header, oneof)
-    if isa(str, AbstractString)
-        return replace(str, r"\s", "_")
-    end
-    return str
-end
-
-"""
-get a subset of vectors wrapped in Columns from a tuple of vectors
-"""
-function getcolsubset(cols, header, subcols)
-    colnames = !isempty(header) ?
-        vcat(map(i -> Symbol(getbyheader_canonical(header, header, i)), subcols)) :
-        nothing
-
-    if length(subcols) > 1
-        Columns(map(i -> getbyheader(cols, header, i), subcols)...; names=colnames)
-    else
-        Columns(getbyheader(cols, header, subcols[1]); names=colnames)
-    end
-end
-
 # Data loading utilities
 using TextParse
 using Glob
@@ -156,7 +101,7 @@ function _load_table(file::Union{IO, AbstractString}, delim=',';
                       kwargs...)
 
     #println("LOADING ", file)
-    cols,header = csvread(file, delim; kwargs...)
+    cols, header = csvread(file, delim; kwargs...)
 
     header = map(string, header)
 
@@ -168,35 +113,97 @@ function _load_table(file::Union{IO, AbstractString}, delim=',';
         end
     end
 
+    if isempty(cols)
+        error("File contains no columns!")
+    end
+
+    n = length(first(cols))
     implicitindex = false
 
-    if datacols === nothing
-        _indexcols = map(i->getbyheader(1:length(cols), header, i), indexcols)
-        datacols = [x for x in 1:length(cols) if !(x in _indexcols)]
-    end
+    ## Construct Index
+    _indexcols = map(x->lookupbyheader(header, x), indexcols)
 
-    if isempty(datacols)
-        error("There must be at least one data column.")
-    end
-
-    data = getcolsubset(cols, header, datacols)
-
-    if isempty(indexcols)
-        # with no indexes, default to 1:n
-        index = [1:length(data);]
+    if isempty(_indexcols)
         implicitindex = true
+        index = Columns([1:n;])
     else
-        index = getcolsubset(cols, header, indexcols)
+        indexcolnames = map(indexcols, _indexcols) do name, i
+            if i==0
+                error("Cannot index by unknown column $name")
+            else
+                isa(name, Int) ? canonical_name(header[name]) : canonical_name(name)
+            end
+        end
+
+        indexvecs = cols[_indexcols]
+
+        nullableidx = find(x->eltype(x) <: Nullable, indexvecs)
+        if !isempty(nullableidx)
+            badcol_names = header[_indexcols[nullableidx]]
+            error("Indexed columns may not contain Nullables. Column(s) with nullables: $(join(badcol_names, ", ", " and "))")
+        end
+
+        index = Columns(indexvecs...; names=indexcolnames)
     end
 
-    idxs = isa(index, Vector) ? (index,) : astuple(index.columns)
-    if any(x->eltype(x) <: Nullable, idxs)
-        error("Index columns may not contain Nullables")
+    ## Construct Data
+    if datacols === nothing
+        _datacols = setdiff(1:length(cols), _indexcols)
+        datacols = header[_datacols]
+    else
+        _datacols = map(x->lookupbyheader(header, x), datacols)
     end
+
+    if isempty(_datacols)
+        error("""You must specify at least one data column.
+                 Either all columns in the file were indexed, or datacols was explicitly set to an empty array.""")
+    end
+
+    datacolnames = map(datacols, _datacols) do name, i
+        if i == 0
+            if isa(name, Int)
+                error("Unknown column numbered $name specified in datacols")
+            else
+                return canonical_name(name) # use provided name for missing column
+            end
+        else
+            isa(name, Int) ? canonical_name(header[name]) : canonical_name(name)
+        end
+    end
+
+    datavecs = map(_datacols) do i
+        if i == 0
+            fill(Nullable{Union{}}(), n) # missing column
+        else
+            cols[i]
+        end
+    end
+
+    data = Columns(datavecs...; names=datacolnames)
 
     Table(index, data), implicitindex
 end
 
+
+function lookupbyheader(header, key)
+    if isa(key, Symbol)
+        return lookupbyheader(header, string(key))
+    elseif isa(key, String)
+        return findfirst(x->x==key, header)
+    elseif isa(key, Int)
+        return 0 < key <= length(header) ? key : 0
+    elseif isa(key, Tuple) || isa(key, Vector)
+        for k in key
+            x = lookupbyheader(header, k)
+            x != 0 && return x
+        end
+        return 0
+    end
+end
+
+canonical_name(n::Symbol) = n
+canonical_name(n::String) = Symbol(replace(n, r"\s", "_"))
+canonical_name(n::Union{Tuple, Vector}) = canonical_name(first(n))
 
 using PooledArrays
 using NullableArrays
