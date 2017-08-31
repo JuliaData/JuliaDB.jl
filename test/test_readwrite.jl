@@ -105,15 +105,17 @@ import JuliaDB: OnDisk
     if isfile(cache)
         rm(cache)
     end
+    missingcoltbl = loadfiles(Pkg.dir("JuliaDB", "test", "missingcols"), datacols=[:a, :x, :y], usecache=false)
+    @test eltype(missingcoltbl) == @NT(a::Int, x::Nullable{Int}, y::Nullable{Float64})
     # file name as a column:
-    @test unique(keys(loadfiles(path, indexcols=[:year, :date, :ticker],filenamecol=:year, usecache=false), :year)) == string.(2010:2015)
+    @test unique(keys(loadfiles(path, indexcols=[:year, :date, :ticker],filenamecol=:year, usecache=false), :year)|> collect) == string.(2010:2015)
     @test_throws ErrorException load_table("a,b\n,2", csvread=TextParse._csvread, indexcols=[1])
     @test collect(spdata_dist) == spdata
     @test collect(spdata_dist_path) == spdata
     @test collect(spdata_ingest) == spdata
     @test collect(load(ingest_output)) == spdata
     @test collect(load(ingest_output_unordered)) == spdata_unordered
-    @test issorted(collect(getindexcol(load(ingest_output_unordered), 1)))
+    @test issorted(collect(keys(load(ingest_output_unordered), 1)))
     c = first(load(ingest_output).chunks)
     @test typeof(c.handle) == OnDisk
     @test c.handle.cached_on == []
@@ -133,7 +135,7 @@ import JuliaDB: OnDisk
 
     dt = loadfiles(shuffle_files, usecache=false)
     @test collect(dt) == spdata_unordered
-    @test issorted(collect(getindexcol(dt, 1)))
+    @test issorted(collect(keys(dt, 1)))
     # reuses csv read cache:
     dt = loadfiles(shuffle_files, indexcols=[], usecache=false)
     @test collect(dt) == spdata_unordered
