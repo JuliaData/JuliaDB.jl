@@ -105,7 +105,7 @@ import JuliaDB: OnDisk
     if isfile(cache)
         rm(cache)
     end
-    missingcoltbl = loadfiles(Pkg.dir("JuliaDB", "test", "missingcols"), datacols=[:a, :x, :y], usecache=false)
+    missingcoltbl = loadfiles(joinpath(@__DIR__, "missingcols"), datacols=[:a, :x, :y], usecache=false)
     @test eltype(missingcoltbl) == @NT(a::Int, x::Nullable{Int}, y::Nullable{Float64})
     # file name as a column:
     @test unique(keys(loadfiles(path, indexcols=[:year, :date, :ticker],filenamecol=:year, usecache=false), :year)|> collect) == string.(2010:2015)
