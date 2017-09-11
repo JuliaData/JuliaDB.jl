@@ -42,7 +42,7 @@ All other arguments options are the same as those listed in [`ingest`](@ref).
 
 See also [`ingest`](@ref).
 """
-function loadfiles(files::Union{AbstractVector,String}, delim=','; usecache=true, opts...)
+function loadfiles(files::Union{AbstractVector,String}, delim=','; usecache=true, chunks=nworkers(), opts...)
 
     if isa(files, String)
         if !isdir(files)
@@ -67,7 +67,13 @@ function loadfiles(files::Union{AbstractVector,String}, delim=','; usecache=true
         mkdir(cachedir)
     end
 
-    unknown = files
+    if isa(chunks, Int)
+        chunks = Dagger.split_range(1:length(files), chunks)
+    end
+
+    filegroups = map(x->files[x], chunks)
+
+    unknown = filegroups
     validcache = []
     metadata = nothing
 
@@ -81,19 +87,20 @@ function loadfiles(files::Union{AbstractVector,String}, delim=','; usecache=true
             warn("Cached metadata file is corrupt. Not using cache.")
             @goto readunknown
         end
-        knownmeta = metadata[sort!(files)]
-        known = knownmeta.index.columns[1]
+        knownmeta = metadata[sort!(filegroups)]
+        known = keys(knownmeta, 1)
 
         # only those with the same mtime
-        valid = knownmeta.data.columns.mtime .== mtime.(known)
-        validcache = knownmeta.data.columns.metadata[valid]
-        unknown = setdiff(files, known[valid])
+        valid = values(knownmeta, mtime) .== map(fs->mtime.(fs), known)
+        validcache = values(knownmeta, metadata)[valid]
+        unknown = setdiff(filegroups, known[valid])
+
     end
     @label readunknown
 
     # Give an idea of what we're up against, we should probably also show a
     # progress meter.
-    println("Metadata for ", length(files)-length(unknown), " / ",
+    println("Metadata for ", length(files)-sum(length.(unknown)), " / ",
             length(files), " files can be loaded from cache.")
 
     if isempty(unknown)
@@ -101,7 +108,7 @@ function loadfiles(files::Union{AbstractVector,String}, delim=','; usecache=true
         return cache_thunks(fromchunks(validcache))
     end
 
-    sz = sum(map(filesize, unknown))
+    sz = sum(filesize, Iterators.flatten(unknown))
     println("Reading $(length(unknown)) csv files totalling $(format_bytes(sz))...")
     # Load the data first into memory
     load_f(f) = makecsvchunk(f, delim; opts...)
@@ -116,7 +123,7 @@ function loadfiles(files::Union{AbstractVector,String}, delim=','; usecache=true
 
     # store this back in cache
     cache = Table(unknown,
-                  Columns(mtime.(unknown),
+                  Columns(map(g->mtime.(g), unknown),
                           convert(Array{Dagger.Chunk}, chunkrefs),
                           names=[:mtime, :metadata]))
 
@@ -124,25 +131,25 @@ function loadfiles(files::Union{AbstractVector,String}, delim=','; usecache=true
         cache = merge(metadata, cache)
     end
 
-    chunks = [cache[f].metadata for f in files] # keep order of the input files
+    cs = [cache[f].metadata for f in filegroups] # keep order of the input files
 
     if !isnull(chunkrefs[1].handle.offset)
-        distribute_implicit_index_space!(chunks, 1)
+        distribute_implicit_index_space!(cs, 1)
     end
 
     open(metafile, "w") do io
         serialize(io, cache)
     end
 
-    cache_thunks(fromchunks(chunks))
+    cache_thunks(fromchunks(cs))
 end
 
 ## TODO: Can make this an LRU cache
-const _read_cache = Dict{Tuple{String, Dict},Any}()
-const _cached_on = Dict{Tuple{String, Dict},Any}() # workers register here once they have read a file
+const _read_cache = Dict{Tuple{Vector{String}, Dict},Any}()
+const _cached_on = Dict{Tuple{Vector{String}, Dict},Any}() # workers register here once they have read a file
 
 mutable struct CSVChunk
-    filename::String
+    files::AbstractArray
     cache::Bool
     delim::Char
     opts::Dict
@@ -150,12 +157,12 @@ mutable struct CSVChunk
 end
 
 # make sure cache matches a certain subset of options
-csvkey(csv::CSVChunk) = (csv.filename, filter((k,v)->(k in (:colnames,:indexcols,:datacols)), csv.opts))
+csvkey(csv::CSVChunk) = (csv.files, filter((k,v)->(k in (:colnames,:indexcols,:datacols)), csv.opts))
 
 function Dagger.affinity(c::CSVChunk)
     # use filesize as a measure of data size
     key = csvkey(c)
-    sz = filesize(c.filename)
+    sz = sum(filesize.(c.files))
     map(get(_cached_on, key, [])) do p
         OSProc(p) => sz
     end
@@ -183,10 +190,10 @@ function _collect(ctx, csv::CSVChunk)
         #println("CACHE MISS $csv")
         #@show myid()
         try
-            data, ii = _load_table(csv.filename, csv.delim; csv.opts...)
+            data, ii = _load_table(csv.files, csv.delim; csv.opts...)
         catch err
             # show which file failed to load
-            println(STDERR, "Error reading file $(csv.filename)")
+            println(STDERR, "Error reading file $(csv.files)")
             rethrow(err)
         end
 
