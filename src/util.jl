@@ -39,7 +39,7 @@ end
 
 
 function subtable(nds, r)
-    Table(nds.index[r], nds.data[r], presorted=true, copy=false)
+    Table(keys(nds)[r], values(nds)[r], presorted=true, copy=false)
 end
 
 function extrema_range(x::AbstractArray{T}, r::UnitRange) where T
@@ -90,7 +90,7 @@ function prettify_filename(f)
     return f
 end
 
-function _load_table(file::Union{IO, AbstractString}, delim=',';
+function _load_table(file::Union{IO, AbstractString, AbstractArray}, delim=',';
                       indexcols=[],
                       datacols=nothing,
                       filenamecol=nothing,
@@ -101,13 +101,40 @@ function _load_table(file::Union{IO, AbstractString}, delim=',';
                       kwargs...)
 
     #println("LOADING ", file)
-    cols, header = csvread(file, delim; kwargs...)
+    count = Int[]
+
+    samecols = nothing
+    if indexcols !== nothing
+        samecols = filter(x->isa(x, Union{Tuple, AbstractArray}),
+                          indexcols)
+    end
+    if datacols !== nothing
+        append!(samecols, filter(x->isa(x, Union{Tuple, AbstractArray}),
+                                 datacols))
+    end
+
+    if samecols !== nothing
+        samecols = map(x->map(string, x), samecols)
+    end
+
+    if isa(file, AbstractArray)
+        cols, header, count = csvread(file, delim;
+                                      samecols=samecols,
+                                      kwargs...)
+    else
+        cols, header = csvread(file, delim; kwargs...)
+    end
 
     header = map(string, header)
 
     if filenamecol !== nothing
         # mimick a file name column
-        cols = (fill(prettify_filename(file), length(cols[1])), cols...)
+        if isa(file, AbstractArray)
+            namecol = reduce(vcat, fill.(prettify_filename.(file), count))
+        else
+            namecol = fill(prettify_filename(file), length(cols[1]))
+        end
+        cols = (namecol, cols...)
         if !isempty(header)
             unshift!(header, string(filenamecol))
         end
