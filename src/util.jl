@@ -263,7 +263,7 @@ end
 
 function Base.similar(pa::PooledArray{T,R,N,M}, S::Type, dims::Dims) where {T,R,N,M<:MmappableArray}
     z = M("__unmmapped__", 0, dims, zeros(R, dims))
-    PooledArray(PooledArrays.RefArray(z), S[])
+    PooledArray(PooledArrays.RefArray(z), Dict{S, R}())
 end
 
 # construct an MmappableArray from a normal array, writing it to file
