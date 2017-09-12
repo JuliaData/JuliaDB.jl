@@ -109,8 +109,9 @@ function loadfiles(files::Union{AbstractVector,String}, delim=','; usecache=true
         return cache_thunks(fromchunks(validcache))
     end
 
-    sz = sum(filesize, Iterators.flatten(unknown))
-    println("Reading $(length(unknown)) csv files totalling $(format_bytes(sz))...")
+    allfiles = collect(Iterators.flatten(unknown))
+    sz = sum(filesize, allfiles)
+    println("Reading $(length(allfiles)) csv files totalling $(format_bytes(sz)) in $(length(chunks)) batches...")
     # Load the data first into memory
     load_f(f) = makecsvchunk(f, delim; opts...)
     data = map(delayed(load_f), unknown)
