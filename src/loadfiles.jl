@@ -87,12 +87,13 @@ function loadfiles(files::Union{AbstractVector,String}, delim=','; usecache=true
             warn("Cached metadata file is corrupt. Not using cache.")
             @goto readunknown
         end
-        knownmeta = metadata[sort!(filegroups)]
-        known = keys(knownmeta, 1)
+        knownidx = find(row -> row.files in filegroups, metadata)
+        knownmeta = metadata[knownidx]
+        known = column(metadata, :files)[knownidx]
 
         # only those with the same mtime
-        valid = values(knownmeta, mtime) .== map(fs->mtime.(fs), known)
-        validcache = values(knownmeta, metadata)[valid]
+        valid = column(knownmeta, :mtime) .== map(fs->mtime.(fs), known)
+        validcache = column(knownmeta,:metadata)[valid]
         unknown = setdiff(filegroups, known[valid])
 
     end
@@ -122,16 +123,16 @@ function loadfiles(files::Union{AbstractVector,String}, delim=','; usecache=true
     end
 
     # store this back in cache
-    cache = Table(unknown,
-                  Columns(map(g->mtime.(g), unknown),
-                          convert(Array{Dagger.Chunk}, chunkrefs),
-                          names=[:mtime, :metadata]))
+    cache = Columns(unknown, map(g->mtime.(g), unknown),
+            convert(Array{Dagger.Chunk}, chunkrefs),
+            names=[:files, :mtime, :metadata])
 
     if metadata != nothing
         cache = merge(metadata, cache)
     end
 
-    cs = [cache[f].metadata for f in filegroups] # keep order of the input files
+    order = [findfirst(column(cache, :files), f) for f in filegroups] # keep order of the input files
+    cs = column(cache, :metadata)[order]
 
     if !isnull(chunkrefs[1].handle.offset)
         distribute_implicit_index_space!(cs, 1)

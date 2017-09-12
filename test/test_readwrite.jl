@@ -137,7 +137,9 @@ import JuliaDB: OnDisk
     @test collect(dt) == spdata_unordered
     @test issorted(collect(keys(dt, 1)))
     # reuses csv read cache:
-    dt = loadfiles(shuffle_files, indexcols=[], usecache=false)
+    dt = loadfiles(shuffle_files, indexcols=[], chunks=4, usecache=false)
+    @test collect(dt) == spdata_unordered
+    dt = loadfiles(shuffle_files, indexcols=[], chunks=4) # cache test
     @test collect(dt) == spdata_unordered
 
     # test specifying column names
