@@ -8,12 +8,12 @@ import IndexedTables: Table
 export IndexedTable, Columns
 
 include("util.jl")
+include("serialize.jl")
 include("interval.jl")
 include("dtable.jl")
 include("sort.jl")
 
-include("loadfiles.jl")
-include("ingest.jl")
+include("io.jl")
 include("printing.jl")
 include("dcolumns.jl")
 

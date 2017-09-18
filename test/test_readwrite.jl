@@ -1,68 +1,29 @@
 using Base.Test
 using JuliaDB
 using PooledArrays
+using NullableArrays
+using MemPool
 
-import JuliaDB: MmappableArray, copy_mmap, unwrap_mmap
-
-@testset "MmappableArray" begin
-    @testset "Array of floats" begin
-        X = rand(100, 100)
-        f = tempname()
-        M = MmappableArray(f, X)
-        sf = tempname()
-        open(io -> serialize(io, M), sf, "w")
-        @test filesize(sf) < 100 * 100
-        M2 = open(deserialize, sf)
-        @test X == M
-        @test M == M2
-        rm(sf)
-        rm(f)
-    end
-
-    @testset "PooledArray" begin
-        P = PooledArray(rand(["A", "B"], 10^3))
-        f = tempname()
-        P1 = MmappableArray(f, P)
-        psf = tempname()
-        open(io -> serialize(io, P1), psf, "w")
-        @test filesize(psf) < 10^3
-        P2 = open(deserialize, psf)
-        @test P2 == P1
-        rm(psf)
-        rm(f)
-    end
-
-    @testset "DataTime Array" begin
-        t = Int(Dates.value(now()))
-        T = DateTime.(map(x->round(Int,x), linspace(t-10^7, t, 10^3) |> collect))
-        f = tempname()
-        M = MmappableArray(f, T)
-        sf = tempname()
-        open(io -> serialize(io, M), sf, "w")
-        @test filesize(sf) < 1000
-        @test open(deserialize, sf) == T
-        rm(sf)
-        rm(f)
-    end
-
-    @testset "IndexedTable" begin
-        P = PooledArray(rand(["A", "B"], 10^4))
-        t = Int(Dates.value(now()))
-        T = DateTime.(map(x->round(Int,x), linspace(t-10^7, t, 10^4) |> collect))
-        nd = IndexedTable(Columns(P, T), Columns(rand(10^4), rand(10^4)), copy=false, presorted=true)
-        ndf = tempname()
-        mm = copy_mmap(ndf, nd)
-        ndsf = tempname()
-        open(io -> serialize(io, mm), ndsf, "w")
-        @test filesize(ndsf) < 10^4
-        @test open(deserialize, ndsf) == nd
-        nd2 = open(deserialize, ndsf)
-        @test nd == unwrap_mmap(nd2)
-        @test typeof(nd) == typeof(unwrap_mmap(nd2))
-        rm(ndsf)
-        rm(ndf)
-    end
+function roundtrip(x, eq=(==), io=IOBuffer())
+    mmwrite(SerializationState(io), x)
+    @test eq(deserialize(seekstart(io)), x)
 end
+
+@testset "PooledArray/NullableArray" begin
+    roundtrip(PooledArray([randstring(rand(1:10)) for i=4]))
+    roundtrip(NullableArray(rand(10), rand(Bool,10)), isequal)
+end
+
+@testset "Columns" begin
+    roundtrip(Columns([1,2], ["x","y"]))
+    roundtrip(Columns(x=[1,2], y=["x","y"]))
+end
+
+@testset "IndexedTable" begin
+    IndexedTable(Columns([1,2], ["x","y"]))
+                 Columns(x=[1,2], y=["x","y"]) |> roundtrip
+end
+
 
 path = joinpath(dirname(@__FILE__), "..","test", "sample")
 files = glob("*.csv", path)
@@ -94,12 +55,11 @@ ingest_output_unordered = tempname()
 # note: this will result in a different table if files[3:end] is ingested first
 spdata_ingest_unordered = ingest(shuffle_files[1:3], ingest_output_unordered,
                                  indexcols=[])
-# this should also test appending new files
-spdata_ingest_unordered = ingest!(shuffle_files, ingest_output_unordered,
+spdata_ingest_unordered = ingest!(shuffle_files[4:end], ingest_output_unordered,
                                  indexcols=[])
+# this should also test appending new files
 
-import Dagger: Chunk, MemToken
-import JuliaDB: OnDisk
+import Dagger: Chunk
 @testset "Load" begin
     cache = joinpath(JuliaDB.JULIADB_DIR, JuliaDB.JULIADB_FILECACHE)
     if isfile(cache)
@@ -117,12 +77,7 @@ import JuliaDB: OnDisk
     @test collect(load(ingest_output_unordered)) == spdata_unordered
     @test issorted(collect(keys(load(ingest_output_unordered), 1)))
     c = first(load(ingest_output).chunks)
-    @test typeof(c.handle) == OnDisk
-    @test c.handle.cached_on == []
-    d = load(ingest_output,tomemory=true)
-    @test collect(d) == spdata
-    c2 = first(d.chunks)
-    @test typeof(c2.handle) == MemToken
+    @test isa(c.handle, FileRef)
     #@test collect(dt[["blah"], :,:]) == spdata
     dt = loadfiles(files, indexcols=[("date", "dummy"), ("dummy", "ticker")], usecache=false)
     nds=collect(dt)
@@ -154,9 +109,9 @@ end
     t = IndexedTable([1,2,3,4], [1,2,3,4])
     n = tempname()
     x = JuliaDB.save(distribute(t, 4), n)
-    @test !any(c->isempty(c.handle.cached_on), x.chunks)
     t1 = load(n)
-    @test all(c->isempty(c.handle.cached_on), t1.chunks)
+    @test collect(t1) == collect(x)
+    @test !any(c->isempty(Dagger.affinity(c.handle)), t1.chunks)
     rm(n, recursive=true)
 end
 

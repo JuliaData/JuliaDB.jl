@@ -1,7 +1,8 @@
-export loadfiles
+export loadfiles, ingest, ingest!, load, save
 
 const JULIADB_DIR = ".juliadb"
-const JULIADB_FILECACHE = "filemeta.dat"
+const JULIADB_FILECACHE = "csv_metadata.jls"
+const JULIADB_INDEXFILE = "juliadb_index.jls"
 
 function files_from_dir(dir)
     dir = abspath(dir)
@@ -42,7 +43,11 @@ All other arguments options are the same as those listed in [`ingest`](@ref).
 
 See also [`ingest`](@ref).
 """
-function loadfiles(files::Union{AbstractVector,String}, delim=','; usecache=true, chunks=nworkers(), opts...)
+function loadfiles(files::Union{AbstractVector,String}, delim=','; opts...)
+    _loadfiles(files, delim; opts...)[1]
+end
+
+function _loadfiles(files::Union{AbstractVector,String}, delim=','; usecache=true, chunks=nworkers(), opts...)
 
     if isa(files, String)
         if !isdir(files)
@@ -106,7 +111,8 @@ function loadfiles(files::Union{AbstractVector,String}, delim=','; usecache=true
 
     if isempty(unknown)
         # we read all required metadata from cache
-        return cache_thunks(fromchunks(validcache))
+        ii = !isnull(validcache[1].handle.offset)
+        return cache_thunks(fromchunks(validcache)), ii
     end
 
     allfiles = collect(Iterators.flatten(unknown))
@@ -116,9 +122,10 @@ function loadfiles(files::Union{AbstractVector,String}, delim=','; usecache=true
     load_f(f) = makecsvchunk(f, delim; opts...)
     data = map(delayed(load_f), unknown)
 
-    chunkrefs = collect(get_context(), delayed(vcat)(data...))
+    chunkrefs = collect(get_context(), delayed((xs...)->[xs...])(data...))
 
-    if !isnull(chunkrefs[1].handle.offset)
+    ii = !isnull(chunkrefs[1].handle.offset)
+    if ii
         lastidx = reduce(max, 0, first.(last.(domain.(validcache)))) + 1
         distribute_implicit_index_space!(chunkrefs, lastidx)
     end
@@ -129,7 +136,7 @@ function loadfiles(files::Union{AbstractVector,String}, delim=','; usecache=true
             names=[:files, :mtime, :metadata])
 
     if metadata != nothing
-        cache = merge(metadata, cache)
+        cache = vcat(metadata, cache)
     end
 
     order = [findfirst(column(cache, :files), f) for f in filegroups] # keep order of the input files
@@ -138,15 +145,16 @@ function loadfiles(files::Union{AbstractVector,String}, delim=','; usecache=true
     if !isnull(chunkrefs[1].handle.offset)
         distribute_implicit_index_space!(cs, 1)
     end
+    ii = ii || !isnull(chunkrefs[1].handle.offset)
 
     open(metafile, "w") do io
         serialize(io, cache)
     end
 
-    cache_thunks(fromchunks(cs))
+    return cache_thunks(fromchunks(cs)), ii
 end
 
-## TODO: Can make this an LRU cache
+## CSV reader
 const _read_cache = Dict{Tuple{Vector{String}, Dict},Any}()
 const _cached_on = Dict{Tuple{Vector{String}, Dict},Any}() # workers register here once they have read a file
 
@@ -227,4 +235,101 @@ function makecsvchunk(file, delim; cache=true, opts...)
         handle.offset = 1
     end
     Dagger.Chunk(typeof(nds), domain(nds), handle, false)
+end
+
+
+"""
+    ingest(files::Union{AbstractVector,String}, outputdir::AbstractString; <options>...)
+
+ingests data from CSV files into JuliaDB. Stores the metadata and index
+in a directory `outputdir`. Creates `outputdir` if it doesn't exist.
+
+All keyword arguments are passed to loadfiles. `delim` is a keyword argument to `ingest` -- this is the delimiter in CSV reading.
+
+Equivalent to calling `loadfiles` and then `save` on the result of
+`loadfiles`. See also [`loadfiles`](@ref) and [`save`](@ref)
+"""
+function ingest(files::Union{AbstractVector,String}, outputdir::AbstractString;
+                delim = ',', opts...)
+    save(loadfiles(files, delim; opts...), outputdir)
+end
+
+"""
+    ingest!(files::Union{AbstractVector,String}, inputdir::AbstractString, outpudir=inputdir; delim=',', chunks=1, <options>...)
+
+load data from `files` and add it to data stored in `inputdir`. If `outputdir` is specified, the resulting table will be written to this directory. By default, this will create a single chunk and append it. Pass `chunks` argument to specify how many chunks the new data should be loaded as.
+
+See also [`ingest`](@ingest)
+"""
+function ingest!(files::Union{AbstractVector,String}, inputdir::AbstractString, outputdir=nothing; delim = ',', chunks=1, opts...)
+    if outputdir === nothing
+        outputdir = inputdir
+    end
+
+    x = load(outputdir)
+    y, ii = _loadfiles(files, delim; chunks=chunks, opts...)
+    if ii
+        # append new chunk by setting the implicit index
+        len = get(trylength(x))
+        distribute_implicit_index_space!(y.chunks, len+1)
+        m = fromchunks(vcat(x.chunks, y.chunks))
+    else
+        m = merge(x, y, agg=nothing) # this will keep repeated vals
+    end
+    if abspath(outputdir) == abspath(inputdir)
+        # save in a temporary file, delete original
+        # move temp to original
+        t = tempname()
+        save(m, t)
+        rm(outputdir; recursive=true)
+        mv(t, outputdir)
+        load(outputdir)
+    else
+        save(m, outputdir)
+    end
+end
+
+
+"""
+    load(dir::AbstractString; tomemory)
+
+Load a saved `DTable` from `dir` directory. Data can be saved
+using `ingest` or `save` functions. If `tomemory` option is true,
+then data is loaded into memory rather than mmapped.
+
+See also [`ingest`](@ref), [`save`](@ref)
+"""
+function load(dir::AbstractString; copy=false)
+    dtable_file = joinpath(dir, JULIADB_INDEXFILE)
+    t = open(deserialize, dtable_file)
+    _makerelative!(t, dir)
+    t
+end
+
+"""
+    save(t::DTable, outputdir::AbstractString)
+
+Saves a `DTable` to disk. This function blocks till all
+chunks have been computed and saved. Saved data can
+be loaded with `load`.
+
+See also [`ingest`](@ref), [`load`](@ref)
+"""
+function save(t::DTable{K,V}, outputdir::AbstractString) where {K,V}
+    chunks = Dagger.savechunks(t.chunks, outputdir)
+    saved_t = DTable{K,V}(t.subdomains, chunks)
+    open(joinpath(outputdir, JULIADB_INDEXFILE), "w") do io
+        serialize(io, saved_t)
+    end
+    _makerelative!(saved_t, outputdir)
+    saved_t
+end
+
+function _makerelative!(t::DTable, dir::AbstractString)
+    foreach(t.chunks) do c
+        h = c.handle
+        if isa(h, FileRef)
+            c.handle = FileRef(joinpath(dir, h.file), h.size)
+        end
+    end
 end
