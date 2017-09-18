@@ -3,7 +3,7 @@ import IndexedTables: astuple
 using NamedTuples
 
 using PooledArrays
-using NullableArrays
+using DataValues
 using WeakRefStrings
 
 
@@ -169,10 +169,10 @@ function _load_table(file::Union{IO, AbstractString, AbstractArray}, delim=',';
 
         indexvecs = cols[_indexcols]
 
-        nullableidx = find(x->eltype(x) <: Nullable, indexvecs)
+        nullableidx = find(x->eltype(x) <: Union{DataValue,Nullable}, indexvecs)
         if !isempty(nullableidx)
             badcol_names = header[_indexcols[nullableidx]]
-            error("Indexed columns may not contain Nullables. Column(s) with nullables: $(join(badcol_names, ", ", " and "))")
+            error("Indexed columns may not contain Nullables or NAs. Column(s) with nullables: $(join(badcol_names, ", ", " and "))")
         end
 
         index = Columns(indexvecs...; names=indexcolnames)
@@ -258,18 +258,18 @@ function approx_size(pa::PooledArray)
     approx_size(pa.refs) + approx_size(pa.pool)
 end
 
-# smarter merges on NullableArray + other arrays
+# smarter merges on DataValueArray + other arrays
 import IndexedTables: promoted_similar
 
-function promoted_similar(x::NullableArray, y::NullableArray, n)
+function promoted_similar(x::DataValueArray, y::DataValueArray, n)
     similar(x, promote_type(eltype(x),eltype(y)), n)
 end
 
-function promoted_similar(x::NullableArray, y::AbstractArray, n)
+function promoted_similar(x::DataValueArray, y::AbstractArray, n)
     similar(x, promote_type(eltype(x),eltype(y)), n)
 end
 
-function promoted_similar(x::AbstractArray, y::NullableArray, n)
+function promoted_similar(x::AbstractArray, y::DataValueArray, n)
     similar(y, promote_type(eltype(x),eltype(y)), n)
 end
 

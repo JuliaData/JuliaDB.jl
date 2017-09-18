@@ -1,7 +1,7 @@
 using Base.Test
 using JuliaDB
 using PooledArrays
-using NullableArrays
+using DataValues
 using MemPool
 
 function roundtrip(x, eq=(==), io=IOBuffer())
@@ -9,9 +9,9 @@ function roundtrip(x, eq=(==), io=IOBuffer())
     @test eq(deserialize(seekstart(io)), x)
 end
 
-@testset "PooledArray/NullableArray" begin
+@testset "PooledArray/DataValueArray" begin
     roundtrip(PooledArray([randstring(rand(1:10)) for i=4]))
-    roundtrip(NullableArray(rand(10), rand(Bool,10)), isequal)
+    roundtrip(DataValueArray(rand(10), rand(Bool,10)), isequal)
 end
 
 @testset "Columns" begin
@@ -66,7 +66,7 @@ import Dagger: Chunk
         rm(cache)
     end
     missingcoltbl = loadfiles(joinpath(@__DIR__, "missingcols"), datacols=[:a, :x, :y], usecache=false)
-    @test eltype(missingcoltbl) == @NT(a::Int, x::Nullable{Int}, y::Nullable{Float64})
+    @test eltype(missingcoltbl) == @NT(a,x,y){Int, DataValue{Int}, DataValue{Float64}}
     # file name as a column:
     @test unique(keys(loadfiles(path, indexcols=[:year, :date, :ticker],filenamecol=:year, usecache=false), :year)|> collect) == string.(2010:2015)
     @test_throws ErrorException load_table("a,b\n,2", csvread=TextParse._csvread, indexcols=[1])

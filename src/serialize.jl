@@ -1,19 +1,19 @@
 using MemPool
 import MemPool: mmwrite, mmread, MMSer
 
-#### NullableArray
+#### DataValueArray
 
-function mmwrite(io::AbstractSerializer, xs::NullableArray)
-    Base.serialize_type(io, MMSer{NullableArray})
+function mmwrite(io::AbstractSerializer, xs::DataValueArray)
+    Base.serialize_type(io, MMSer{DataValueArray})
     
     mmwrite(io, BitArray(xs.isnull))
     mmwrite(io, xs.values)
 end
 
-function mmread(::Type{NullableArray}, io, mmap)
+function mmread(::Type{DataValueArray}, io, mmap)
     isnull = deserialize(io)
     vals = deserialize(io)
-    NullableArray(vals, isnull)
+    DataValueArray(vals, isnull)
 end
 
 using PooledArrays
