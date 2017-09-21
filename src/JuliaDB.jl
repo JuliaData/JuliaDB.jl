@@ -1,3 +1,4 @@
+__precompile__()
 module JuliaDB
 
 using IndexedTables, Dagger, NamedTuples
