@@ -1,7 +1,7 @@
 using OnlineStatsBase
 using StatsBase
 
-import OnlineStatsBase: Series, merge, AbstractSeries, OnlineStat
+import OnlineStatsBase: Series, merge, OnlineStat
 
 export aggregate_stats
 
@@ -44,13 +44,13 @@ function Series(x::Columns, y::AbstractVector, stats::OnlineStat{(1,0), 1}...)
 end
 
 """
-`aggregate_stats(series::AbstractSeries, t::Union{IndexedTable, DTable; by, with)`
+`aggregate_stats(series::Series, t::Union{IndexedTable, DTable; by, with)`
 
 Aggregate common indices with an `OnlineStas.Series` object.
 
 Computes the given Online stat for every group of values with equal indices.
 """
-function aggregate_stats(series::AbstractSeries, t::Union{IndexedTable, DTable}; by=keyselector(t), with=valueselector(t))
+function aggregate_stats(series::Series, t::Union{IndexedTable, DTable}; by=keyselector(t), with=valueselector(t))
     aggregate_stats(series, rows(t, by), rows(t, with))
 end
 
@@ -62,7 +62,7 @@ end
     fit!(series, args...)
 end
 
-function aggregate_stats(series::AbstractSeries, ks::AbstractVector, vs::AbstractVector...)
+function aggregate_stats(series::Series, ks::AbstractVector, vs::AbstractVector...)
     dest_idxs = similar(ks,0)
     dest_data = fill(series,0)
     n = length(ks)
@@ -82,11 +82,11 @@ function aggregate_stats(series::AbstractSeries, ks::AbstractVector, vs::Abstrac
 end
 
 """
-`aggregate_stats(series::AbstractSeries, ks::AbstractVector, vs::AbstractVector...)`
+`aggregate_stats(series::Series, ks::AbstractVector, vs::AbstractVector...)`
 
 Compute the online stat (`series`) for every group of indices in `vs` for which the values in `ks` are equal.
 """
-function aggregate_stats(series::AbstractSeries, ks::DArray, vs::DArray...)
+function aggregate_stats(series::Series, ks::DArray, vs::DArray...)
     agg_chunk = delayed() do kchunk, vchunks...
         aggregate_stats(copy(series), kchunk, vchunks...)
     end
