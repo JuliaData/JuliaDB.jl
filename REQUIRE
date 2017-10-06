@@ -7,4 +7,5 @@ Dagger 0.4.0
 Glob 1.1.1
 PooledArrays 0.0.2
 OnlineStatsBase v0.0.8
+StatsBase
 DataValues
