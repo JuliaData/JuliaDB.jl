@@ -1,10 +1,7 @@
 using OnlineStatsBase
 using StatsBase
-using OnlineStats
 
-import OnlineStats: Series
-
-import OnlineStatsBase: merge, AbstractSeries, OnlineStat
+import OnlineStatsBase: Series, merge, AbstractSeries, OnlineStat
 
 export aggregate_stats
 
@@ -47,14 +44,14 @@ function Series(x::Columns, y::AbstractVector, stats::OnlineStat{(1,0), 1}...)
 end
 
 """
-`aggregate_stats(series::AbstractSeries, t::Union{IndexedTable, DTable)`
+`aggregate_stats(series::AbstractSeries, t::Union{IndexedTable, DTable; by, with)`
 
 Aggregate common indices with an `OnlineStas.Series` object.
 
 Computes the given Online stat for every group of values with equal indices.
 """
-function aggregate_stats(series::AbstractSeries, t::Union{IndexedTable, DTable})
-    aggregate_stats(series, keys(t), values(t))
+function aggregate_stats(series::AbstractSeries, t::Union{IndexedTable, DTable}; by=keyselector(t), with=valueselector(t))
+    aggregate_stats(series, rows(t, by), rows(t, with))
 end
 
 @inline function _fit!(series, xs::Tup, y...)

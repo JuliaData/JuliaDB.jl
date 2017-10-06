@@ -58,8 +58,8 @@ end
 Combines adjacent rows with equal indices using the given
 2-argument reduction function `f`.
 """
-function aggregate(f, t::DTable)
-    t1 = mapchunks(c->aggregate(f, c), t, keeplengths=false)
+function aggregate(f, t::DTable; kwargs...)
+    t1 = mapchunks(c->aggregate(f, c; kwargs...), t, keeplengths=false)
     if has_overlaps(t1.subdomains, true)
         overlap_merge = (x, y) -> merge(x, y, agg=f)
         t2 = rechunk(t1, merge=(ts...) -> _merge(overlap_merge, ts...), closed=true)

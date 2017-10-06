@@ -1,6 +1,9 @@
-import IndexedTables: astuple
-
 using NamedTuples
+
+using PooledArrays
+using DataValues
+using WeakRefStrings
+
 
 # re-export
 export @NT
@@ -39,7 +42,7 @@ end
 
 
 function subtable(nds, r)
-    Table(nds.index[r], nds.data[r], presorted=true, copy=false)
+    Table(keys(nds)[r], values(nds)[r], presorted=true, copy=false)
 end
 
 function extrema_range(x::AbstractArray{T}, r::UnitRange) where T
@@ -55,61 +58,6 @@ function extrema_range(x::AbstractArray{T}, r::UnitRange) where T
         mx = max(x[i], mx)
     end
     mn, mx
-end
-
-getbyheader(cols, header, i::Int) = cols[i]
-getbyheader(cols, header, i::Symbol) = getbyheader(cols, header, string(i))
-function getbyheader(cols, header, i::AbstractString)
-    if !(i in header)
-        throw(ArgumentError("Unknown column $i"))
-    end
-    getbyheader(cols, header, findfirst(header, i))
-end
-
-# pick the first of many columns
-function getbyheader(cols, header, oneof::Tuple)
-    for c in oneof
-        try
-            return getbyheader(cols, header, c)
-        catch err
-        end
-    end
-    throw(ArgumentError("Couldn't find any of the columns in $cs"))
-end
-
-function getbyheader_canonical(cols, header, oneof::Tuple)
-
-    for c in oneof
-        try
-            getbyheader(cols, header, c)
-            return first(oneof)
-        catch err
-        end
-    end
-    throw(ArgumentError("Couldn't find any of the columns in $oneof"))
-end
-
-function getbyheader_canonical(cols, header, oneof)
-    str = getbyheader(cols, header, oneof)
-    if isa(str, AbstractString)
-        return replace(str, r"\s", "_")
-    end
-    return str
-end
-
-"""
-get a subset of vectors wrapped in Columns from a tuple of vectors
-"""
-function getcolsubset(cols, header, subcols)
-    colnames = !isempty(header) ?
-        vcat(map(i -> Symbol(getbyheader_canonical(header, header, i)), subcols)) :
-        nothing
-
-    if length(subcols) > 1
-        Columns(map(i -> getbyheader(cols, header, i), subcols)...; names=colnames)
-    else
-        Columns(getbyheader(cols, header, subcols[1]); names=colnames)
-    end
 end
 
 # Data loading utilities
@@ -145,7 +93,7 @@ function prettify_filename(f)
     return f
 end
 
-function _load_table(file::Union{IO, AbstractString}, delim=',';
+function _load_table(file::Union{IO, AbstractString, AbstractArray}, delim=',';
                       indexcols=[],
                       datacols=nothing,
                       filenamecol=nothing,
@@ -156,202 +104,143 @@ function _load_table(file::Union{IO, AbstractString}, delim=',';
                       kwargs...)
 
     #println("LOADING ", file)
-    cols,header = csvread(file, delim; kwargs...)
+    count = Int[]
+
+    samecols = nothing
+    if indexcols !== nothing
+        samecols = filter(x->isa(x, Union{Tuple, AbstractArray}),
+                          indexcols)
+    end
+    if datacols !== nothing
+        append!(samecols, filter(x->isa(x, Union{Tuple, AbstractArray}),
+                                 datacols))
+    end
+
+    if samecols !== nothing
+        samecols = map(x->map(string, x), samecols)
+    end
+
+    if isa(file, AbstractArray)
+        cols, header, count = csvread(file, delim;
+                                      samecols=samecols,
+                                      kwargs...)
+    else
+        cols, header = csvread(file, delim; kwargs...)
+    end
 
     header = map(string, header)
 
     if filenamecol !== nothing
         # mimick a file name column
-        cols = (fill(prettify_filename(file), length(cols[1])), cols...)
+        if isa(file, AbstractArray)
+            namecol = reduce(vcat, fill.(prettify_filename.(file), count))
+        else
+            namecol = fill(prettify_filename(file), length(cols[1]))
+        end
+        cols = (namecol, cols...)
         if !isempty(header)
             unshift!(header, string(filenamecol))
         end
     end
 
+    if isempty(cols)
+        error("File contains no columns!")
+    end
+
+    n = length(first(cols))
     implicitindex = false
 
-    if datacols === nothing
-        _indexcols = map(i->getbyheader(1:length(cols), header, i), indexcols)
-        datacols = [x for x in 1:length(cols) if !(x in _indexcols)]
-    end
+    ## Construct Index
+    _indexcols = map(x->lookupbyheader(header, x), indexcols)
 
-    if isempty(datacols)
-        error("There must be at least one data column.")
-    end
-
-    data = getcolsubset(cols, header, datacols)
-
-    if isempty(indexcols)
-        # with no indexes, default to 1:n
-        index = [1:length(data);]
+    if isempty(_indexcols)
         implicitindex = true
+        index = Columns([1:n;])
     else
-        index = getcolsubset(cols, header, indexcols)
+        indexcolnames = map(indexcols, _indexcols) do name, i
+            if i==0
+                error("Cannot index by unknown column $name")
+            else
+                isa(name, Int) ? canonical_name(header[name]) : canonical_name(name)
+            end
+        end
+
+        indexvecs = cols[_indexcols]
+
+        nullableidx = find(x->eltype(x) <: Union{DataValue,Nullable}, indexvecs)
+        if !isempty(nullableidx)
+            badcol_names = header[_indexcols[nullableidx]]
+            error("Indexed columns may not contain Nullables or NAs. Column(s) with nullables: $(join(badcol_names, ", ", " and "))")
+        end
+
+        index = Columns(indexvecs...; names=indexcolnames)
     end
 
-    idxs = isa(index, Vector) ? (index,) : astuple(index.columns)
-    if any(x->eltype(x) <: Nullable, idxs)
-        error("Index columns may not contain Nullables")
+    ## Construct Data
+    if datacols === nothing
+        _datacols = setdiff(1:length(cols), _indexcols)
+        datacols = header[_datacols]
+    else
+        _datacols = map(x->lookupbyheader(header, x), datacols)
     end
+
+    if isempty(_datacols)
+        error("""You must specify at least one data column.
+                 Either all columns in the file were indexed, or datacols was explicitly set to an empty array.""")
+    end
+
+    datacolnames = map(datacols, _datacols) do name, i
+        if i == 0
+            if isa(name, Int)
+                error("Unknown column numbered $name specified in datacols")
+            else
+                return canonical_name(name) # use provided name for missing column
+            end
+        else
+            isa(name, Int) ? canonical_name(header[name]) : canonical_name(name)
+        end
+    end
+
+    datavecs = map(_datacols) do i
+        if i == 0
+            DataValueArray{Union{}}(n) # missing column
+        else
+            cols[i]
+        end
+    end
+
+    data = Columns(datavecs...; names=datacolnames)
 
     Table(index, data), implicitindex
 end
 
 
-using PooledArrays
-using NullableArrays
-
-"""
-    MmappableArray
-
-A convenience wrapper that can be used to pass around metadata about
-an Mmapped array.
-
-When serialized, this only writes the metadata and leaves out the data.
-
-copy_mmap(io::IO, file::String, x::T) # =>
-"""
-mutable struct MmappableArray{T, N, A} <: AbstractArray{T, N}
-    file::String
-    offset::Int
-    size::NTuple{N, Int}
-    data::A
-end
-
-@inline Base.size(arr::MmappableArray) = arr.size
-@inline Base.getindex(arr::MmappableArray, idx...) = arr.data[idx...]
-Base.IndexStyle{T,N,A}(::Type{MmappableArray{T,N,A}}) = Base.IndexStyle(A)
-
-function Base.similar(A::M, sz::Int...) where M<:MmappableArray
-    # this is to keep Table constructor happy
-    M("__unmmapped__", 0, sz, similar(A.data, sz...))
-end
-
-function Base.similar(pa::PooledArray{T,R,N,M}, S::Type, dims::Dims) where {T,R,N,M<:MmappableArray}
-    z = M("__unmmapped__", 0, dims, zeros(R, dims))
-    PooledArray(PooledArrays.RefArray(z), S[])
-end
-
-# construct an MmappableArray from a normal array, writing it to file
-function MmappableArray(io::IO, file::String, data::Array{T}) where T
-    if !isbits(T)
-        error("Cannot Mmap non-bits array $T")
-    end
-
-    offset = position(io)
-    arr = Mmap.mmap(io, typeof(data), size(data), offset)
-    copy!(arr, data)
-    Mmap.sync!(arr)
-    seek(io, offset+sizeof(data))
-    MmappableArray{T, ndims(data), typeof(data)}(file, offset, size(data), arr)
-end
-
-function MmappableArray(io::IO, file::String, data::PooledArray)
-    mmaprefs = MmappableArray(io, file, data.refs)
-    PooledArray(PooledArrays.RefArray(mmaprefs), data.pool)
-end
-
-function MmappableArray(file::String, data)
-    open(file, "w+") do io
-        MmappableArray(io, file, data)
+function lookupbyheader(header, key)
+    if isa(key, Symbol)
+        return lookupbyheader(header, string(key))
+    elseif isa(key, String)
+        return findfirst(x->x==key, header)
+    elseif isa(key, Int)
+        return 0 < key <= length(header) ? key : 0
+    elseif isa(key, Tuple) || isa(key, Vector)
+        for k in key
+            x = lookupbyheader(header, k)
+            x != 0 && return x
+        end
+        return 0
     end
 end
 
-# Load an Mmap array from file
-function MmappableArray(file::String, ::Type{A}, offset::Int, dims) where A
-    MmappableArray{eltype(A), ndims(A), A}(file, offset, dims, Mmap.mmap(file, A, dims, offset))
-end
-
-function Base.serialize(io::AbstractSerializer, arr::MmappableArray)
-    Mmap.sync!(arr.data)
-    Base.Serializer.serialize_type(io, typeof(arr))
-    Base.serialize(io, (arr.file, arr.offset, arr.size))
-    if arr.file == "__unmmapped__"
-        Base.serialize(io, arr.data)
-    end
-end
-
-function Base.deserialize(io::AbstractSerializer, ::Type{MmappableArray{T,N,A}}) where {T, N, A}
-    (file, offset, dims)  = deserialize(io)
-    if file == "__unmmapped__"
-        data = deserialize(io)
-        return MmappableArray{T,N,A}(file, offset, dims, data)
-    end
-    MmappableArray(file, A, offset, dims)
-end
-
-using IndexedTables
-
-# assuming we don't use non-bits numbers
-const MmappableTypes = Union{Integer, AbstractFloat, Complex, Char, DateTime, Date}
-
-### Wrap arrays in Mmappable wrapper. Do this before serializing
-copy_mmap(io, file, arr::PooledArray) = MmappableArray(io, file, arr)
-copy_mmap(io, file, arr::Array{T}) where {T<:MmappableTypes} = MmappableArray(io, file, arr)
-function copy_mmap(io, file, arr::Columns)
-    cs = map(x->copy_mmap(io, file, x), arr.columns)
-    if all(x->isa(x, Int), fieldnames(cs))
-        Columns(cs...)
-    else
-        # NamedTuple case
-        Columns(cs...; names=fieldnames(cs))
-    end
-end
-copy_mmap(io, file, arr::AbstractArray) = arr
-
-## This must be called after sorting and aggregation!
-function copy_mmap(io::IO, file::String, nds::Table)
-    flush!(nds)
-    index = copy_mmap(io, file, nds.index)
-    data  = copy_mmap(io, file, nds.data)
-    Table(index, data, copy=false, presorted=true)
-end
-
-function copy_mmap(file::String, data)
-    open(file, "w+") do io
-        copy_mmap(io, file, data)
-    end
-end
-
-### Unwrap
-
-# we should unwrap before processing because MmappableArray is
-# not a complete array wrapper. We keep track of which arrays were
-# part of which wrapper. If an array remains unchanged after it is
-# deserialized by a proc, we can wrap it in MmappableArray before sending it
-function unwrap_mmap(arr::MmappableArray)
-    #track[arr.data] = (arr.file, arr.offset, arr.size)
-    arr.data
-end
-
-function unwrap_mmap(arr::PooledArray)
-    refs = unwrap_mmap(arr.refs)
-    PooledArray(PooledArrays.RefArray(refs), arr.pool)
-end
-
-function unwrap_mmap(arr::Columns)
-    cs = map(x->unwrap_mmap(x), arr.columns)
-    if all(x->isa(x, Int), fieldnames(cs))
-        Columns(cs...)
-    else
-        # NamedTuple case
-        Columns(cs...; names=fieldnames(cs))
-    end
-end
-
-function unwrap_mmap(arr::Table)
-    Table(unwrap_mmap(arr.index), unwrap_mmap(arr.data), presorted=true, copy=false)
-end
-
-unwrap_mmap(arr::AbstractArray) = arr
-
+canonical_name(n::Symbol) = n
+canonical_name(n::String) = Symbol(replace(n, r"\s", "_"))
+canonical_name(n::Union{Tuple, Vector}) = canonical_name(first(n))
 
 function _repeated(x, n)
     Iterators.repeated(x,n)
 end
 
 
-import Dagger: approx_size
+import MemPool: approx_size
 
 function approx_size(cs::Columns)
     sum(map(approx_size, astuple(cs.columns)))
@@ -367,18 +256,18 @@ function approx_size(pa::PooledArray)
     approx_size(pa.refs) + approx_size(pa.pool)
 end
 
-# smarter merges on NullableArray + other arrays
+# smarter merges on DataValueArray + other arrays
 import IndexedTables: promoted_similar
 
-function promoted_similar(x::NullableArray, y::NullableArray, n)
+function promoted_similar(x::DataValueArray, y::DataValueArray, n)
     similar(x, promote_type(eltype(x),eltype(y)), n)
 end
 
-function promoted_similar(x::NullableArray, y::AbstractArray, n)
+function promoted_similar(x::DataValueArray, y::AbstractArray, n)
     similar(x, promote_type(eltype(x),eltype(y)), n)
 end
 
-function promoted_similar(x::AbstractArray, y::NullableArray, n)
+function promoted_similar(x::AbstractArray, y::DataValueArray, n)
     similar(y, promote_type(eltype(x),eltype(y)), n)
 end
 

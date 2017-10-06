@@ -3,8 +3,7 @@ import Base: collect
 import Dagger: chunktype, domain, tochunk, distribute,
                chunks, Context, compute, gather, free!
 
-import IndexedTables: eltypes, astuple
-
+import IndexedTables: eltypes, astuple, keyselector, valueselector
 
 # re-export the essentials
 export distribute, chunks, compute, gather, free!
@@ -435,4 +434,17 @@ end
 
 function null_length(x::IndexSpace)
     IndexSpace(x.interval, x.boundingrect, Nullable{Int}())
+end
+
+function valueselector(t::DTable)
+    T = eltype(t)
+    if T <: Tup
+        if T<:NamedTuple
+            (fieldnames(T)...)
+        else
+            ((ndims(t) + (1:nfields(T)))...)
+        end
+    else
+        ndims(t) + 1
+    end
 end

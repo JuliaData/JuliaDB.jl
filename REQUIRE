@@ -1,9 +1,10 @@
 julia 0.6
-IndexedTables 0.3.0
+IndexedTables 0.3.3
 NamedTuples 4.0.0
-TextParse 0.1.6
-Dagger 0.3.0
+TextParse 0.3.0
+MemPool
+Dagger 0.4.0
 Glob 1.1.1
 PooledArrays 0.0.2
-NullableArrays
-OnlineStats
+OnlineStatsBase v0.0.8
+DataValues
