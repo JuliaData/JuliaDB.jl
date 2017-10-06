@@ -119,8 +119,9 @@ function _merge(f, a::Table, b::Table)
     elseif isempty(b)
         a
     elseif last(a.index) < first(b.index)
-        # can hcat
-        Table(vcat(a.index, b.index), vcat(a.data, b.data))
+        # can vcat
+        Table(vcat(a.index, b.index), vcat(a.data, b.data),
+              presorted=true, copy=false)
     elseif last(b.index) < first(a.index)
         _merge(b, a)
     else
