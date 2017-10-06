@@ -76,8 +76,11 @@ function compute(ctx, t::DTable; allowoverlap=false, closed=false)
         # are thunks and they need to be staged for scheduling
         vec_thunk = delayed((refs...) -> [refs...]; meta=true)(t.chunks...)
         cs = compute(ctx, vec_thunk) # returns a vector of Chunk objects
-        fromchunks(cs, allowoverlap=allowoverlap, closed=closed)
+        t1 = fromchunks(cs, allowoverlap=allowoverlap, closed=closed)
+        foreach(Dagger.persist!, t1.chunks)
+        compute(t1)
     else
+        foreach(Dagger.persist!, t.chunks)
         t
     end
 end
