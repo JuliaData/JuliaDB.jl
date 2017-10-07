@@ -34,4 +34,6 @@ using JuliaDB
 
     @test collect(pairs(x)) == [@NT(a=1,b=1)=>@NT(c=3), @NT(a=1,b=2)=>@NT(c=4)]
     @test collect(pairs(y)) == [@NT(a=1,b=1)=>3, @NT(a=1,b=2)=>4]
+
+    @test names(x) == [:a, :b, :c]
 end
