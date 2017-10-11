@@ -77,9 +77,9 @@ function compute(ctx, t::DTable; allowoverlap=false, closed=false)
         vec_thunk = delayed((refs...) -> [refs...]; meta=true)(t.chunks...)
         cs = compute(ctx, vec_thunk) # returns a vector of Chunk objects
         t1 = fromchunks(cs, allowoverlap=allowoverlap, closed=closed)
-        foreach(Dagger.persist!, t1.chunks)
         compute(t1)
     else
+        map(Dagger.unrelease, t.chunks) # don't let this be freed
         foreach(Dagger.persist!, t.chunks)
         t
     end
