@@ -440,3 +440,35 @@ end
 function null_length(x::IndexSpace)
     IndexSpace(x.interval, x.boundingrect, Nullable{Int}())
 end
+
+function subtable{K, V}(t::DTable{K,V}, idx::UnitRange)
+    if isnull(trylength(t))
+        t = compute(t)
+    end
+    if isempty(idx)
+        return DTable{K, V}(similar(t.subdomains, 0), similar(t.chunks, 0))
+    end
+    ls = map(x->get(nrows(x)), t.subdomains)
+    cumls = cumsum(ls)
+    i = searchsortedlast(cumls, first(idx))
+    j = searchsortedfirst(cumls, last(idx))
+
+    # clip first and last chunks
+    strt = first(idx) - get(cumls, i-1, 0)
+    fin = cumls[j] - last(idx)
+
+    ds = t.subdomains[i:j]
+    cs = convert(Vector{Any}, t.chunks[i:j])
+    if i==j
+        cs[1] = delayed(x->subtable(x, strt:length(x)-fin))(cs[1])
+        i = ds[1]
+        ds[1] = IndexSpace(i.interval, i.boundingrect, Nullable(length(idx)))
+    else
+        cs[1] = delayed(x->subtable(x, strt:length(x)))(cs[1])
+        cs[end] = delayed(x->subtable(x, 1:length(x)-fin))(cs[end])
+        ds[1] = null_length(ds[1])
+        ds[end] = null_length(ds[2])
+    end
+
+    DTable{K,V}(ds, cs)
+end
