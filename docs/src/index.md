@@ -53,7 +53,7 @@ sampledata = loadfiles(path, indexcols=["date", "ticker"])
 
 Using the `indexcols` option, here we specified that `loadfiles` should use `date` and `ticker` columns as the index for the data. If `indexcols` is omitted, then an implicit index of integers ranging from 1 to length of the dataset is created. See [the API reference for `loadfiles`](apireference.html#JuliaDB.loadfiles) for all available options.
 
-Notice that the output says `DTable with 288 rows in 6 chunks`. `loadfiles` creates a distributed table (`DTable`) with as many chunks as the input files. The loaded chunks are distributed across available worker processes. Below this line are the first 5 rows of the table giving a peek of what's in it, the data is sorted by the index columns which are to the left of the vertical line cutting through the table.
+Notice that the output says `DNDSparse with 288 rows in 6 chunks`. `loadfiles` creates a distributed table (`DNDSparse`) with as many chunks as the input files. The loaded chunks are distributed across available worker processes. Below this line are the first 5 rows of the table giving a peek of what's in it, the data is sorted by the index columns which are to the left of the vertical line cutting through the table.
 
 `loadfiles` will also save metadata about the contents of the files in a directory named `.juliadb` in the directory with the files (or in the current working directory if a vector of filenames is passed). This means, the next time the files are loaded, it will not need to actually parse them to know what's in them. However a file will be parsed once an operation requires the data in it.
 
@@ -61,7 +61,7 @@ Another way to load data into JuliaDB is using [`ingest`](@ref ingest). `ingest`
 
 ### Saving and loading JuliaDB tables
 
-You can save a `DTable` to disk at any point:
+You can save a `DNDSparse` to disk at any point:
 
 ```
 save(t, "<outputdir>")
@@ -79,7 +79,7 @@ data = load("<outpudir>")
 
 ### Indexing
 
-Most lookup and filtering operations on `DTable` can be done via indexing _into_ it. Our `sampledata` object behaves like a 2-d array, accepting two indices, each a value, a range or a vector of values from the corresponding index columns.
+Most lookup and filtering operations on `DNDSparse` can be done via indexing _into_ it. Our `sampledata` object behaves like a 2-d array, accepting two indices, each a value, a range or a vector of values from the corresponding index columns.
 
 You can get a specific value by indexing it by the exact index:
 
@@ -87,7 +87,7 @@ You can get a specific value by indexing it by the exact index:
 sampledata[Date("2010-06-01"), "GOOGL"] # Get GOOGL's data for June 2010
 ```
 
-Above, we are indexing the table with a specific index value (`2010-06-01`, `"GOOGL"`). Here our `DTable` behaved like a dictionary, giving the value stored at a given key. The result is a [`NamedTuple`](https://github.com/blackrock/NamedTuples.jl) object containing 5 fields which of the same names as the data columns.
+Above, we are indexing the table with a specific index value (`2010-06-01`, `"GOOGL"`). Here our `DNDSparse` behaved like a dictionary, giving the value stored at a given key. The result is a [`NamedTuple`](https://github.com/blackrock/NamedTuples.jl) object containing 5 fields which of the same names as the data columns.
 
 !!! info
     The result of indexing into a table can be
@@ -96,7 +96,7 @@ Above, we are indexing the table with a specific index value (`2010-06-01`, `"GO
     - a scalar value - if there is only one column (a vector) for the data
 
 
-One can also get a subset of the `DTable` by indexing into it with a range or a sorted vector of index values:
+One can also get a subset of the `DNDSparse` by indexing into it with a range or a sorted vector of index values:
 
 ```@repl sampledata
 sampledata[Date("2012-01"):Dates.Month(1):Date("2014-12"), ["GOOGL", "KO"]]
@@ -109,7 +109,7 @@ sampledata[:, ["GOOGL", "KO"]]
 
 Fetches all values in the data for the stock symbols GOOGL and KO.
 
-Range indexing always returns a `DTable` so that you can apply any other JuliaDB operation on the result of indexing.
+Range indexing always returns a `DNDSparse` so that you can apply any other JuliaDB operation on the result of indexing.
 
 !!! note
     Minutiae: notice the range we have used in the last example: `Date("2012-01"):Dates.Month(1):Date("2014-12")`. This says "from 2012-01-01 to 2014-12-01 in steps of 1 month". Date/DateTime ranges in Julia need to be specified with an increment such as `Dates.Month(1)`. If your dataset contains timestamps in the millisecond resolution, for example, you'd need to specify `Dates.Millisecond(1)` as the increment, and so on.
@@ -253,7 +253,7 @@ A location in the coordinate space of an array often has multiple possible descr
 
 In our test dataset, the dates in the date column each fall in the different quarters of the year. It is possible to aggregate the data for each quarter together for each ticker symbol using `convertdim`.
 
-`convertdim` accepts a `DTable`, a dimension number to convert, a function or dictionary to apply to indices in that dimension, and an aggregation function (the aggregation function is needed in case the mapping is many-to-one). You can optionally give a new name to the converted dimension using the `name` keyword argument.
+`convertdim` accepts a `DNDSparse`, a dimension number to convert, a function or dictionary to apply to indices in that dimension, and an aggregation function (the aggregation function is needed in case the mapping is many-to-one). You can optionally give a new name to the converted dimension using the `name` keyword argument.
 
 The following call therefore gives the quarterly aggregates for our data:
 
@@ -280,4 +280,4 @@ In some cases, such dimension permutations are needed for performance. The leftm
 
 ## Joins
 
-JuliaDB provides several `join` operations to combine two or more `DTable`s into one, namely [`naturaljoin`](@ref), [`leftjoin`](@ref), [`merge`](@ref), and [`asofjoin`](@ref).
+JuliaDB provides several `join` operations to combine two or more `DNDSparse`s into one, namely [`naturaljoin`](@ref), [`leftjoin`](@ref), [`merge`](@ref), and [`asofjoin`](@ref).

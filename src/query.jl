@@ -7,26 +7,26 @@ import Base: reducedim, mapslices
 export pick
 
 """
-    select(t::DTable, conditions::Pair...)
+    select(t::DNDSparse, conditions::Pair...)
 
 Filter based on index columns. Conditions are accepted as column-function pairs.
 
 Example: `select(t, 1 => x->x>10, 3 => x->x!=10 ...)`
 """
-function Base.select(t::DTable, conditions::Pair...)
+function Base.select(t::DNDSparse, conditions::Pair...)
     cache_thunks(mapchunks(x -> select(x, conditions...), t, keeplengths=false))
 end
 
 """
-    select(t::DTable, which...; agg)
+    select(t::DNDSparse, which...; agg)
 
-Returns a new DTable where only a subset of the index columns (specified by `which`) are kept.
+Returns a new DNDSparse where only a subset of the index columns (specified by `which`) are kept.
 
 The `agg` keyword argument is a function which specifies how entries with
 equal indices should be aggregated. If `agg` is unspecified, then the repeating
 indices are kept in the output, you can then aggregate using [`aggregate`](@ref)
 """
-function Base.select(t::DTable{K,V}, which::DimName...; agg=nothing) where {K,V}
+function Base.select(t::DNDSparse{K,V}, which::DimName...; agg=nothing) where {K,V}
 
     # remove dimensions from bounding boxes
     sub_dims = [which...]
@@ -41,7 +41,7 @@ function Base.select(t::DTable{K,V}, which::DimName...; agg=nothing) where {K,V}
 
     chunks = map(delayed(x -> select(x, which...; agg=agg)), t.chunks)
 
-    t1 = DTable{eltype(subdomains[1]), V}(subdomains, chunks)
+    t1 = DNDSparse{eltype(subdomains[1]), V}(subdomains, chunks)
 
     if agg !== nothing && has_overlaps(subdomains, true)
         with_overlaps(t1) do cs
@@ -53,12 +53,12 @@ function Base.select(t::DTable{K,V}, which::DimName...; agg=nothing) where {K,V}
 end
 
 """
-    aggregate(f, t::DTable)
+    aggregate(f, t::DNDSparse)
 
 Combines adjacent rows with equal indices using the given
 2-argument reduction function `f`.
 """
-function aggregate(f, t::DTable; kwargs...)
+function aggregate(f, t::DNDSparse; kwargs...)
     t1 = mapchunks(c->aggregate(f, c; kwargs...), t, keeplengths=false)
     if has_overlaps(t1.subdomains, true)
         overlap_merge = (x, y) -> merge(x, y, agg=f)
@@ -70,12 +70,12 @@ function aggregate(f, t::DTable; kwargs...)
 end
 
 """
-    aggregate_vec(f::Function, x::DTable)
+    aggregate_vec(f::Function, x::DNDSparse)
 
 Combine adjacent rows with equal indices using a function from vector to scalar,
 e.g. `mean`.
 """
-function aggregate_vec(f, t::DTable)
+function aggregate_vec(f, t::DNDSparse)
     if has_overlaps(t.subdomains, true)
         t = rechunk(t, closed=true) # Should not have chunks that are continuations
     end
@@ -84,17 +84,17 @@ end
 
 # Filter on data field
 """
-    filter(f, t::DTable)
+    filter(f, t::DNDSparse)
 
 Filters `t` removing rows for which `f` is false. `f` is passed only the data
 and not the index.
 """
-function Base.filter(f, t::DTable)
+function Base.filter(f, t::DNDSparse)
     cache_thunks(mapchunks(x -> filter(f, x), t, keeplengths=false))
 end
 
 """
-    convertdim(x::DTable, d::DimName, xlate; agg::Function, name)
+    convertdim(x::DNDSparse, d::DimName, xlate; agg::Function, name)
 
 Apply function or dictionary `xlate` to each index in the specified dimension.
 If the mapping is many-to-one, `agg` is used to aggregate the results.
@@ -103,7 +103,7 @@ monotonically increasing function.
 
 See also [`reducedim`](@ref) and [`aggregate`](@ref)
 """
-function convertdim(t::DTable{K,V}, d::DimName, xlat;
+function convertdim(t::DNDSparse{K,V}, d::DimName, xlat;
                     agg=nothing, vecagg=nothing, name=nothing) where {K,V}
 
     if isa(d, Symbol)
@@ -127,7 +127,7 @@ function convertdim(t::DTable{K,V}, d::DimName, xlat;
         IndexSpace(xlatdim(space.interval, d), xlatdim(space.boundingrect, d), nrows)
     end
 
-    t1 = DTable{eltype(subdomains[1]),V}(subdomains, chunks)
+    t1 = DNDSparse{eltype(subdomains[1]),V}(subdomains, chunks)
 
     if agg !== nothing && has_overlaps(subdomains, true)
         overlap_merge(x, y) = merge(x, y, agg=agg)
@@ -141,14 +141,14 @@ function convertdim(t::DTable{K,V}, d::DimName, xlat;
 end
 
 """
-    reducedim(f, t::DTable, dims)
+    reducedim(f, t::DNDSparse, dims)
 
 Remove `dims` dimensions from `t`, aggregate any rows with equal indices
 using 2-argument function `f`.
 
 See also [`reducedim_vec`](@ref), [`select`](@ref) and [`aggregate`](@ref).
 """
-function reducedim(f, x::DTable, dims)
+function reducedim(f, x::DNDSparse, dims)
     keep = setdiff([1:ndims(x);], dims) # TODO: Allow symbols
     if isempty(keep)
         throw(ArgumentError("to remove all dimensions, use `reduce(f, A)`"))
@@ -156,16 +156,16 @@ function reducedim(f, x::DTable, dims)
     cache_thunks(select(x, keep..., agg=f))
 end
 
-reducedim(f, x::DTable, dims::Symbol) = reducedim(f, x, [dims])
+reducedim(f, x::DNDSparse, dims::Symbol) = reducedim(f, x, [dims])
 
 """
-    reducedim_vec(f::Function, t::DTable, dims)
+    reducedim_vec(f::Function, t::DNDSparse, dims)
 
 Like `reducedim`, except uses a function mapping a vector of values to a scalar instead of a 2-argument scalar function.
 
 See also [`reducedim`](@ref) and [`aggregate_vec`](@ref).
 """
-function reducedim_vec(f, x::DTable, dims)
+function reducedim_vec(f, x::DNDSparse, dims)
     keep = setdiff([1:ndims(x);], dims)
     if isempty(keep)
         throw(ArgumentError("to remove all dimensions, use `reduce(f, A)`"))
@@ -175,12 +175,12 @@ function reducedim_vec(f, x::DTable, dims)
     cache_thunks(aggregate_vec(f, t))
 end
 
-reducedim_vec(f, x::DTable, dims::Symbol) = reducedim_vec(f, x, [dims])
+reducedim_vec(f, x::DNDSparse, dims::Symbol) = reducedim_vec(f, x, [dims])
 
-keyindex(t::DTable, i::Int) = i
-keyindex(t::DTable{K}, i::Symbol) where {K} = findfirst(x->x===i, fieldnames(K))
+keyindex(t::DNDSparse, i::Int) = i
+keyindex(t::DNDSparse{K}, i::Symbol) where {K} = findfirst(x->x===i, fieldnames(K))
 
-function mapslices(f, x::DTable, dims; name=nothing)
+function mapslices(f, x::DNDSparse, dims; name=nothing)
     iterdims = setdiff([1:ndims(x);], map(d->keyindex(x, d), dims))
     if iterdims != [1:length(iterdims);]
         throw(ArgumentError("$dims must be the trailing dimensions of the table. You can use `permutedims` first to permute the dimensions."))
@@ -193,5 +193,5 @@ function mapslices(f, x::DTable, dims; name=nothing)
                            t, keeplengths=false))
 end
 
-mapslices(f, x::DTable, dims::Symbol; name=nothing) =
+mapslices(f, x::DNDSparse, dims::Symbol; name=nothing) =
     mapslices(f, x, (dims,); name=name)

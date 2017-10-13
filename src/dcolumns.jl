@@ -61,7 +61,7 @@ function itable(keycols::DArray, valuecols::DArray)
     fromchunks(cs1)
 end
 
-function extractarray(t::Union{DTable,DArray}, accessor)
+function extractarray(t::Union{DNDSparse,DArray}, accessor)
     arraymaker = function (cs_tup...)
         cs = [cs_tup...]
         lengths = length.(domain.(cs))
@@ -76,7 +76,7 @@ end
 
 isas(d) = isa(d, As) && d.f !== identity
 
-function columns(t::Union{DTable, DArray}, which::Tuple...)
+function columns(t::Union{DNDSparse, DArray}, which::Tuple...)
     if !isempty(which) && any(isas, which[1])
         return _columns_as(t, which...)
     end
@@ -115,7 +115,7 @@ function _columns_as(t, which)
 end
 
 for f in [:rows, :keys, :values]
-    @eval function $f(t::Union{DTable, ArrayOp}, which::Tuple)
+    @eval function $f(t::Union{DNDSparse, ArrayOp}, which::Tuple)
         if !any(isas, which)
             # easy
             extractarray(t, x -> $f(x, which))
@@ -126,30 +126,30 @@ for f in [:rows, :keys, :values]
 end
 
 for f in [:rows, :keys, :values]
-    @eval function $f(t::DTable)
+    @eval function $f(t::DNDSparse)
         extractarray(t, x -> $f(x))
     end
 
-    @eval function $f(t::DTable, which::Union{Int, Symbol})
+    @eval function $f(t::DNDSparse, which::Union{Int, Symbol})
         extractarray(t, x -> $f(x, which))
     end
 
-    @eval function $f(t::DTable, which::As)
+    @eval function $f(t::DNDSparse, which::As)
         which.f($f(t, which.src))
     end
 end
 
-function column(t::DTable, name)
+function column(t::DNDSparse, name)
     extractarray(t, x -> column(x, name))
 end
 
-columns(t::DTable, which::Union{Int,Symbol,As}) = column(t, which)
+columns(t::DNDSparse, which::Union{Int,Symbol,As}) = column(t, which)
 
-function pairs(t::DTable)
+function pairs(t::DNDSparse)
     extractarray(t, x -> map(Pair, x.index, x.data))
 end
 
-Base.@deprecate getindexcol(t::DTable, dim) keys(t, dim)
-Base.@deprecate getdatacol(t::DTable, dim)  values(t, dim)
-Base.@deprecate dindex(t::DTable) keys(t)
-Base.@deprecate ddata(t::DTable)  values(t)
+Base.@deprecate getindexcol(t::DNDSparse, dim) keys(t, dim)
+Base.@deprecate getdatacol(t::DNDSparse, dim)  values(t, dim)
+Base.@deprecate dindex(t::DNDSparse) keys(t)
+Base.@deprecate ddata(t::DNDSparse)  values(t)

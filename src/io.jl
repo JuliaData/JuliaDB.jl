@@ -32,7 +32,7 @@ end
 """
     loadfiles(files::Union{AbstractVector,String}, delim = ','; <options>)
 
-Load a collection of CSV `files` into a DTable, where `files` is either a vector
+Load a collection of CSV `files` into a DNDSparse, where `files` is either a vector
 of file paths, or the path of a directory containing files to load.
 
 # Arguments:
@@ -293,7 +293,7 @@ end
 """
     load(dir::AbstractString; tomemory)
 
-Load a saved `DTable` from `dir` directory. Data can be saved
+Load a saved `DNDSparse` from `dir` directory. Data can be saved
 using `ingest` or `save` functions. If `tomemory` option is true,
 then data is loaded into memory rather than mmapped.
 
@@ -307,17 +307,17 @@ function load(dir::AbstractString; copy=false)
 end
 
 """
-    save(t::DTable, outputdir::AbstractString)
+    save(t::DNDSparse, outputdir::AbstractString)
 
-Saves a `DTable` to disk. This function blocks till all
+Saves a `DNDSparse` to disk. This function blocks till all
 chunks have been computed and saved. Saved data can
 be loaded with `load`.
 
 See also [`ingest`](@ref), [`load`](@ref)
 """
-function save(t::DTable{K,V}, outputdir::AbstractString) where {K,V}
+function save(t::DNDSparse{K,V}, outputdir::AbstractString) where {K,V}
     chunks = Dagger.savechunks(t.chunks, outputdir)
-    saved_t = DTable{K,V}(t.subdomains, chunks)
+    saved_t = DNDSparse{K,V}(t.subdomains, chunks)
     open(joinpath(outputdir, JULIADB_INDEXFILE), "w") do io
         serialize(io, saved_t)
     end
@@ -325,7 +325,7 @@ function save(t::DTable{K,V}, outputdir::AbstractString) where {K,V}
     saved_t
 end
 
-function _makerelative!(t::DTable, dir::AbstractString)
+function _makerelative!(t::DNDSparse, dir::AbstractString)
     foreach(t.chunks) do c
         h = c.handle
         if isa(h, FileRef)

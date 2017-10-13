@@ -17,7 +17,7 @@ end
 @testset  "printing" begin
     x = distribute(NDSparse([1], [1]), 1)
     @test sprint(io -> show(io, x)) == """
-    DTable with 1 rows in 1 chunks:
+    DNDSparse with 1 rows in 1 chunks:
 
     ──┬──
     1 │ 1"""

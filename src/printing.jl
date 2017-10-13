@@ -1,5 +1,5 @@
 const TextMIME = Union{MIME"text/plain", MIME"text/html"}
-function take_n(t::DTable, n)
+function take_n(t::DNDSparse, n)
     required = n
     getter(required, c) = collect(delayed(x->subtable(x, 1:min(required, length(x))))(c))
 
@@ -14,14 +14,14 @@ function take_n(t::DTable, n)
     return top
 end
 
-function Base.show(io::IO, t::DTable)
+function Base.show(io::IO, t::DNDSparse)
     # we fetch at most 21 elements and let NDSparse
     # display it.
     len = trylength(t)
     if !isempty(t.chunks)
         top = take_n(t, 5)
         nchunks = length(t.chunks)
-        print(io, "DTable with ")
+        print(io, "DNDSparse with ")
         if !isnull(len)
             print(io, "$(get(len)) rows in ")
         end
@@ -34,6 +34,6 @@ function Base.show(io::IO, t::DTable)
             print(io, "...")
         end
     else
-        println(io, "an empty DTable")
+        println(io, "an empty DNDSparse")
     end
 end

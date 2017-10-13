@@ -4,10 +4,10 @@ CurrentModule = JuliaDB
 
 # API documentation
 
-## DTable
+## DNDSparse
 
 ```@docs
-JuliaDB.DTable
+JuliaDB.DNDSparse
 ```
 
 ## Loading data
@@ -20,19 +20,19 @@ loadfiles
 
 ## Saving and Loading tables
 
-Saving an existing `DTable` can be accomplished through the use of the `save` function.  The `save` function has the following help string:
+Saving an existing `DNDSparse` can be accomplished through the use of the `save` function.  The `save` function has the following help string:
 
 ```@docs
 save
 ```
 
-Loading a previously saved `DTable` from disk can be accomplished through use of the `load` function.  The `load` function has the following help string:
+Loading a previously saved `DNDSparse` from disk can be accomplished through use of the `load` function.  The `load` function has the following help string:
 
 ```@docs
 load
 ```
 
-## distributing an IndexedTable
+## distributing an NDSparse
 
 ```@docs
 distribute
@@ -40,70 +40,70 @@ distribute
 
 ## Compute and collect
 
-Operations in JuliaDB are out-of-core in nature. They return `DTable` objects which can contain parts that are not yet evaluated. `compute` and `collect` are ways to force evaluation.
+Operations in JuliaDB are out-of-core in nature. They return `DNDSparse` objects which can contain parts that are not yet evaluated. `compute` and `collect` are ways to force evaluation.
 
 ```@docs
-compute(t::DTable)
+compute(t::DNDSparse)
 ```
 
 ```@docs
-collect(t::DTable)
+collect(t::DNDSparse)
 ```
 
 ## Indexing
 
 ```@docs
-getindex(t::DTable, idx...)
+getindex(t::DNDSparse, idx...)
 ```
 
 ## Queries
 
 ```@docs
-select(t::DTable, conditions::Pair...)
+select(t::DNDSparse, conditions::Pair...)
 ```
 
 ```@docs
-select(t::DTable, which::JuliaDB.DimName...; agg)
+select(t::DNDSparse, which::JuliaDB.DimName...; agg)
 ```
 
 ```@docs
-aggregate(f, t::DTable)
+aggregate(f, t::DNDSparse)
 ```
 
 ```@docs
-aggregate_vec(f, t::DTable)
+aggregate_vec(f, t::DNDSparse)
 ```
 
 ```@docs
-filter(f, t::DTable)
+filter(f, t::DNDSparse)
 ```
 
 ```@docs
-convertdim(t::DTable, d::DimName, xlate; agg::Function, name)
+convertdim(t::DNDSparse, d::DimName, xlate; agg::Function, name)
 ```
 
 ```@docs
-reducedim(f, t::DTable, dims)
+reducedim(f, t::DNDSparse, dims)
 ```
 
 ```@docs
-reducedim_vec(f, t::DTable, dims)
+reducedim_vec(f, t::DNDSparse, dims)
 ```
 
 ## Joins
 
 ```@docs
-naturaljoin(left::DTable, right::DTable)
+naturaljoin(left::DNDSparse, right::DNDSparse)
 ```
 
 ```@docs
-leftjoin{K,V}(left::DTable{K,V}, right::DTable)
+leftjoin{K,V}(left::DNDSparse{K,V}, right::DNDSparse)
 ```
 
 ```@docs
-asofjoin(left::DTable, right::DTable)
+asofjoin(left::DNDSparse, right::DNDSparse)
 ```
 
 ```@docs
-merge(left::DTable, right::DTable; agg)
+merge(left::DNDSparse, right::DNDSparse; agg)
 ```

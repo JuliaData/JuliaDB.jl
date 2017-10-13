@@ -11,7 +11,7 @@ export NDSparse, Columns
 include("util.jl")
 include("serialize.jl")
 include("interval.jl")
-include("dtable.jl")
+include("dndsparse.jl")
 include("sort.jl")
 
 include("io.jl")

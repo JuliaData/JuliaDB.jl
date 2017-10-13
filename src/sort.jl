@@ -3,7 +3,7 @@ import Dagger: affinity, @dbg, OSProc, timespan_start, timespan_end
 
 export rechunk
 
-function rechunk(t::DTable{K,V}, lengths = nothing;
+function rechunk(t::DNDSparse{K,V}, lengths = nothing;
                  select=sampleselect,
                  closed=false,
                  merge=_merge) where {K,V}
@@ -195,7 +195,7 @@ end
 
 ### Permutedims
 
-function Base.permutedims(t::DTable{K,V}, p::AbstractVector) where {K,V}
+function Base.permutedims(t::DNDSparse{K,V}, p::AbstractVector) where {K,V}
     if !(length(p) == ndims(t) && isperm(p))
         throw(ArgumentError("argument to permutedims must be a valid permutation"))
     end
@@ -210,7 +210,7 @@ function Base.permutedims(t::DTable{K,V}, p::AbstractVector) where {K,V}
     end
 
     chunks = map(delayed(c -> permutedims(c, p)), t.chunks)
-    t1 = DTable{eltype(idxs[1]), V}(idxs, chunks)
+    t1 = DNDSparse{eltype(idxs[1]), V}(idxs, chunks)
 
     cache_thunks(rechunk(t1))
 end

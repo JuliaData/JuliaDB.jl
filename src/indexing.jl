@@ -2,13 +2,13 @@
 """
     t[idx...]
 
-Returns a `DTable` containing only the elements of `t` where the given indices (`idx`)
+Returns a `DNDSparse` containing only the elements of `t` where the given indices (`idx`)
 match. If `idx` has the same type as the index tuple of the `t`, then this is
 considered a scalar indexing (indexing of a single value). In this case the value
 itself is looked up and returned.
 
 """
-function Base.getindex(t::DTable{K}, idxs...) where K
+function Base.getindex(t::DNDSparse{K}, idxs...) where K
     if typeof(idxs) <: astuple(K)
         _getindex_scalar(t, idxs)
     else
@@ -16,7 +16,7 @@ function Base.getindex(t::DTable{K}, idxs...) where K
     end
 end
 
-function _getindex_scalar(t::DTable{K,V}, idxs) where {K,V}
+function _getindex_scalar(t::DNDSparse{K,V}, idxs) where {K,V}
     # scalar getindex
     brects = boundingrect.(t.subdomains)
     function shouldlook(rect)
@@ -28,11 +28,11 @@ function _getindex_scalar(t::DTable{K,V}, idxs) where {K,V}
         return true
     end
     subchunk_idxs = find(shouldlook, brects)
-    t1 = DTable{K,V}(t.subdomains[subchunk_idxs], t.chunks[subchunk_idxs])
+    t1 = DNDSparse{K,V}(t.subdomains[subchunk_idxs], t.chunks[subchunk_idxs])
     collect(t1)[idxs...]
 end
 
-function _getindex(t::DTable{K,V}, idxs) where {K,V}
+function _getindex(t::DNDSparse{K,V}, idxs) where {K,V}
     if length(idxs) != ndims(t)
         error("wrong number of indices")
     end
@@ -45,7 +45,7 @@ function _getindex(t::DTable{K,V}, idxs) where {K,V}
 
     brects = boundingrect.(t.subdomains)
     subchunk_idxs = find(c->all(map(in, idxs, map(Interval, c.first, c.last))), brects)
-    t = DTable{K,V}(t.subdomains[subchunk_idxs], t.chunks[subchunk_idxs])
+    t = DNDSparse{K,V}(t.subdomains[subchunk_idxs], t.chunks[subchunk_idxs])
 
     mapchunks(t, keeplengths=false) do chunk
         getindex(chunk, idxs...)
