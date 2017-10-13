@@ -19,8 +19,8 @@ end
     roundtrip(Columns(x=[1,2], y=["x","y"]))
 end
 
-@testset "IndexedTable" begin
-    IndexedTable(Columns([1,2], ["x","y"]))
+@testset "NDSparse" begin
+    NDSparse(Columns([1,2], ["x","y"]))
                  Columns(x=[1,2], y=["x","y"]) |> roundtrip
 end
 
@@ -106,7 +106,7 @@ import Dagger: Chunk
 end
 
 @testset "save" begin
-    t = IndexedTable([1,2,3,4], [1,2,3,4])
+    t = NDSparse([1,2,3,4], [1,2,3,4])
     n = tempname()
     x = JuliaDB.save(distribute(t, 4), n)
     t1 = load(n)

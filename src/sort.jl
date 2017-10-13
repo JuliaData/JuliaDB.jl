@@ -58,7 +58,7 @@ end
 
 struct All
 end
-subtable(t::IndexedTable, ::All) = t
+subtable(t::NDSparse, ::All) = t
 
 function merge_thunk(cs::AbstractArray, subdomains::AbstractArray,
                      merge::Function, starts::AbstractArray,

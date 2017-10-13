@@ -15,7 +15,7 @@ function take_n(t::DTable, n)
 end
 
 function Base.show(io::IO, t::DTable)
-    # we fetch at most 21 elements and let IndexedTable
+    # we fetch at most 21 elements and let NDSparse
     # display it.
     len = trylength(t)
     if !isempty(t.chunks)

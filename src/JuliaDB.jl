@@ -3,10 +3,10 @@ module JuliaDB
 
 using IndexedTables, Dagger, NamedTuples
 
-import IndexedTables: Table
+import IndexedTables: NDSparse
 
 # re-export
-export IndexedTable, Columns
+export NDSparse, Columns
 
 include("util.jl")
 include("serialize.jl")

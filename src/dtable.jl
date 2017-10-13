@@ -14,11 +14,11 @@ const IndexTuple = Union{Tuple, NamedTuple}
 """
     IndexSpace(interval, boundingrect, nrows)
 
-Metadata about an `IndexedTable`, a chunk of a DTable.
+Metadata about an `NDSparse`, a chunk of a DTable.
 
 - `interval`: An `Interval` object with the first and the last index tuples.
 - `boundingrect`: An `Interval` object with the lowest and the highest indices as tuples.
-- `nrows`: A `Nullable{Int}` of number of rows in the Table, if knowable
+- `nrows`: A `Nullable{Int}` of number of rows in the NDSparse, if knowable
            (See design doc section on "Knowability of chunk size")
 """
 struct IndexSpace{T<:IndexTuple}
@@ -93,7 +93,7 @@ end
     collect(t::DTable)
 
 Gets distributed data in a DTable `t` and merges it into
-[IndexedTable](#IndexedTables.IndexedTable) object
+[NDSparse](#IndexedTables.NDSparse) object
 
 !!! warning
     `collect(t)` requires at least as much memory as the size of the
@@ -113,14 +113,14 @@ function collect(ctx::Context, dt::DTable{T}) where T
 end
 
 # Fast-path merge if the data don't overlap
-function _merge(f, a::Table, b::Table)
+function _merge(f, a::NDSparse, b::NDSparse)
     if isempty(a)
         b
     elseif isempty(b)
         a
     elseif last(a.index) < first(b.index)
         # can vcat
-        Table(vcat(a.index, b.index), vcat(a.data, b.data),
+        NDSparse(vcat(a.index, b.index), vcat(a.data, b.data),
               presorted=true, copy=false)
     elseif last(b.index) < first(a.index)
         _merge(b, a)
@@ -129,12 +129,12 @@ function _merge(f, a::Table, b::Table)
     end
 end
 
-_merge(f, x::Table) = x
-function _merge(f, x::Table, y::Table, ys::Table...)
+_merge(f, x::NDSparse) = x
+function _merge(f, x::NDSparse, y::NDSparse, ys::NDSparse...)
     treereduce((a,b)->_merge(f, a, b), [x,y,ys...])
 end
 
-_merge(x::Table, y::Table...) = _merge((a,b) -> merge(a, b, agg=nothing), x, y...)
+_merge(x::NDSparse, y::NDSparse...) = _merge((a,b) -> merge(a, b, agg=nothing), x, y...)
 
 """
     map(f, t::DTable)
@@ -151,8 +151,8 @@ end
 struct EmptySpace{T} end
 
 # Teach dagger how to automatically figure out the
-# metadata (in dagger parlance "domain") about an Table chunk.
-function Dagger.domain(nd::Table)
+# metadata (in dagger parlance "domain") about an NDSparse chunk.
+function Dagger.domain(nd::NDSparse)
     T = eltypes(typeof(nd.index.columns))
 
     if isempty(nd)
@@ -169,7 +169,7 @@ function Dagger.domain(nd::Table)
     return IndexSpace(interval, boundingrect, Nullable{Int}(length(nd)))
 end
 
-function subindexspace(nd::IndexedTable, r)
+function subindexspace(nd::NDSparse, r)
     T = eltypes(typeof(nd.index.columns))
     wrap = T<:NamedTuple ? T : tuple
 
@@ -228,7 +228,7 @@ end
 
 # given a chunks index constructed above, give an array of
 # index spaces spanned by the chunks in the index
-function index_spaces(t::Table)
+function index_spaces(t::NDSparse)
     intervals = map(x-> Interval(map(first, x), map(last, x)), t.index)
     boundingrects = map(x-> Interval(map(first, x), map(last, x)), t.data.columns.boundingrect)
     map(IndexSpace, intervals, boundingrects, t.data.columns.length)
@@ -355,7 +355,7 @@ function cache_thunks(dt::DTable)
     dt
 end
 
-function getkvtypes{N<:Table}(::Type{N})
+function getkvtypes{N<:NDSparse}(::Type{N})
     eltype(N.parameters[3]), N.parameters[1]
 end
 
@@ -372,18 +372,18 @@ function getkvtypes(xs::AbstractArray)
     (K, V)
 end
 
-### Distribute a Table into a DTable
+### Distribute a NDSparse into a DTable
 
 """
-    distribute(itable::IndexedTable, rowgroups::AbstractArray)
+    distribute(itable::NDSparse, rowgroups::AbstractArray)
 
-Distributes an IndexedTable object into a DTable by splitting it up into chunks
+Distributes an NDSparse object into a DTable by splitting it up into chunks
 of `rowgroups` elements. `rowgroups` is a vector specifying the number of
 rows in the chunks.
 
 Returns a `DTable`.
 """
-function distribute(nds::Table{V}, rowgroups::AbstractArray;
+function distribute(nds::NDSparse{V}, rowgroups::AbstractArray;
                      allowoverlap = false, closed = false) where V
     splits = cumsum([0, rowgroups;])
 
@@ -404,14 +404,14 @@ function distribute(nds::Table{V}, rowgroups::AbstractArray;
 end
 
 """
-    distribute(itable::IndexedTable, nchunks::Int=nworkers())
+    distribute(itable::NDSparse, nchunks::Int=nworkers())
 
-Distributes an IndexedTable object into a DTable of `nchunks` chunks
+Distributes an NDSparse object into a DTable of `nchunks` chunks
 of approximately equal size.
 
 Returns a `DTable`.
 """
-function distribute(nds::Table, nchunks::Int=nworkers();
+function distribute(nds::NDSparse, nchunks::Int=nworkers();
                     allowoverlap = false, closed = false)
     N = length(nds)
     q, r = divrem(N, nchunks)
@@ -481,7 +481,7 @@ end
 
 struct PartIteratorState
     chunkno::Int
-    chunk::IndexedTable
+    chunk::NDSparse
     used::Int
 end
 

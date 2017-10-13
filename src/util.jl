@@ -44,7 +44,7 @@ end
 
 
 function subtable(nds, r)
-    Table(keys(nds)[r], values(nds)[r], presorted=true, copy=false)
+    NDSparse(keys(nds)[r], values(nds)[r], presorted=true, copy=false)
 end
 
 function extrema_range(x::AbstractArray{T}, r::UnitRange) where T
@@ -72,13 +72,13 @@ export @dateformat_str, load, csvread, load_table, glob
     load_table(file::AbstractString;
               indexcols, datacols, filenamecol, agg, presorted, copy, kwargs...)
 
-Load a CSV file into an Table data. `indexcols` (AbstractArray)
+Load a CSV file into an NDSparse data. `indexcols` (AbstractArray)
 specifies which columns form the index of the data, `datacols`
 (AbstractArray) specifies which columns are to be used as the data.
-`agg`, `presorted`, `copy` options are passed on to `Table`
+`agg`, `presorted`, `copy` options are passed on to `NDSparse`
 constructor, any other keyword argument is passed on to `readcsv`
 
-Returns an IndexedTable. A single implicit dimension with
+Returns an NDSparse. A single implicit dimension with
 values 1:N will be added if no `indexcols` (or `indexcols=[]`)
 is specified.
 """
@@ -213,7 +213,7 @@ function _load_table(file::Union{IO, AbstractString, AbstractArray}, delim=',';
 
     data = Columns(datavecs...; names=datacolnames)
 
-    Table(index, data), implicitindex
+    NDSparse(index, data), implicitindex
 end
 
 
@@ -248,7 +248,7 @@ function approx_size(cs::Columns)
     sum(map(approx_size, astuple(cs.columns)))
 end
 
-function approx_size(t::IndexedTable)
+function approx_size(t::NDSparse)
     approx_size(t.data) + approx_size(t.index)
 end
 

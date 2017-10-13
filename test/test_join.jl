@@ -3,8 +3,8 @@ using IndexedTables
 using Base.Test
 
 @testset "join" begin
-    t1 = IndexedTable(Columns([1,1,2,2], [1,2,1,2]), [1,2,3,4])
-    t2 = IndexedTable(Columns([0,2,2,3], [1,1,2,2]), [1,2,3,4])
+    t1 = NDSparse(Columns([1,1,2,2], [1,2,1,2]), [1,2,3,4])
+    t2 = NDSparse(Columns([0,2,2,3], [1,1,2,2]), [1,2,3,4])
 
     j1 = innerjoin(t1,t2)
     j2 = innerjoin(t1,t2,+)
@@ -30,8 +30,8 @@ using Base.Test
         end
     end
 
-    t1 = IndexedTable([:msft,:ibm,:ge], [1,3,4], [100,200,150])
-    t2 = IndexedTable([:ibm,:msft,:aapl,:ibm], [0,0,0,2], [100,99,101,98])
+    t1 = NDSparse([:msft,:ibm,:ge], [1,3,4], [100,200,150])
+    t2 = NDSparse([:ibm,:msft,:aapl,:ibm], [0,0,0,2], [100,99,101,98])
 
     aj = asofjoin(t1,t2)
 
@@ -45,8 +45,8 @@ using Base.Test
 end
 
 @testset "broadcast" begin
-    t1 = IndexedTable(Columns([1,2,3,4],[1,1,2,2]), [5,6,7,8])
-    t2 = IndexedTable(Columns([0,1,2,4]),[0,10,100,10000])
+    t1 = NDSparse(Columns([1,2,3,4],[1,1,2,2]), [5,6,7,8])
+    t2 = NDSparse(Columns([0,1,2,4]),[0,10,100,10000])
 
     for n=1:4
         for m=1:4

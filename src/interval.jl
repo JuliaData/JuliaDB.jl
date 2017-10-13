@@ -2,7 +2,7 @@ using Base.Test
 
 """
 An interval type tailored specifically to store intervals of
-indices of an Table object. Some of the operations on this
+indices of an NDSparse object. Some of the operations on this
 like `in` or `<` may be controversial for a generic Interval type.
 """
 struct Interval{T}
