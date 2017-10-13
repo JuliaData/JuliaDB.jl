@@ -472,3 +472,43 @@ function subtable{K, V}(t::DTable{K,V}, idx::UnitRange)
 
     DTable{K,V}(ds, cs)
 end
+
+import Base.Iterators: PartitionIterator, start, next, done
+
+function Iterators.partition(t::DTable, n::Integer)
+    PartitionIterator(t, n)
+end
+
+struct PartIteratorState
+    chunkno::Int
+    chunk::IndexedTable
+    used::Int
+end
+
+function start(p::PartitionIterator{<:DTable})
+    c = collect(p.c.chunks[1])
+    p = PartIteratorState(1, c, 0)
+end
+
+function done(t::PartitionIterator{<:DTable}, p::PartIteratorState)
+    p.chunkno == length(t.c.chunks) && p.used >= length(p.chunk)
+end
+
+function next(t::PartitionIterator{<:DTable}, p::PartIteratorState)
+    if p.used + t.n <= length(p.chunk)
+        # easy
+        nextpart = subtable(p.chunk, p.used+1:(p.used+t.n))
+        return nextpart, PartIteratorState(p.chunkno, p.chunk, p.used + t.n)
+    else
+        partial = subtable(p.chunk, p.used+1:length(p.chunk))
+        required = t.n - length(partial)
+        if p.chunkno == length(t.c.chunks)
+            # we're done, last chunk
+            return partial, PartIteratorState(p.chunkno, p.chunk, length(p.chunk))
+        else
+            nextchunk = collect(t.c.chunks[p.chunkno+1])
+            partial2 = subtable(nextchunk, 1:required)
+            return _merge(partial, partial2), PartIteratorState(p.chunkno+1, nextchunk, required)
+        end
+    end
+end

@@ -74,3 +74,10 @@ import JuliaDB: subtable
         end
     end
 end
+
+@testset "Iterators.partition" begin
+    t = compute(distribute(IndexedTable([1:7;],[8:14;]), [3,2,2]))
+    parts = map(IndexedTable, Iterators.partition([1:7;], 2) |> collect,
+                              Iterators.partition([8:14;], 2) |> collect)
+    @test [p for p in Iterators.partition(t, 2)] == parts
+end
