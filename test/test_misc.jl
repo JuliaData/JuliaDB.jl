@@ -61,3 +61,23 @@ import JuliaDB: with_overlaps, delayed
     @test collect(aggregate(+, t1)) == aggregate(+, t)
     @test group_count == 1
 end
+
+import JuliaDB: subtable
+@testset "subtable" begin
+    t = IndexedTable([1,2,3,4], [5,6,7,8])
+    d = distribute(t, 3)
+
+    for i=1:4
+        @test collect(subtable(d, 1:i)) == subtable(t, 1:i)
+        if i>=2
+            @test collect(subtable(d, 2:i)) == subtable(t, 2:i)
+        end
+    end
+end
+
+@testset "Iterators.partition" begin
+    t = compute(distribute(IndexedTable([1:7;],[8:14;]), [3,2,2]))
+    parts = map(IndexedTable, Iterators.partition([1:7;], 2) |> collect,
+                              Iterators.partition([8:14;], 2) |> collect)
+    @test [p for p in Iterators.partition(t, 2)] == parts
+end

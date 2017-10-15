@@ -77,9 +77,9 @@ function compute(ctx, t::DTable; allowoverlap=false, closed=false)
         vec_thunk = delayed((refs...) -> [refs...]; meta=true)(t.chunks...)
         cs = compute(ctx, vec_thunk) # returns a vector of Chunk objects
         t1 = fromchunks(cs, allowoverlap=allowoverlap, closed=closed)
-        foreach(Dagger.persist!, t1.chunks)
         compute(t1)
     else
+        map(Dagger.unrelease, t.chunks) # don't let this be freed
         foreach(Dagger.persist!, t.chunks)
         t
     end
@@ -442,7 +442,7 @@ function null_length(x::IndexSpace)
 end
 
 """
-The columns names of the `DTable`
+The names of the columns of the `DTable`
 """
 import Base.names
 function names(df::JuliaDB.DTable)
@@ -450,6 +450,78 @@ function names(df::JuliaDB.DTable)
     if typeof(tmpdf.index.columns) <: Tuple # this means the index is not a namedTuple
         return keys(tmpdf.data.columns)
     else
-        return vcat(keys(tmpdf.index.columns), keys(tmpdf.data.columns))
+         return vcat(keys(tmpdf.index.columns), keys(tmpdf.data.columns))
+    end
+end
+
+function subtable{K, V}(t::DTable{K,V}, idx::UnitRange)
+    if isnull(trylength(t))
+        t = compute(t)
+    end
+    if isempty(idx)
+        return DTable{K, V}(similar(t.subdomains, 0), similar(t.chunks, 0))
+    end
+    ls = map(x->get(nrows(x)), t.subdomains)
+    cumls = cumsum(ls)
+    i = searchsortedlast(cumls, first(idx))
+    j = searchsortedfirst(cumls, last(idx))
+
+    # clip first and last chunks
+    strt = first(idx) - get(cumls, i-1, 0)
+    fin = cumls[j] - last(idx)
+
+    ds = t.subdomains[i:j]
+    cs = convert(Vector{Any}, t.chunks[i:j])
+    if i==j
+        cs[1] = delayed(x->subtable(x, strt:length(x)-fin))(cs[1])
+        i = ds[1]
+        ds[1] = IndexSpace(i.interval, i.boundingrect, Nullable(length(idx)))
+    else
+        cs[1] = delayed(x->subtable(x, strt:length(x)))(cs[1])
+        cs[end] = delayed(x->subtable(x, 1:length(x)-fin))(cs[end])
+        ds[1] = null_length(ds[1])
+        ds[end] = null_length(ds[2])
+    end
+
+    DTable{K,V}(ds, cs)
+end
+
+import Base.Iterators: PartitionIterator, start, next, done
+
+function Iterators.partition(t::DTable, n::Integer)
+    PartitionIterator(t, n)
+end
+
+struct PartIteratorState
+    chunkno::Int
+    chunk::IndexedTable
+    used::Int
+end
+
+function start(p::PartitionIterator{<:DTable})
+    c = collect(p.c.chunks[1])
+    p = PartIteratorState(1, c, 0)
+end
+
+function done(t::PartitionIterator{<:DTable}, p::PartIteratorState)
+    p.chunkno == length(t.c.chunks) && p.used >= length(p.chunk)
+end
+
+function next(t::PartitionIterator{<:DTable}, p::PartIteratorState)
+    if p.used + t.n <= length(p.chunk)
+        # easy
+        nextpart = subtable(p.chunk, p.used+1:(p.used+t.n))
+        return nextpart, PartIteratorState(p.chunkno, p.chunk, p.used + t.n)
+    else
+        partial = subtable(p.chunk, p.used+1:length(p.chunk))
+        required = t.n - length(partial)
+        if p.chunkno == length(t.c.chunks)
+            # we're done, last chunk
+            return partial, PartIteratorState(p.chunkno, p.chunk, length(p.chunk))
+        else
+            nextchunk = collect(t.c.chunks[p.chunkno+1])
+            partial2 = subtable(nextchunk, 1:required)
+            return _merge(partial, partial2), PartIteratorState(p.chunkno+1, nextchunk, required)
+        end
     end
 end
