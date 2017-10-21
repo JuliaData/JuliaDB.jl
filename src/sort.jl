@@ -1,7 +1,20 @@
 import Base.Sort: Forward, Ordering, Algorithm
 import Dagger: affinity, @dbg, OSProc, timespan_start, timespan_end
 
-export rechunk
+import Dagger: dsort_chunks
+
+function reindex_chunk(t::IndexedTable, by, select, nsamples; kwargs...)
+    st = reindex(t, by, select)
+    idxs = randperm(length(t))[1:nsamples]
+    (tochunk(st), primarykeys(st)[idxs])
+end
+
+function dsort(t::DNextTable, n=nworkers(), nsamples=2000)
+    cs = dsort_chunks(t.chunks, n, nsamples, sortchunk=reindex_chunk, cat=_merge, sub=getindex)
+    t=delayed((xs...)->[xs...]; meta=true)(cs...)
+    chunks = compute(t)
+    fromchunks(chunks)
+end
 
 function rechunk(t::DNDSparse{K,V}, lengths = nothing;
                  select=sampleselect,
