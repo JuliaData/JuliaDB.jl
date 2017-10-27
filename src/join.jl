@@ -10,12 +10,11 @@ Returns a new `DNDSparse` containing only rows where the indices are present bot
 `left` AND `right` tables. The data columns are concatenated.
 """
 function naturaljoin(left::DNDSparse{I,D1}, right::DNDSparse{J,D2}) where {I,J,D1,D2}
-    op = combine_op_t(D1, D2)
-    naturaljoin(left, right, op, true)
+    naturaljoin(IndexedTables.concat_tup, left, right)
 end
 
 """
-    naturaljoin(left::DNDSparse, right::DNDSparse, op, ascolumns=false)
+    naturaljoin(op, left::DNDSparse, right::DNDSparse, ascolumns=false)
 
 Returns a new `DNDSparse` containing only rows where the indices are present both in
 `left` AND `right` tables. The data columns are concatenated. The data of the matching
@@ -23,28 +22,16 @@ rows from `left` and `right` are combined using `op`. If `op` returns a tuple or
 NamedTuple, and `ascolumns` is set to true, the output table will contain the tuple
 elements as separate data columns instead as a single column of resultant tuples.
 """
-function naturaljoin(left::DNDSparse{I1,D1},
-                     right::DNDSparse{I2,D2},
-                     op, ascolumns=false) where {I1, I2, D1, D2}
+function naturaljoin(op, left::DNDSparse{I1,D1},
+                     right::DNDSparse{I2,D2}) where {I1, I2, D1, D2}
     out_subdomains = Any[]
     out_chunks = Any[]
 
     I = promote_type(I1, I2)        # output index type
-    D = Base.promote_op(op, D1, D2) # output data type
-
-    cols(v) = (v,)
-    cols(v::Columns) = v.columns
+    D = IndexedTables._promote_op(op, D1, D2) # output data type
 
     # if the output data type is a tuple and `columns` arg is true,
     # we want the output to be a Columns rather than an array of tuples
-    default_data = if ascolumns && issubtype(D, Tuple)
-        (l,r) -> Columns(map(similarz,cols(l.data))...,map(similarz,cols(r.data))...)
-        # TODO: do this sort of thing for NamedTuples
-        # needs IndexedTables to comply as well.
-    else
-        (l,r) -> similar(l.data, D, 0)
-    end
-
     for i in 1:length(left.chunks)
         lchunk = left.chunks[i]
         subdomain = left.subdomains[i]
@@ -59,7 +46,7 @@ function naturaljoin(left::DNDSparse{I1,D1},
         # each overlapping chunk from `right` should be joined
         # with the chunk `lchunk`
         joined_chunks = map(overlapping_chunks) do r
-            delayed((x,y) -> IndexedTables._naturaljoin(x,y,op, default_data(x,y)))(lchunk, r)
+            delayed(naturaljoin)(op, lchunk, r)
         end
         append!(out_chunks, joined_chunks)
 
@@ -71,11 +58,6 @@ function naturaljoin(left::DNDSparse{I1,D1},
 
     return cache_thunks(DNDSparse{I, D}(out_subdomains, out_chunks))
 end
-
-combine_op_t(a, b) = tuple
-combine_op_t(a::Type{T}, b::Type{U}) where {T<:Tuple, U<:Tuple} = (l, r)->(l..., r...)
-combine_op_t(a, b::Type{T}) where {T<:Tuple} = (l, r)->(l, r...)
-combine_op_t(a::Type{T}, b) where {T<:Tuple} = (l, r)->(l..., r)
 
 Base.map(f, x::DNDSparse{I}, y::DNDSparse{I}) where {I} = naturaljoin(x, y, f)
 
@@ -89,10 +71,9 @@ Keeps only rows with indices in `left`. If rows of the same index are
 present in `right`, then they are combined using `op`. `op` by default
 picks the value from `right`.
 """
-function leftjoin(left::DNDSparse{K,V}, right::DNDSparse,
-                  op = IndexedTables.right,
+function leftjoin(op, left::DNDSparse{K,V}, right::DNDSparse,
                   joinwhen = boxhasoverlap,
-                  chunkjoin = leftjoin) where {K,V}
+                  chunkjoin = (+,x,y)->((@show +, x, y); @show leftjoin(+,x,y))) where {K,V}
 
     out_chunks = Any[]
 
@@ -106,15 +87,20 @@ function leftjoin(left::DNDSparse{K,V}, right::DNDSparse,
                           boundingrect.(right.subdomains))
         overlapping_chunks = right.chunks[overlapping]
         if !isempty(overlapping_chunks)
-            push!(out_chunks, reduce(delayed((x,y)->chunkjoin(x,y, op)), lchunk,
-                                         overlapping_chunks))
+            push!(out_chunks, delayed(chunkjoin)(op, lchunk, treereduce(delayed(_merge), overlapping_chunks)))
         else
-            push!(out_chunks, lchunk)
+            emptyop = delayed() do op, t
+                empty = NDSparse(similar(keys(t), 0), similar(values(t), 0))
+                chunkjoin(op, t, empty)
+            end
+            push!(out_chunks, emptyop(op, lchunk))
         end
     end
 
     cache_thunks(DNDSparse{K,V}(left.subdomains, out_chunks))
 end
+
+leftjoin(left::DNDSparse, right::DNDSparse) = leftjoin(IndexedTables.concat_tup, left, right)
 
 function asofpred(lbrect, rbrect)
     allbutlast(x::Interval) = Interval(first(x)[1:end-1],
@@ -132,7 +118,7 @@ Keeps the indices of `left` but uses the value from `right` corresponding to hig
 index less than or equal to that of left.
 """
 function asofjoin(left::DNDSparse, right::DNDSparse)
-    leftjoin(left, right, IndexedTables.right, asofpred, (x,y,op)->asofjoin(x,y))
+    leftjoin(IndexedTables.right, left, right, asofpred, (op, x,y)->asofjoin(x,y))
 end
 
 """
@@ -229,3 +215,9 @@ function match_indices(A::DNDSparse{K1},B::DNDSparse{K2}) where {K1,K2}
     end
     IndexedTables.find_corresponding(Ap, Bp)
 end
+
+## Deprecation
+
+Base.@deprecate naturaljoin(left::DNDSparse, right::DNDSparse, op::Function) naturaljoin(op, left::DNDSparse, right::DNDSparse)
+
+Base.@deprecate leftjoin(left::DNDSparse, right::DNDSparse, op::Function) leftjoin(op, left, right)

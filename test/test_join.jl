@@ -9,8 +9,10 @@ using Base.Test
     j1 = innerjoin(t1,t2)
     j2 = innerjoin(t1,t2,+)
 
-    lj1 = leftjoin(t1,t2)
-    lj2 = leftjoin(t1,t2,+)
+    @show t1
+    @show t2
+    @show lj1 = leftjoin(t1,t2)
+    @show lj2 = leftjoin(t1,t2,+)
 
     mj1 = merge(t1,t2)
     mj2 = merge(t2,t1)

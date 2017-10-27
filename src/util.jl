@@ -4,7 +4,6 @@ using NamedTuples
 
 using PooledArrays
 using DataValues
-using WeakRefStrings
 
 
 # re-export
