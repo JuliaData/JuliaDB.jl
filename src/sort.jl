@@ -3,7 +3,7 @@ import Dagger: affinity, @dbg, OSProc, timespan_start, timespan_end
 
 import Dagger: dsort_chunks
 
-function reindex_chunk(t::IndexedTable, by, select, nsamples; kwargs...)
+function reindex_chunk(t::NextTable, by, select, nsamples; kwargs...)
     st = reindex(t, by, select)
     idxs = randperm(length(t))[1:nsamples]
     (tochunk(st), primarykeys(st)[idxs])

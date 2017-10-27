@@ -6,17 +6,18 @@ using IndexedTables, Dagger, NamedTuples
 import IndexedTables: NDSparse
 
 # re-export
-export NDSparse, Columns
+export IndexedTable, NDSparse, NextTable, Columns
 
 include("util.jl")
 include("serialize.jl")
 include("interval.jl")
 include("dndsparse.jl")
+include("table/table.jl")
+include("iteration.jl")
 include("sort.jl")
 
 include("io.jl")
 include("printing.jl")
-include("dcolumns.jl")
 
 include("indexing.jl")
 include("query.jl")

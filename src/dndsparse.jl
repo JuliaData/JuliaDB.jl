@@ -3,7 +3,7 @@ import Base: collect
 import Dagger: chunktype, domain, tochunk, distribute,
                chunks, Context, compute, gather, free!
 
-import IndexedTables: eltypes, astuple
+import IndexedTables: eltypes, astuple, colnames
 
 
 # re-export the essentials
@@ -44,6 +44,15 @@ Base.eltype(dt::DNDSparse{K,V}) where {K,V} = V
 IndexedTables.dimlabels(dt::DNDSparse{K}) where {K} = fieldnames(K)
 Base.ndims(dt::DNDSparse{K}) where {K} = nfields(K)
 keytype(dt::DNDSparse{K}) where {K} = astuple(K)
+
+# TableLike API
+Base.@pure function IndexedTables.colnames{K,V}(t::DNDSparse{K,V})
+    dnames = fieldnames(V)
+    if all(x->isa(x, Integer), dnames)
+        dnames = map(x->x+nfields(K), dnames)
+    end
+    vcat(fieldnames(K), dnames)
+end
 
 const compute_context = Ref{Union{Void, Context}}(nothing)
 get_context() = compute_context[] == nothing ? Context() : compute_context[]
@@ -154,7 +163,7 @@ struct EmptySpace{T} end
 # Teach dagger how to automatically figure out the
 # metadata (in dagger parlance "domain") about an NDSparse chunk.
 function Dagger.domain(nd::NDSparse)
-    T = eltypes(typeof(nd.index.columns))
+    T = eltype(keys(nd))
 
     if isempty(nd)
         return EmptySpace{T}()
@@ -170,16 +179,17 @@ function Dagger.domain(nd::NDSparse)
     return IndexSpace(interval, boundingrect, Nullable{Int}(length(nd)))
 end
 
-function subindexspace(nd::NDSparse, r)
-    T = eltypes(typeof(nd.index.columns))
+function subindexspace(t::Union{NDSparse, NextTable}, r)
+    ks = primarykeys(t)
+    T = eltype(typeof(ks))
     wrap = T<:NamedTuple ? T : tuple
 
     if isempty(r)
         return EmptySpace{T}()
     end
 
-    interval = Interval(wrap(nd.index[first(r)]...), wrap(nd.index[last(r)]...))
-    cs = astuple(nd.index.columns)
+    interval = Interval(wrap(ks[first(r)]...), wrap(ks[last(r)]...))
+    cs = astuple(columns(ks))
     extr = map(c -> extrema_range(c, r), cs[2:end])
 
     boundingrect = Interval(wrap(cs[1][first(r)], map(first, extr)...),
@@ -347,13 +357,13 @@ function fromchunks(chunks::AbstractArray,
     end
 end
 
-function cache_thunks(dt::DNDSparse)
-    for c in dt.chunks
+function cache_thunks(t)
+    for c in t.chunks
         if isa(c, Dagger.Thunk)
             Dagger.cache_result!(c)
         end
     end
-    dt
+    t
 end
 
 function getkvtypes{N<:NDSparse}(::Type{N})
@@ -472,46 +482,6 @@ function subtable{K, V}(t::DNDSparse{K,V}, idx::UnitRange)
     end
 
     DNDSparse{K,V}(ds, cs)
-end
-
-import Base.Iterators: PartitionIterator, start, next, done
-
-function Iterators.partition(t::DNDSparse, n::Integer)
-    PartitionIterator(t, n)
-end
-
-struct PartIteratorState
-    chunkno::Int
-    chunk::NDSparse
-    used::Int
-end
-
-function start(p::PartitionIterator{<:DNDSparse})
-    c = collect(p.c.chunks[1])
-    p = PartIteratorState(1, c, 0)
-end
-
-function done(t::PartitionIterator{<:DNDSparse}, p::PartIteratorState)
-    p.chunkno == length(t.c.chunks) && p.used >= length(p.chunk)
-end
-
-function next(t::PartitionIterator{<:DNDSparse}, p::PartIteratorState)
-    if p.used + t.n <= length(p.chunk)
-        # easy
-        nextpart = subtable(p.chunk, p.used+1:(p.used+t.n))
-        return nextpart, PartIteratorState(p.chunkno, p.chunk, p.used + t.n)
-    else
-        partial = subtable(p.chunk, p.used+1:length(p.chunk))
-        required = t.n - length(partial)
-        if p.chunkno == length(t.c.chunks)
-            # we're done, last chunk
-            return partial, PartIteratorState(p.chunkno, p.chunk, length(p.chunk))
-        else
-            nextchunk = collect(t.c.chunks[p.chunkno+1])
-            partial2 = subtable(nextchunk, 1:required)
-            return _merge(partial, partial2), PartIteratorState(p.chunkno+1, nextchunk, required)
-        end
-    end
 end
 
 Base.@deprecate_binding DTable DNDSparse

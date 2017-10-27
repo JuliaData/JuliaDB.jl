@@ -1,4 +1,3 @@
-const TextMIME = Union{MIME"text/plain", MIME"text/html"}
 function take_n(t::DNDSparse, n)
     required = n
     getter(required, c) = collect(delayed(x->subtable(x, 1:min(required, length(x))))(c))
@@ -14,26 +13,27 @@ function take_n(t::DNDSparse, n)
     return top
 end
 
-function Base.show(io::IO, t::DNDSparse)
-    # we fetch at most 21 elements and let NDSparse
-    # display it.
-    len = trylength(t)
-    if !isempty(t.chunks)
-        top = take_n(t, 5)
-        nchunks = length(t.chunks)
-        print(io, "DNDSparse with ")
-        if !isnull(len)
-            print(io, "$(get(len)) rows in ")
-        end
+import IndexedTables: showtable
 
-        println(io, "$nchunks chunks:")
-        println(io, "")
-        show(io, top)
-        if isnull(len) || get(len) > 5
-            println(io, "")
-            print(io, "...")
-        end
+function Base.show(io::IO, big::DNDSparse)
+    h, w = displaysize(io)
+    showrows = h - 5 # This will trigger an ellipsis when there's
+                     # more to see than the screen fits
+    t = first(Iterators.partition(big, showrows))
+    if !(values(t) isa Columns)
+        cnames = colnames(keys(t))
+        eltypeheader = "$(eltype(t))"
     else
-        println(io, "an empty DNDSparse")
+        cnames = colnames(t)
+        nf = nfields(eltype(t))
+        if eltype(t) <: NamedTuple
+            eltypeheader = "$(nf) field named tuples"
+        else
+            eltypeheader = "$(nf)-tuples"
+        end
     end
+    len = trylength(big)
+    vals = isnull(len) ? "of" : "with $(get(len)) values"
+    header = "$(ndims(t))-d Distributed NDSparse $vals ($eltypeheader) in $(length(big.chunks)) chunks:"
+    showtable(io, t; header=header, divider=ndims(t), ellipsis=:end)
 end

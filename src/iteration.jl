@@ -9,6 +9,64 @@ import IndexedTables: DimName, Columns, column, columns,
 import Dagger: DomainBlocks, ArrayDomain, DArray,
                 ArrayOp, domainchunks, chunks, Distribute
 
+import Base.Iterators: PartitionIterator, start, next, done
+
+const TableLike = Union{DNDSparse, DNextTable}
+
+function Iterators.partition(t::TableLike, n::Integer)
+    PartitionIterator(t, n)
+end
+
+struct PartIteratorState{T}
+    chunkno::Int
+    chunk::T
+    used::Int
+end
+
+function start(p::PartitionIterator{<:TableLike})
+    c = collect(p.c.chunks[1])
+    p = PartIteratorState(1, c, 0)
+end
+
+function done(t::PartitionIterator{<:TableLike}, p::PartIteratorState)
+    p.chunkno == length(t.c.chunks) && p.used >= length(p.chunk)
+end
+
+function next(t::PartitionIterator{<:TableLike}, p::PartIteratorState)
+    if p.used + t.n <= length(p.chunk)
+        # easy
+        nextpart = subtable(p.chunk, p.used+1:(p.used+t.n))
+        return nextpart, PartIteratorState(p.chunkno, p.chunk, p.used + t.n)
+    else
+        part = subtable(p.chunk, p.used+1:length(p.chunk))
+        required = t.n - length(part)
+        r = required
+        chunkno = p.chunkno
+        used = length(p.chunk)
+        nextchunk = p.chunk
+        while r > 0
+            chunkno += 1
+            if chunkno > length(t.c.chunks)
+                # we're done, last chunk
+                return part, PartIteratorState(chunkno-1, nextchunk, used)
+            else
+                nextchunk = collect(t.c.chunks[chunkno])
+                if r > length(nextchunk)
+                    part = _merge(part, nextchunk)
+                    r -= length(nextchunk)
+                    used = length(nextchunk)
+                else
+                    part = _merge(part, subtable(nextchunk, 1:r))
+                    r = 0
+                    used = r
+                end
+            end
+        end
+        return part, PartIteratorState(chunkno, nextchunk, used)
+    end
+end
+
+
 function DColumns(arrays::Tup)
     if length(arrays) == 0
         error("""DColumns must be constructed with at least
@@ -103,6 +161,8 @@ function columns(t::Union{DNDSparse, DArray}, which::Tuple...)
     end
 end
 
+Base.@pure IndexedTables.colnames(t::DArray{T}) where T<:Tup = fieldnames(T)
+
 function _columns_as(t, which)
     stripas(w) = isa(w, As) ? w.src : w
     which_ = ntuple(i->as(stripas(which[i]), i), length(which))
@@ -110,8 +170,13 @@ function _columns_as(t, which)
     asvecs = find(isas, which)
     outvecs = Any[cs...]
     outvecs[asvecs] = map((w,x) -> w.f(x), [which[asvecs]...], outvecs[asvecs])
-    tup = IndexedTables._output_tuple(which)
-    tup(outvecs...)
+    cnames = colnames(t, which)
+    if all(x->isa(x, Symbol), cnames)
+        tuplewrap = namedtuple(cnames...)
+    else
+        tuplewrap = tuple
+    end
+    tuplewrap(outvecs...)
 end
 
 for f in [:rows, :keys, :values]
