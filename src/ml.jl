@@ -47,7 +47,14 @@ schema(xs::AbstractVector{T}) where T <: Real =
 
 schema(xs::PooledArray{T}) where T = Categorical{T}(unique(xs))
 
-schema(xs::DataValueArray) = Maybe(schema(dropna(xs)))
+schema(xs::AbstractVector{<:DataValue}) = Maybe(schema(dropna(xs)))
+
+# Can't use dropna
+schema(xs::DArray{<:DataValue{<:Real}}) = Maybe(Continuous(mean(xs), std(xs)))
+
+splitschema(xs::Schema, ks...) =
+  filter((k,v) -> k ∉ ks, xs),
+  filter((k,v) -> k ∈ ks, xs)
 
 # Dataset construction
 
@@ -56,3 +63,13 @@ tovec(sch::Schema, row::NamedTuple) =
 
 tomat(sch::Schema, data) =
   reduce(hcat, map(r -> tovec(sch, r), data))
+
+# Summary stats
+
+using OnlineStats
+
+Base.mean(xs::DArray{<:DataValue}) =
+  Dagger.reduceblock(x->Series(dropna(x), Mean()), x->reduce(merge, x), xs).stats[1].μ
+
+Base.std(xs::DArray{<:DataValue}) =
+  √Dagger.reduceblock(x->Series(dropna(x), Variance()), x->reduce(merge, x), xs).stats[1].σ2
