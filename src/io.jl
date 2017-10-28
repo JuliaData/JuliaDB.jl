@@ -199,13 +199,7 @@ function _collect(ctx, csv::CSVChunk)
     else
         #println("CACHE MISS $csv")
         #@show myid()
-        try
-            data, ii = _load_table(csv.files, csv.delim; csv.opts...)
-        catch err
-            # show which file failed to load
-            println(STDERR, "Error reading file $(csv.files)")
-            rethrow(err)
-        end
+        data, ii = _load_table(csv.files, csv.delim; csv.opts...)
 
         if ii && isnull(csv.offset)
             csv.offset = 1
