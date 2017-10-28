@@ -76,7 +76,7 @@ function _loadfiles(files::Union{AbstractVector,String}, delim=','; usecache=tru
         chunks = Dagger.split_range(1:length(files), chunks)
     end
 
-    filegroups = map(x->files[x], chunks)
+    filegroups = filter(!isempty, map(x->files[x], chunks))
 
     unknown = filegroups
     validcache = []
