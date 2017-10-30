@@ -1,23 +1,17 @@
 import Base.Sort: Forward, Ordering, Algorithm
 import Dagger: affinity, @dbg, OSProc, timespan_start, timespan_end
 
-import Dagger: dsort_chunks
+"""
+    rechunk(t::DNDSparse; by, closed, merge)
 
-function reindex_chunk(t::NextTable, by, select, nsamples; kwargs...)
-    st = reindex(t, by, select)
-    idxs = randperm(length(t))[1:nsamples]
-    (tochunk(st), primarykeys(st)[idxs])
-end
-
-function dsort(t::DNextTable, n=nworkers(), nsamples=2000)
-    cs = dsort_chunks(t.chunks, n, nsamples, sortchunk=reindex_chunk, cat=_merge, sub=getindex)
-    t=delayed((xs...)->[xs...]; meta=true)(cs...)
-    chunks = compute(t)
-    fromchunks(chunks)
-end
-
+rechunk a dataset. This causes any ovelapping chunks to be merged using the `merge`
+argument (a Function). If each unique key must be contained in a single chunk, set
+`closed=true`. To opt to chunk by custom subset of key columns, specify them in `by`.
+These columns must be sorted on their own.
+"""
 function rechunk(t::DNDSparse{K,V}, lengths = nothing;
                  select=sampleselect,
+                 by=nothing,
                  closed=false,
                  merge=_merge) where {K,V}
 
@@ -36,8 +30,8 @@ function rechunk(t::DNDSparse{K,V}, lengths = nothing;
     # Get ranks for splitting at
     ranks = cumsum(lengths)[1:end-1]
 
-    if isa(closed, Vector)
-        idx = keys(computed_t, closed...)
+    if by !== nothing
+        idx = keys(computed_t, by)
     else
         idx = keys(computed_t)
     end
@@ -47,7 +41,7 @@ function rechunk(t::DNDSparse{K,V}, lengths = nothing;
 
     Dagger.free!(idx, force=true, cache=false) # no more useful
     thunks, subspaces = shuffle_merge(ctx, t.chunks, computed_t.subdomains,
-                                      merge, ranks, isa(closed, Vector) || closed,
+                                      merge, ranks, closed,
                                       splitters, chunk_lengths, order)
 
     fromchunks(thunks, subspaces; KV=(K,V))

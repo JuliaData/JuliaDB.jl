@@ -5,6 +5,10 @@ using IndexedTables, Dagger, NamedTuples
 
 import IndexedTables: NDSparse
 
+import TextParse: csvread
+import IndexedTables: Table
+import Dagger: compute, distribute, free!, gather, load, save
+
 # re-export
 export IndexedTable, NDSparse, NextTable, Columns
 
