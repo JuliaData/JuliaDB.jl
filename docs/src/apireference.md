@@ -59,6 +59,10 @@ getindex(t::DTable, idx...)
 ## Queries
 
 ```@docs
+names
+```
+
+```@docs
 select(t::DTable, conditions::Pair...)
 ```
 

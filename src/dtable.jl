@@ -1,4 +1,4 @@
-import Base: collect
+import Base: collect, names
 
 import Dagger: chunktype, domain, tochunk, distribute,
                chunks, Context, compute, gather, free!
@@ -439,6 +439,19 @@ end
 
 function null_length(x::IndexSpace)
     IndexSpace(x.interval, x.boundingrect, Nullable{Int}())
+end
+
+"""
+The names of the columns of the `DTable`
+"""
+import Base.names
+function names(df::JuliaDB.DTable)
+    tmpdf = JuliaDB.take_n(df,1)
+    if typeof(tmpdf.index.columns) <: Tuple # this means the index is not a namedTuple
+        return keys(tmpdf.data.columns)
+    else
+         return vcat(keys(tmpdf.index.columns), keys(tmpdf.data.columns))
+    end
 end
 
 function subtable{K, V}(t::DTable{K,V}, idx::UnitRange)
