@@ -187,7 +187,7 @@ function mapslices(f, x::DTable, dims; name=nothing)
     end
 
     t = has_overlaps(x.subdomains, iterdims) ?
-        rechunk(x, closed=true, by=iterdims) : x
+        rechunk(x, closed=true, by=(iterdims...)) : x
 
     cache_thunks(mapchunks(y -> mapslices(f, y, dims, name=name),
                            t, keeplengths=false))
