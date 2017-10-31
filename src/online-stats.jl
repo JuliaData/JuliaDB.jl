@@ -19,9 +19,10 @@ function Series(xs::DArray, stats::OnlineStat...)
     collect(treereduce(delayed(merge), chunk_aggs))
 end
 
-function Series(xs::DArray, ys::DArray, stats::OnlineStat...)
+function Series(inp::Tuple{<:DArray, <:DArray}, stats::OnlineStat...)
+    xs, ys = inp
     function inner_series(xc, yc)
-        Series(xc, yc, map(copy, stats)...)
+        Series((xc, yc), map(copy, stats)...)
     end
 
     chunk_aggs = map(delayed(inner_series), xs.chunks, ys.chunks)
@@ -37,10 +38,11 @@ function Series(t::IndexedTable, stats::OnlineStat...)
 end
 
 # spcialization for linear regression
-function Series(x::Columns, y::AbstractVector, stats::OnlineStat{(1,0), 1}...)
+function Series(inp::Tuple{<:Columns, AbstractVector}, stats::OnlineStat{(1,0)}...)
+    x, y = inp
     xmatrix = getindex.([columns(x)...]', 1:length(x))
 
-    Series(xmatrix, y, stats...)
+    Series((xmatrix, y), stats...)
 end
 
 """
@@ -55,7 +57,7 @@ function aggregate_stats(series::Series, t::Union{IndexedTable, DTable}; by=keys
 end
 
 @inline function _fit!(series, xs::Tup, y...)
-    fit!(series, [xs...], y...)
+    fit!(series, ([xs...], y...))
 end
 
 @inline function _fit!(series, args...)
