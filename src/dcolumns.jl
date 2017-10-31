@@ -9,6 +9,8 @@ import IndexedTables: DimName, Columns, column, columns,
 import Dagger: DomainBlocks, ArrayDomain, DArray,
                 ArrayOp, domainchunks, chunks, Distribute
 
+const DColumns = DArray{<:Tup}
+
 function DColumns(arrays::Tup)
     if length(arrays) == 0
         error("""DColumns must be constructed with at least
@@ -54,14 +56,14 @@ function DColumns(arrays::Tup)
     DArray(T, domain(darrays[1]), domainchunks(darrays[1]), cs, (i, x...)->vcat(x...))
 end
 
-function itable(keycols::DArray, valuecols::DArray)
+function itable(keycols::DColumns, valuecols::DColumns)
     cs = map(delayed(itable), chunks(keycols), chunks(valuecols))
     cs1 = compute(get_context(),
                   delayed((xs...) -> [xs...]; meta=true)(cs...))
     fromchunks(cs1)
 end
 
-function extractarray(t::Union{DTable,DArray}, accessor)
+function extractarray(t::Union{DTable,DColumns}, accessor)
     arraymaker = function (cs_tup...)
         cs = [cs_tup...]
         lengths = length.(domain.(cs))
@@ -76,7 +78,7 @@ end
 
 isas(d) = isa(d, As) && d.f !== identity
 
-function columns(t::Union{DTable, DArray}, which::Tuple...)
+function columns(t::Union{DTable, DColumns}, which::Tuple...)
     if !isempty(which) && any(isas, which[1])
         return _columns_as(t, which...)
     end

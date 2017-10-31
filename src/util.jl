@@ -1,5 +1,3 @@
-import IndexedTables: astuple
-
 using NamedTuples
 
 using PooledArrays

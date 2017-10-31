@@ -22,6 +22,7 @@ include("dcolumns.jl")
 
 include("indexing.jl")
 include("query.jl")
+include("online-stats.jl")
 include("join.jl")
 
 include("diagnostics.jl")
