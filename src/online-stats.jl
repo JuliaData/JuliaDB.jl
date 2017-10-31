@@ -3,12 +3,23 @@ using StatsBase
 
 import OnlineStatsBase: Series, merge, OnlineStat
 
-export aggregate_stats
+export aggregate_stats, Series
 
 """
 `Series(xs::DArray, stats::OnlineStat...)`
 
-Create an `OnlineStats.Series` object with some initial data
+Create an `OnlineStats.Series` object with some initial data.
+
+## Example:
+
+    julia> t = IndexedTable(Columns([1,1,1,2,2,2,3,3,3], [1,2,3,1,2,3,1,2,3]),
+                            0.5,1,1.5,1,2,3,2,3,4]) |> distribute
+
+    julia> Series(column(t, 1), Mean())
+    ▦ Series{0,Tuple{Mean},EqualWeight}
+    ┣━━ EqualWeight(nobs = 9)
+    ┗━━━┓
+        ┗━━ Mean(2.0)
 """
 function Series(xs::DArray, stats::OnlineStat...)
     function inner_series(xc)
@@ -19,6 +30,22 @@ function Series(xs::DArray, stats::OnlineStat...)
     collect(treereduce(delayed(merge), chunk_aggs))
 end
 
+"""
+`Series(xs::Tuple{DArray, DArray}, stats::OnlineStat...)`
+
+Create an `OnlineStats.Series` object with some initial data. Matrix and vector
+inputs to Stats like LinReg (linear regression) should be passed in as a tuple.
+
+## Example:
+
+    julia> t = IndexedTable(Columns([1,1,1,2,2,2,3,3,3], [1,2,3,1,2,3,1,2,3]),
+                            0.5,1,1.5,1,2,3,2,3,4]) |> distribute
+    julia> reg = Series((keys(t), values(t)), LinReg(2))
+    ▦ Series{(1, 0),Tuple{LinReg},EqualWeight}
+    ┣━━ EqualWeight(nobs = 9)
+    ┗━━━┓
+        ┗━━ LinReg: β(0.0) = [0.615385 0.448718]
+"""
 function Series(inp::Tuple{<:DArray, <:DArray}, stats::OnlineStat...)
     xs, ys = inp
     function inner_series(xc, yc)
@@ -29,11 +56,22 @@ function Series(inp::Tuple{<:DArray, <:DArray}, stats::OnlineStat...)
     collect(treereduce(delayed(merge), chunk_aggs))
 end
 
-function Series(t::Union{DTable,IndexedTable}, stats::OnlineStat...)
-    Series(values(t), stats...)
-end
 
-function Series(t::IndexedTable, stats::OnlineStat...)
+"""
+`Series(xs::DTable, stats::OnlineStat...)`
+
+Create an `OnlineStats.Series` object with some initial data.
+Data is taken to be `values(t)` by default.
+
+# Example
+
+    julia> Series(t, Mean())
+    ▦ Series{0,Tuple{Mean},EqualWeight}
+    ┣━━ EqualWeight(nobs = 9)
+    ┗━━━┓
+        ┗━━ Mean(2.0)
+"""
+function Series(t::Union{DTable,IndexedTable}, stats::OnlineStat...)
     Series(values(t), stats...)
 end
 
@@ -51,6 +89,26 @@ end
 Aggregate common indices with an `OnlineStas.Series` object.
 
 Computes the given Online stat for every group of values with equal indices.
+
+    julia> t = IndexedTable(Columns([1,1,1,2,2,2,3,3,3],
+                                    [1,2,3,1,2,3,1,2,3]),
+                            [0.5,1,1.5,1,2,3,2,3,4]) |> distribute
+
+    # keep only first dimension, aggregate equal indices
+    julia> means = aggregate_stats(Series(Mean()), select(t,1))
+    ──┬────────────────────────────────────
+    1 │ ▦ Series{0,Tuple{Mean},EqualWeight}
+    ┣━━ EqualWeight(nobs = 3)
+    ┗━━━┓
+        ┗━━ Mean(1.0)
+    2 │ ▦ Series{0,Tuple{Mean},EqualWeight}
+    ┣━━ EqualWeight(nobs = 3)
+    ┗━━━┓
+        ┗━━ Mean(2.0)
+    3 │ ▦ Series{0,Tuple{Mean},EqualWeight}
+    ┣━━ EqualWeight(nobs = 3)
+    ┗━━━┓
+        ┗━━ Mean(3.0)
 """
 function aggregate_stats(series::Series, t::Union{IndexedTable, DTable}; by=keyselector(t), with=valueselector(t))
     aggregate_stats(series, rows(t, by), rows(t, with))
@@ -87,6 +145,27 @@ end
 `aggregate_stats(series::Series, ks::AbstractVector, vs::AbstractVector...)`
 
 Compute the online stat (`series`) for every group of indices in `vs` for which the values in `ks` are equal.
+
+    julia> t = IndexedTable(Columns([1,1,1,2,2,2,3,3,3],
+                                    [1,2,3,1,2,3,1,2,3]),
+                            [0.5,1,1.5,1,2,3,2,3,4]) |> distribute
+
+    julia> regs = aggregate_stats(Series(LinReg(2)), keys(t, 1), keys(t), values(t))
+    ──┬───────────────────────────────────────────
+    1 │ ▦ Series{(1, 0),Tuple{LinReg},EqualWeight}
+    ┣━━ EqualWeight(nobs = 3)
+    ┗━━━┓
+        ┗━━ LinReg: β(0.0) = [1.55431e-15 0.5]
+    2 │ ▦ Series{(1, 0),Tuple{LinReg},EqualWeight}
+    ┣━━ EqualWeight(nobs = 3)
+    ┗━━━┓
+        ┗━━ LinReg: β(0.0) = [1.55431e-15 1.0]
+    3 │ ▦ Series{(1, 0),Tuple{LinReg},EqualWeight}
+    ┣━━ EqualWeight(nobs = 3)
+    ┗━━━┓
+        ┗━━ LinReg: β(0.0) = [0.333333 1.0]
+
+
 """
 function aggregate_stats(series::Series, ks::DArray, vs::DArray...)
     agg_chunk = delayed() do kchunk, vchunks...
