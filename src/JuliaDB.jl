@@ -3,7 +3,9 @@ module JuliaDB
 
 using IndexedTables, Dagger, NamedTuples
 
+import TextParse: csvread
 import IndexedTables: Table
+import Dagger: compute, distribute, free!, gather, load, save
 
 # re-export
 export IndexedTable, Columns

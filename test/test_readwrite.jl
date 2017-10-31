@@ -32,6 +32,8 @@ const spdata_dist = loadfiles(files, type_detect_rows=4,
 const spdata_dist_path = loadfiles(path, type_detect_rows=4,
                               indexcols=1:2, usecache=false)
 
+loadfiles(files[1:2], chunks=4)
+
 _readstr(f) = open(f) do fh
     readline(fh)
     readstring(fh)

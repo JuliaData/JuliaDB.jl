@@ -3,8 +3,17 @@ import Dagger: affinity, @dbg, OSProc, timespan_start, timespan_end
 
 export rechunk
 
+"""
+    rechunk(t::DTable; by, closed, merge)
+
+rechunk a dataset. This causes any ovelapping chunks to be merged using the `merge`
+argument (a Function). If each unique key must be contained in a single chunk, set
+`closed=true`. To opt to chunk by custom subset of key columns, specify them in `by`.
+These columns must be sorted on their own.
+"""
 function rechunk(t::DTable{K,V}, lengths = nothing;
                  select=sampleselect,
+                 by=nothing,
                  closed=false,
                  merge=_merge) where {K,V}
 
@@ -23,8 +32,8 @@ function rechunk(t::DTable{K,V}, lengths = nothing;
     # Get ranks for splitting at
     ranks = cumsum(lengths)[1:end-1]
 
-    if isa(closed, Vector)
-        idx = keys(computed_t, closed...)
+    if by !== nothing
+        idx = keys(computed_t, by)
     else
         idx = keys(computed_t)
     end
@@ -34,7 +43,7 @@ function rechunk(t::DTable{K,V}, lengths = nothing;
 
     Dagger.free!(idx, force=true, cache=false) # no more useful
     thunks, subspaces = shuffle_merge(ctx, t.chunks, computed_t.subdomains,
-                                      merge, ranks, isa(closed, Vector) || closed,
+                                      merge, ranks, closed,
                                       splitters, chunk_lengths, order)
 
     fromchunks(thunks, subspaces; KV=(K,V))

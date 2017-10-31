@@ -43,8 +43,13 @@ function DColumns(arrays::Tup)
         compute(get_context(), x)
     end
 
-    cs = map(delayed((xs...)->Columns(wrap(xs...))),
-        map(chunks, darrays)...)
+    if length(darrays) == 1
+        cs = chunks(darrays[1])
+        chunkmatrix = reshape(cs, length(cs), 1)
+    else
+        chunkmatrix = reduce(hcat, map(chunks, darrays))
+    end
+    cs = mapslices(x -> delayed((c...) -> Columns(wrap(c...)))(x...), chunkmatrix, 2)[:]
     T = isa(arrays, Tuple) ? Tuple{map(eltype, arrays)...} :
         wrap{map(eltype, arrays)...}
 
@@ -84,6 +89,10 @@ function columns(t::Union{DTable, DColumns}, which::Tuple...)
     end
 
     tuples = collect(get_context(), treereduce(delayed(vcat), map(f, cs)))
+
+    if isa(tuples, Tuple)
+        tuples = [tuples]
+    end
 
     # tuples is a vector of tuples
     map(tuples...) do cstup...
