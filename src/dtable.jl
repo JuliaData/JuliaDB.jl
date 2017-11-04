@@ -444,7 +444,6 @@ end
 """
 The names of the columns of the `DTable`
 """
-import Base.names
 function names(df::JuliaDB.DTable)
     tmpdf = JuliaDB.take_n(df,1)
     if typeof(tmpdf.index.columns) <: Tuple # this means the index is not a namedTuple
