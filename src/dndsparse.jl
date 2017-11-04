@@ -1,7 +1,7 @@
 import Dagger: chunktype, domain, tochunk, distribute,
                chunks, Context, compute, gather, free!
 
-import IndexedTables: eltypes, astuple, colnames
+import IndexedTables: eltypes, astuple, colnames, ndsparse
 
 
 boundingrect(x::IndexSpace) = x.boundingrect
@@ -17,6 +17,55 @@ struct DNDSparse{K,V}
     chunks::Vector
 end
 
+function ndsparse(::Val{:distributed}, ks::Tup,
+                  vs::Union{Tup, AbstractArray};
+                  chunks=nothing, kwargs...)
+
+    if chunks === nothing
+        # this means the vectors are distributed.
+        # pick the first distributed vector and distribute
+        # all others similarly
+        i = findfirst(x->isa(x, ArrayOp), ks)
+        if i != 0
+            darr = ks[i]
+        elseif vs isa Tup && any(x->isa(x, ArrayOp, vs))
+            darr = vs[findfirst(x->isa(x, ArrayOp), vs)]
+        elseif isa(vs, ArrayOp)
+            darr = vs
+        else
+            error("Don't know how to distribute. specify `chunks`")
+        end
+
+        chunks = domainchunks(compute(darr))
+    end
+    kdarrays = map(x->distribute(x, chunks), ks)
+    vdarrays = isa(vs, Tup) ? map(x->distribute(x, chunks), vs) : distribute(vs, chunks)
+
+    if isempty(kdarrays)
+        error("NDSparse must be constructed with at least one index column")
+    end
+
+    nchunks = length(kdarrays[1].chunks)
+    inames = isa(ks, NamedTuple) ? fieldnames(ks) : nothing
+    ndims = length(ks)
+    dnames = isa(vs, NamedTuple) ? fieldnames(vs) : nothing
+    iscols = isa(vs, Tup)
+
+    function makechunk(args...)
+        k = Columns(args[1:ndims]..., names=inames)
+        v = iscols ? Columns(args[ndims+1:end], names=dnames) : args[end]
+        ndsparse(k,v)
+    end
+
+    cs = Array{Any}(nchunks)
+    for i = 1:nchunks
+        args = Any[map(x->x.chunks[i], kdarrays)...]
+        append!(args, isa(vs, Tup) ? [map(x->x.chunks[i], vdarrays)...] :
+                [vdarrays.chunks[i]])
+        cs[i] = delayed(makechunk)(args...)
+    end
+    fromchunks(cs)
+end
 Base.eltype(dt::DNDSparse{K,V}) where {K,V} = V
 IndexedTables.dimlabels(dt::DNDSparse{K}) where {K} = fieldnames(K)
 Base.ndims(dt::DNDSparse{K}) where {K} = nfields(K)
@@ -465,7 +514,8 @@ function Base.show(io::IO, big::DNDSparse)
     len = trylength(big)
     vals = isnull(len) ? "of" : "with $(get(len)) values"
     header = "$(ndims(t))-d Distributed NDSparse $vals ($eltypeheader) in $(length(big.chunks)) chunks:"
-    showtable(io, t; header=header, divider=ndims(t), ellipsis=:end)
+    showtable(io, t; header=header, cnames=cnames,
+              divider=ndims(t), ellipsis=:end)
 end
 
 Base.@deprecate_binding DTable DNDSparse

@@ -53,8 +53,7 @@ end
 
 # if one of the input vectors is a Dagger operation / array
 # chose the distributed implementation.
-IndexedTables.table_impl(::Val, ::Dagger.ArrayOp, x...) =
-    Val{:distributed}()
+IndexedTables._impl(::Val, ::Dagger.ArrayOp, x...) = Val{:distributed}()
 
 function table(::Val{:distributed}, tup::Tup; chunks=nothing, kwargs...)
     if chunks === nothing
@@ -65,12 +64,11 @@ function table(::Val{:distributed}, tup::Tup; chunks=nothing, kwargs...)
         if idx == 0
             error("Don't know how to distribute. specify `chunks`")
         end
-        darr = tup[idx]
-        ds = domainchunks(darr)
-        darrays = map(x->distribute(x, ds), tup)
-    else
-        darrays = map(x->distribute(x, chunks), tup)
+        darr = compute(tup[idx])
+        chunks = domainchunks(darr)
     end
+
+    darrays = map(x->distribute(x, chunks), tup)
 
     if isempty(darrays)
         error("Table must be constructed with at least one column")

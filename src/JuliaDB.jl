@@ -4,7 +4,7 @@ module JuliaDB
 using IndexedTables, Dagger, NamedTuples
 
 import Base: collect, select, join
-import IndexedTables: NDSparse, NextTable, Tup
+import IndexedTables: NextTable, table, NDSparse, ndsparse, Tup
 import TextParse: csvread
 import IndexedTables: Table
 import Dagger: compute, distribute, free!, gather, load, save

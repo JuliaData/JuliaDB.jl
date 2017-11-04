@@ -1,4 +1,4 @@
-import IndexedTables: naturaljoin, _naturaljoin, leftjoin, similarz, asofjoin, merge
+import IndexedTables: naturaljoin, leftjoin, asofjoin, merge
 import Base: broadcast
 
 export naturaljoin, innerjoin, leftjoin, asofjoin, merge
