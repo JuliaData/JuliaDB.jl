@@ -51,6 +51,11 @@ function Dagger.domain(t::NextTable)
     return t.pkey => IndexSpace{T}(interval, boundingrect, Nullable{Int}(length(t)))
 end
 
+# if one of the input vectors is a Dagger operation / array
+# chose the distributed implementation.
+IndexedTables.table_impl(::Val, ::Dagger.ArrayOp, x...) =
+    Val{:distributed}()
+
 function table(::Val{:distributed}, tup::Tup; chunks=nothing, kwargs...)
     if chunks === nothing
         # this means the vectors are distributed.
@@ -120,6 +125,15 @@ function fromchunks(cs::AbstractArray, args...; kwargs...)
     fromchunks(T, cs, args...; kwargs...)
 end
 
+function fromchunks(::Type{<:AbstractVector}, cs::AbstractArray, args...; kwargs...)
+    lengths = length.(domain.(cs))
+    dmnchunks = DomainBlocks((1,), (cumsum(lengths),))
+    T = reduce(_promote_type, eltype(chunktype(cs[1])),
+                              eltype.(chunktype.(cs)))
+    DArray(T, ArrayDomain(1:sum(lengths)),
+           dmnchunks, cs, (i, x...)->vcat(x...))
+end
+
 function fromchunks(::Type{<:NextTable}, chunks::AbstractArray,
                     domains::AbstractArray = last.(domain.(chunks)),
                     pkey=first(domain(first(chunks)));
@@ -168,25 +182,27 @@ end
 
 # merging two tables
 
-function _merge(f, l::NextTable, r::NextTable)
-    if isempty(l.pkey) && isempty(r.pkey)
-        return table(vcat(rows(l), rows(r)))
+function _merge(f, a::NextTable, b::NextTable)
+    if isempty(a.pkey) && isempty(b.pkey)
+        return table(vcat(rows(a), rows(b)))
     end
-    a = IndexedTables._convert(NDSparse, l)
-    b = IndexedTables._convert(NDSparse, r)
+
+    @assert a.pkey == b.pkey
+    ia = pkeys(a)
+    ib = pkeys(b)
+
     if isempty(a)
         b
     elseif isempty(b)
         a
-    elseif last(a.index) < first(b.index)
+    elseif last(ia) < first(ib)
         # can vcat
-        NDSparse(vcat(a.index, b.index), vcat(a.data, b.data),
-              presorted=true, copy=false)
-    elseif last(b.index) < first(a.index)
-        _merge(b, a)
+        table(map(vcat, columns(a), columns(b)), pkey=a.pkey, presorted=true, copy=false)
+    elseif last(ib) < first(ia)
+        _merge(f, b, a)
     else
-        f(a, b) # Keep equal index elements
-    end |> x -> IndexedTables._convert(NextTable, x)
+        f(a,b)
+    end
 end
 
 _merge(f, x::NextTable) = x
@@ -194,7 +210,7 @@ function _merge(f, x::NextTable, y::NextTable, ys::NextTable...)
     treereduce((a,b)->_merge(f, a, b), [x,y,ys...])
 end
 
-_merge(x::NextTable, y::NextTable...) = _merge((a,b) -> merge(a, b, agg=nothing), x, y...)
+_merge(x::NextTable, y::NextTable...) = _merge((a,b) -> merge(a, b), x, y...)
 
 function Base.show(io::IO, big::DNextTable)
     h, w = displaysize(io)

@@ -3,7 +3,7 @@ export DColumns, column, columns, rows, pairs
 
 import Base: keys, values
 import IndexedTables: DimName, Columns, column, columns,
-       rows, pairs, Tup, namedtuple, itable
+       rows, pkeys, pairs, Tup, namedtuple, itable
 
 import Dagger: DomainBlocks, ArrayDomain, DArray,
                 ArrayOp, domainchunks, chunks, Distribute
@@ -120,20 +120,11 @@ function itable(keycols::DArray, valuecols::DArray)
     fromchunks(cs1)
 end
 
-function extractarray(t::Union{DNDSparse,DArray}, accessor)
-    arraymaker = function (cs_tup...)
-        cs = [cs_tup...]
-        lengths = length.(domain.(cs))
-        dmnchunks = DomainBlocks((1,), (cumsum(lengths),))
-        T = reduce(_promote_type, eltype(chunktype(cs[1])), eltype.(chunktype.(cs)))
-        DArray(T, ArrayDomain(1:sum(lengths)), dmnchunks, [cs...], (i, x...)->vcat(x...))
-    end
-
-    cs = map(delayed(accessor), t.chunks)
-    compute(delayed(arraymaker; meta=true)(cs...))
+function extractarray(t, f)
+    fromchunks(map(delayed(f), t.chunks))
 end
 
-function columns(t::Union{DNDSparse, DArray}, which::Tuple...)
+function columns(t::Union{TableLike, DArray}, which::Tuple...)
 
     cs = map(delayed(x->columns(x, which...)), t.chunks)
     f = delayed() do c
@@ -159,18 +150,19 @@ end
 
 Base.@pure IndexedTables.colnames(t::DArray{T}) where T<:Tup = fieldnames(T)
 
-for f in [:rows, :keys, :values]
-    @eval function $f(t::Union{DNDSparse, ArrayOp}, which::Tuple)
-        if !any(isas, which)
-            # easy
+for f in [:rows, :pkeys]
+    @eval function $f(t::TableLike)
+        extractarray(t, x -> $f(x))
+    end
+
+    if f !== :pkeys
+        @eval function $f(t::TableLike, which::Union{Int, Symbol})
             extractarray(t, x -> $f(x, which))
-        else
-            DColumns(columns($f(t), which))
         end
     end
 end
 
-for f in [:rows, :keys, :values]
+for f in [:keys, :values]
     @eval function $f(t::DNDSparse)
         extractarray(t, x -> $f(x))
     end
@@ -180,11 +172,9 @@ for f in [:rows, :keys, :values]
     end
 end
 
-function column(t::DNDSparse, name)
+function column(t::TableLike, name)
     extractarray(t, x -> column(x, name))
 end
-
-columns(t::DNDSparse, which::Union{Int,Symbol,Pair}) = column(t, which)
 
 function pairs(t::DNDSparse)
     extractarray(t, x -> map(Pair, x.index, x.data))
