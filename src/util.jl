@@ -1,4 +1,4 @@
-import IndexedTables: astuple
+import IndexedTables: astuple, tuplesetindex
 
 using NamedTuples
 
@@ -8,30 +8,6 @@ using DataValues
 
 # re-export
 export @NT
-
-function tuplesetindex(x::Tuple{Vararg{Any,N}}, v, i) where N
-    ntuple(Val{N}) do j
-        i == j ? v : x[j]
-    end
-end
-
-@generated function tuplesetindex(x::NamedTuple, v, i::Symbol)
-    fields = fieldnames(x)
-    :(@NT($(fields...))(tuplesetindex(x, v, findfirst($fields, i))...))
-end
-
-@generated function tuplesetindex(x::NamedTuple, v, i::Int)
-    fields = fieldnames(x)
-    N = length(fields)
-    quote
-        tup = Base.@ntuple $N j -> i == j ? v : x[j]
-        @NT($(fields...))(tuplesetindex(tup, v, i)...)
-    end
-end
-
-function tuplesetindex(x::Union{NamedTuple, Tuple}, v::Tuple, i::Tuple)
-    reduce((t, j)->tuplesetindex(t, v[j], i[j]), x, 1:length(i))
-end
 
 function treereduce(f, xs, v0=xs[1])
     length(xs) == 0 && return v0
