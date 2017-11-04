@@ -31,7 +31,7 @@ function Base.select(t::DNDSparse{K,V}, which::DimName...; agg=nothing) where {K
     # remove dimensions from bounding boxes
     sub_dims = [which...]
     subinterval(intv, idx) = Interval(first(intv)[idx], last(intv)[idx])
-    subdomains = map(t.subdomains) do idxspace
+    domains = map(t.domains) do idxspace
         # We replace the interval with the sub-bounding box as a conservative
         # estimate of the interval...
         # `subinterval(idxspace.interval, sub_dims)` would be wrong
@@ -41,9 +41,9 @@ function Base.select(t::DNDSparse{K,V}, which::DimName...; agg=nothing) where {K
 
     chunks = map(delayed(x -> select(x, which...; agg=agg)), t.chunks)
 
-    t1 = DNDSparse{eltype(subdomains[1]), V}(subdomains, chunks)
+    t1 = DNDSparse{eltype(domains[1]), V}(domains, chunks)
 
-    if agg !== nothing && has_overlaps(subdomains, true)
+    if agg !== nothing && has_overlaps(domains, true)
         with_overlaps(t1) do cs
             treereduce(delayed((x,y) -> merge(x, y, agg=agg)), cs)
         end
@@ -60,7 +60,7 @@ Combines adjacent rows with equal indices using the given
 """
 function aggregate(f, t::DNDSparse; kwargs...)
     t1 = mapchunks(c->aggregate(f, c; kwargs...), t, keeplengths=false)
-    if has_overlaps(t1.subdomains, true)
+    if has_overlaps(t1.domains, true)
         overlap_merge = (x, y) -> merge(x, y, agg=f)
         t2 = rechunk(t1, merge=(ts...) -> _merge(overlap_merge, ts...), closed=true)
         cache_thunks(t2)
@@ -76,7 +76,7 @@ Combine adjacent rows with equal indices using a function from vector to scalar,
 e.g. `mean`.
 """
 function aggregate_vec(f, t::DNDSparse)
-    if has_overlaps(t.subdomains, true)
+    if has_overlaps(t.domains, true)
         t = rechunk(t, closed=true) # Should not have chunks that are continuations
     end
     mapchunks(c->aggregate_vec(f, c), t, keeplengths=false) |> cache_thunks
@@ -122,14 +122,14 @@ function convertdim(t::DNDSparse{K,V}, d::DimName, xlat;
 
     # TODO: handle name kwarg
     # apply xlat to bounding rectangles
-    subdomains = map(t.subdomains) do space
+    domains = map(t.domains) do space
         nrows = agg === nothing ? space.nrows : Nullable{Int}()
         IndexSpace(xlatdim(space.interval, d), xlatdim(space.boundingrect, d), nrows)
     end
 
-    t1 = DNDSparse{eltype(subdomains[1]),V}(subdomains, chunks)
+    t1 = DNDSparse{eltype(domains[1]),V}(domains, chunks)
 
-    if agg !== nothing && has_overlaps(subdomains, true)
+    if agg !== nothing && has_overlaps(domains, true)
         overlap_merge(x, y) = merge(x, y, agg=agg)
         chunk_merge(ts...)  = _merge(overlap_merge, ts...)
         cache_thunks(rechunk(t1, merge=chunk_merge, closed=true))
@@ -186,7 +186,7 @@ function mapslices(f, x::DNDSparse, dims; name=nothing)
         throw(ArgumentError("$dims must be the trailing dimensions of the table. You can use `permutedims` first to permute the dimensions."))
     end
 
-    t = has_overlaps(x.subdomains, iterdims) ?
+    t = has_overlaps(x.domains, iterdims) ?
         rechunk(x, closed=true, by=(iterdims...)) : x
 
     cache_thunks(mapchunks(y -> mapslices(f, y, dims, name=name),

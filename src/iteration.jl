@@ -1,10 +1,9 @@
 # Extract a column as a Dagger array
-export getindexcol, getdatacol, dindex, ddata,
-       DColumns, column, columns, rows, pairs, as
+export DColumns, column, columns, rows, pairs
 
 import Base: keys, values
 import IndexedTables: DimName, Columns, column, columns,
-       rows, pairs, as, As, Tup, namedtuple, itable
+       rows, pairs, Tup, namedtuple, itable
 
 import Dagger: DomainBlocks, ArrayDomain, DArray,
                 ArrayOp, domainchunks, chunks, Distribute
@@ -66,6 +65,8 @@ function next(t::PartitionIterator{<:TableLike}, p::PartIteratorState)
     end
 end
 
+Base.eltype(iter::PartitionIterator{<:DNextTable}) = NextTable
+Base.eltype(iter::PartitionIterator{<:DNDSparse}) = NDSparse
 
 function DColumns(arrays::Tup)
     if length(arrays) == 0
@@ -132,12 +133,7 @@ function extractarray(t::Union{DNDSparse,DArray}, accessor)
     compute(delayed(arraymaker; meta=true)(cs...))
 end
 
-isas(d) = isa(d, As) && d.f !== identity
-
 function columns(t::Union{DNDSparse, DArray}, which::Tuple...)
-    if !isempty(which) && any(isas, which[1])
-        return _columns_as(t, which...)
-    end
 
     cs = map(delayed(x->columns(x, which...)), t.chunks)
     f = delayed() do c
@@ -163,22 +159,6 @@ end
 
 Base.@pure IndexedTables.colnames(t::DArray{T}) where T<:Tup = fieldnames(T)
 
-function _columns_as(t, which)
-    stripas(w) = isa(w, As) ? w.src : w
-    which_ = ntuple(i->as(stripas(which[i]), i), length(which))
-    cs = columns(t, which_)
-    asvecs = find(isas, which)
-    outvecs = Any[cs...]
-    outvecs[asvecs] = map((w,x) -> w.f(x), [which[asvecs]...], outvecs[asvecs])
-    cnames = colnames(t, which)
-    if all(x->isa(x, Symbol), cnames)
-        tuplewrap = namedtuple(cnames...)
-    else
-        tuplewrap = tuple
-    end
-    tuplewrap(outvecs...)
-end
-
 for f in [:rows, :keys, :values]
     @eval function $f(t::Union{DNDSparse, ArrayOp}, which::Tuple)
         if !any(isas, which)
@@ -198,23 +178,14 @@ for f in [:rows, :keys, :values]
     @eval function $f(t::DNDSparse, which::Union{Int, Symbol})
         extractarray(t, x -> $f(x, which))
     end
-
-    @eval function $f(t::DNDSparse, which::As)
-        which.f($f(t, which.src))
-    end
 end
 
 function column(t::DNDSparse, name)
     extractarray(t, x -> column(x, name))
 end
 
-columns(t::DNDSparse, which::Union{Int,Symbol,As}) = column(t, which)
+columns(t::DNDSparse, which::Union{Int,Symbol,Pair}) = column(t, which)
 
 function pairs(t::DNDSparse)
     extractarray(t, x -> map(Pair, x.index, x.data))
 end
-
-Base.@deprecate getindexcol(t::DNDSparse, dim) keys(t, dim)
-Base.@deprecate getdatacol(t::DNDSparse, dim)  values(t, dim)
-Base.@deprecate dindex(t::DNDSparse) keys(t)
-Base.@deprecate ddata(t::DNDSparse)  values(t)

@@ -24,7 +24,7 @@ elements as separate data columns instead as a single column of resultant tuples
 """
 function naturaljoin(op, left::DNDSparse{I1,D1},
                      right::DNDSparse{I2,D2}) where {I1, I2, D1, D2}
-    out_subdomains = Any[]
+    out_domains = Any[]
     out_chunks = Any[]
 
     I = promote_type(I1, I2)        # output index type
@@ -34,11 +34,11 @@ function naturaljoin(op, left::DNDSparse{I1,D1},
     # we want the output to be a Columns rather than an array of tuples
     for i in 1:length(left.chunks)
         lchunk = left.chunks[i]
-        subdomain = left.subdomains[i]
+        subdomain = left.domains[i]
         lbrect = subdomain.boundingrect
         # for each chunk in `left`
         # find all the overlapping chunks from `right`
-        overlapping = map(boundingrect.(right.subdomains)) do rbrect
+        overlapping = map(boundingrect.(right.domains)) do rbrect
             boxhasoverlap(lbrect, rbrect)
         end
         overlapping_chunks = right.chunks[overlapping]
@@ -50,13 +50,13 @@ function naturaljoin(op, left::DNDSparse{I1,D1},
         end
         append!(out_chunks, joined_chunks)
 
-        overlapping_subdomains = map(r->intersect(subdomain, r),
-                                     right.subdomains[overlapping])
+        overlapping_domains = map(r->intersect(subdomain, r),
+                                     right.domains[overlapping])
 
-        append!(out_subdomains, overlapping_subdomains)
+        append!(out_domains, overlapping_domains)
     end
 
-    return cache_thunks(DNDSparse{I, D}(out_subdomains, out_chunks))
+    return cache_thunks(DNDSparse{I, D}(out_domains, out_chunks))
 end
 
 Base.map(f, x::DNDSparse{I}, y::DNDSparse{I}) where {I} = naturaljoin(x, y, f)
@@ -79,12 +79,12 @@ function leftjoin(op, left::DNDSparse{K,V}, right::DNDSparse,
 
     for i in 1:length(left.chunks)
         lchunk = left.chunks[i]
-        subdomain = left.subdomains[i]
+        subdomain = left.domains[i]
         lbrect = subdomain.boundingrect
         # for each chunk in `left`
         # find all the overlapping chunks from `right`
         overlapping = map(rbrect -> joinwhen(lbrect, rbrect),
-                          boundingrect.(right.subdomains))
+                          boundingrect.(right.domains))
         overlapping_chunks = right.chunks[overlapping]
         if !isempty(overlapping_chunks)
             push!(out_chunks, delayed(chunkjoin)(op, lchunk, treereduce(delayed(_merge), overlapping_chunks)))
@@ -97,7 +97,7 @@ function leftjoin(op, left::DNDSparse{K,V}, right::DNDSparse,
         end
     end
 
-    cache_thunks(DNDSparse{K,V}(left.subdomains, out_chunks))
+    cache_thunks(DNDSparse{K,V}(left.domains, out_chunks))
 end
 
 leftjoin(left::DNDSparse, right::DNDSparse) = leftjoin(IndexedTables.concat_tup, left, right)
@@ -128,19 +128,19 @@ Merges `left` and `right` combining rows with matching indices using `agg`.
 By default `agg` picks the value from `right`.
 """
 function merge(left::DNDSparse{I1,D1}, right::DNDSparse{I2,D2}; agg=IndexedTables.right) where {I1,I2,D1,D2}
-    out_subdomains = Any[]
+    out_domains = Any[]
     out_chunks = Any[]
-    usedup_right = Array{Bool}(length(right.subdomains))
+    usedup_right = Array{Bool}(length(right.domains))
 
     I = promote_type(I1, I2)        # output index type
     D = promote_type(D1, D2)        # output data type
 
-    t = DNDSparse{I,D}(vcat(left.subdomains, right.subdomains),
+    t = DNDSparse{I,D}(vcat(left.domains, right.domains),
                     vcat(left.chunks, right.chunks))
 
     overlap_merge(x, y) = merge(x, y, agg=agg)
-    if has_overlaps(t.subdomains, agg!==nothing)
-        t = rechunk(t,
+    if has_overlaps(t.domains, agg!==nothing)
+        t = reindex(t,
                     merge=(x...)->_merge(overlap_merge, x...),
                     closed=agg!==nothing)
     end
@@ -183,9 +183,9 @@ function broadcast(f, A::DNDSparse{K1,V1}, B::DNDSparse{K2,V2}; dimmap=nothing) 
 
     out_chunks = []
     innerbcast(a, b) = broadcast(f, a, b; dimmap=dimmap)
-    out_subdomains = []
-    for (dA, cA) in zip(A.subdomains, A.chunks)
-        for (dB, cB) in zip(B.subdomains, B.chunks)
+    out_domains = []
+    for (dA, cA) in zip(A.domains, A.chunks)
+        for (dB, cB) in zip(B.domains, B.chunks)
             boxA = subbox(dA.boundingrect, common_A)
             boxB = subbox(dB.boundingrect, common_B)
 
@@ -194,12 +194,12 @@ function broadcast(f, A::DNDSparse{K1,V1}, B::DNDSparse{K2,V2}; dimmap=nothing) 
             dmn = bcast_narrow_space(dA, common_A, fst, lst)
             if boxhasoverlap(boxA, boxB)
                 push!(out_chunks, delayed(innerbcast)(cA, cB))
-                push!(out_subdomains, dmn)
+                push!(out_domains, dmn)
             end
         end
     end
     V = IndexedTables._promote_op(f, V1, V2)
-    t1 = DNDSparse{K1, V}(out_subdomains, out_chunks)
+    t1 = DNDSparse{K1, V}(out_domains, out_chunks)
     with_overlaps(t1) do chunks
         treereduce(delayed(_merge), chunks)
     end

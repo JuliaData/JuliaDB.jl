@@ -311,7 +311,7 @@ See also [`ingest`](@ref), [`load`](@ref)
 """
 function save(t::DNDSparse{K,V}, outputdir::AbstractString) where {K,V}
     chunks = Dagger.savechunks(t.chunks, outputdir)
-    saved_t = DNDSparse{K,V}(t.subdomains, chunks)
+    saved_t = DNDSparse{K,V}(t.domains, chunks)
     open(joinpath(outputdir, JULIADB_INDEXFILE), "w") do io
         serialize(io, saved_t)
     end

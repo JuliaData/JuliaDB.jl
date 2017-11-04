@@ -1,31 +1,8 @@
-import Base: collect
-
 import Dagger: chunktype, domain, tochunk, distribute,
                chunks, Context, compute, gather, free!
 
 import IndexedTables: eltypes, astuple, colnames
 
-
-# re-export the essentials
-export distribute, chunks, compute, gather, free!
-
-const IndexTuple = Union{Tuple, NamedTuple}
-
-"""
-    IndexSpace(interval, boundingrect, nrows)
-
-Metadata about an `NDSparse`, a chunk of a DNDSparse.
-
-- `interval`: An `Interval` object with the first and the last index tuples.
-- `boundingrect`: An `Interval` object with the lowest and the highest indices as tuples.
-- `nrows`: A `Nullable{Int}` of number of rows in the NDSparse, if knowable
-           (See design doc section on "Knowability of chunk size")
-"""
-struct IndexSpace{T<:IndexTuple}
-    interval::Interval{T}
-    boundingrect::Interval{T}
-    nrows::Nullable{Int}
-end
 
 boundingrect(x::IndexSpace) = x.boundingrect
 interval(x::IndexSpace) = x.interval
@@ -36,7 +13,7 @@ Can be constructed using [loadfiles](@ref),
 [ingest](@ref) or [distribute](@ref)
 """
 struct DNDSparse{K,V}
-    subdomains::Vector{IndexSpace{K}}
+    domains::Vector{IndexSpace{K}}
     chunks::Vector
 end
 
@@ -245,18 +222,6 @@ function index_spaces(t::NDSparse)
     map(IndexSpace, intervals, boundingrects, t.data.columns.length)
 end
 
-function trylength(t::DNDSparse)
-    len = Nullable(0)
-    for l in map(x->x.nrows, t.subdomains)
-        if !isnull(l) && !isnull(len)
-            len = Nullable(get(len) + get(l))
-        else
-            return Nullable{Int}()
-        end
-    end
-    return len
-end
-
 """
 The length of the `DNDSparse` if it can be computed. Will throw an error if not.
 You can get the length of such tables after calling [`compute`](@ref) on them.
@@ -291,35 +256,35 @@ function _has_overlaps(firsts, lasts, closed)
     return false
 end
 
-function has_overlaps(subdomains, closed=false)
-    _has_overlaps(first.(subdomains), last.(subdomains), closed)
+function has_overlaps(domains, closed=false)
+    _has_overlaps(first.(domains), last.(domains), closed)
 end
 
-function has_overlaps(subdomains, dims::AbstractVector)
+function has_overlaps(domains, dims::AbstractVector)
     sub(x) = x[dims]
-    fs = sub.(first.(subdomains))
-    ls = sub.(last.(subdomains))
+    fs = sub.(first.(domains))
+    ls = sub.(last.(domains))
     _has_overlaps(fs, ls, true)
 end
 
 function with_overlaps(f, t::DNDSparse{K,V}, closed=false) where {K,V}
-    subdomains = t.subdomains
+    domains = t.domains
     chunks = t.chunks
 
-    if isempty(subdomains)
+    if isempty(domains)
         return t
     end
 
-    if !issorted(subdomains, by=first)
-        perm = sortperm(subdomains, by = first)
-        subdomains = subdomains[perm]
+    if !issorted(domains, by=first)
+        perm = sortperm(domains, by = first)
+        domains = domains[perm]
         chunks = chunks[perm]
     end
 
-    stack = [subdomains[1]]
+    stack = [domains[1]]
     groups = [[1]]
-    for i in 2:length(subdomains)
-        sub = subdomains[i]
+    for i in 2:length(domains)
+        sub = domains[i]
         if hasoverlap(stack[end].interval, sub.interval)
             stack[end] = merge(stack[end], sub)
             push!(groups[end], i)
@@ -333,25 +298,19 @@ function with_overlaps(f, t::DNDSparse{K,V}, closed=false) where {K,V}
     DNDSparse{K,V}(stack, cs)
 end
 
-"""
-`fromchunks(chunks::AbstractArray, [subdomains::AbstracArray]; allowoverlap=false)`
-
-Convenience function to create a DNDSparse from an array of chunks.
-The chunks must be non-Thunks. Omits empty chunks in the output.
-"""
-function fromchunks(chunks::AbstractArray,
-                    subdomains::AbstractArray = map(domain, chunks);
+function fromchunks(::Type{<:NDSparse}, chunks::AbstractArray,
+                    domains::AbstractArray = map(domain, chunks);
                     KV = getkvtypes(chunks),
                     closed = false,
                     allowoverlap = false)
 
-    nzidxs = find(x->!isempty(x), subdomains)
-    subdomains = subdomains[nzidxs]
+    nzidxs = find(x->!isempty(x), domains)
+    domains = domains[nzidxs]
 
-    dt = DNDSparse{KV...}(subdomains, chunks[nzidxs])
+    dt = DNDSparse{KV...}(domains, chunks[nzidxs])
 
-    if !allowoverlap && has_overlaps(subdomains, closed)
-        return rechunk(dt, closed=closed)
+    if !allowoverlap && has_overlaps(domains, closed)
+        return reindex(dt, closed=closed)
     else
         return dt
     end
@@ -408,9 +367,9 @@ function distribute(nds::NDSparse{V}, rowgroups::AbstractArray;
     # sure that the parts get distributed instead of being left on
     # the master process - which would lead to all operations being serial.
     chunks = map(r->delayed(identity)(subtable(nds, r)), ranges)
-    subdomains = map(r->subindexspace(nds, r), ranges)
+    domains = map(r->subindexspace(nds, r), ranges)
     realK = eltypes(typeof(nds.index.columns))
-    cache_thunks(fromchunks(chunks, subdomains, KV = (realK, V),
+    cache_thunks(fromchunks(chunks, domains, KV = (realK, V),
                             allowoverlap=allowoverlap, closed=closed))
 end
 
@@ -442,9 +401,9 @@ internally by many DNDSparse operations.
 function mapchunks(f, t::DNDSparse{K,V}; keeplengths=true) where {K,V}
     chunks = map(delayed(f), t.chunks)
     if keeplengths
-        DNDSparse{K, V}(t.subdomains, chunks)
+        DNDSparse{K, V}(t.domains, chunks)
     else
-        DNDSparse{K, V}(map(null_length, t.subdomains), chunks)
+        DNDSparse{K, V}(map(null_length, t.domains), chunks)
     end
 end
 
@@ -457,9 +416,9 @@ function subtable{K, V}(t::DNDSparse{K,V}, idx::UnitRange)
         t = compute(t)
     end
     if isempty(idx)
-        return DNDSparse{K, V}(similar(t.subdomains, 0), similar(t.chunks, 0))
+        return DNDSparse{K, V}(similar(t.domains, 0), similar(t.chunks, 0))
     end
-    ls = map(x->get(nrows(x)), t.subdomains)
+    ls = map(x->get(nrows(x)), t.domains)
     cumls = cumsum(ls)
     i = searchsortedlast(cumls, first(idx))
     j = searchsortedfirst(cumls, last(idx))
@@ -468,7 +427,7 @@ function subtable{K, V}(t::DNDSparse{K,V}, idx::UnitRange)
     strt = first(idx) - get(cumls, i-1, 0)
     fin = cumls[j] - last(idx)
 
-    ds = t.subdomains[i:j]
+    ds = t.domains[i:j]
     cs = convert(Vector{Any}, t.chunks[i:j])
     if i==j
         cs[1] = delayed(x->subtable(x, strt:length(x)-fin))(cs[1])
@@ -482,6 +441,31 @@ function subtable{K, V}(t::DNDSparse{K,V}, idx::UnitRange)
     end
 
     DNDSparse{K,V}(ds, cs)
+end
+
+import IndexedTables: showtable
+
+function Base.show(io::IO, big::DNDSparse)
+    h, w = displaysize(io)
+    showrows = h - 5 # This will trigger an ellipsis when there's
+                     # more to see than the screen fits
+    t = first(Iterators.partition(big, showrows))
+    if !(values(t) isa Columns)
+        cnames = colnames(keys(t))
+        eltypeheader = "$(eltype(t))"
+    else
+        cnames = colnames(t)
+        nf = nfields(eltype(t))
+        if eltype(t) <: NamedTuple
+            eltypeheader = "$(nf) field named tuples"
+        else
+            eltypeheader = "$(nf)-tuples"
+        end
+    end
+    len = trylength(big)
+    vals = isnull(len) ? "of" : "with $(get(len)) values"
+    header = "$(ndims(t))-d Distributed NDSparse $vals ($eltypeheader) in $(length(big.chunks)) chunks:"
+    showtable(io, t; header=header, divider=ndims(t), ellipsis=:end)
 end
 
 Base.@deprecate_binding DTable DNDSparse

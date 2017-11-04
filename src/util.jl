@@ -42,8 +42,12 @@ function treereduce(f, xs, v0=xs[1])
 end
 
 
-function subtable(nds, r)
+function subtable(nds::NDSparse, r)
     NDSparse(keys(nds)[r], values(nds)[r], presorted=true, copy=false)
+end
+
+function subtable(t::NextTable, r)
+    t[r]
 end
 
 function extrema_range(x::AbstractArray{T}, r::UnitRange) where T

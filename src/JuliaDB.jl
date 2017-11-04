@@ -3,20 +3,21 @@ module JuliaDB
 
 using IndexedTables, Dagger, NamedTuples
 
-import IndexedTables: NDSparse
-
+import Base: collect, select, join
+import IndexedTables: NDSparse, NextTable, Tup
 import TextParse: csvread
 import IndexedTables: Table
 import Dagger: compute, distribute, free!, gather, load, save
 
 # re-export
-export IndexedTable, NDSparse, NextTable, Columns
+export IndexedTable, NDSparse, NextTable, Columns,
+       table, ndsparse, compute, groupby, groupreduce
 
 include("util.jl")
 include("serialize.jl")
 include("interval.jl")
-include("dndsparse.jl")
 include("table/table.jl")
+include("dndsparse.jl")
 include("iteration.jl")
 include("sort.jl")
 
