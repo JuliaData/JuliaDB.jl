@@ -445,12 +445,7 @@ end
 The names of the columns of the `DTable`
 """
 function names(df::JuliaDB.DTable)
-    tmpdf = JuliaDB.take_n(df,1)
-    if typeof(tmpdf.index.columns) <: Tuple # this means the index is not a namedTuple
-        return keys(tmpdf.data.columns)
-    else
-         return vcat(keys(tmpdf.index.columns), keys(tmpdf.data.columns))
-    end
+    fieldnames(eltype(df))
 end
 
 function subtable{K, V}(t::DTable{K,V}, idx::UnitRange)
