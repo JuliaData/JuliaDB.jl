@@ -175,6 +175,10 @@ end
 function column(t::TableLike, name)
     extractarray(t, x -> column(x, name))
 end
+function column(t::TableLike, xs::AbstractArray)
+    # distribute(xs, rows(t).subdomains)
+    xs
+end
 
 function pairs(t::DNDSparse)
     extractarray(t, x -> map(Pair, x.index, x.data))

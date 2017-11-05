@@ -1,5 +1,5 @@
 import IndexedTables: NextTable, table, colnames, reindex,
-                      excludecols, showtable
+                      excludecols, showtable, ColDict
 import Dagger: domainchunks, chunks
 
 # re-export the essentials
@@ -85,7 +85,16 @@ function table(::Val{:distributed}, tup::Tup; chunks=nothing, kwargs...)
 end
 
 Base.eltype(dt::DNextTable{T}) where {T} = T
-colnames{T}(t::DNextTable{T}) = fieldnames(T)
+function colnames{T}(t::DNextTable{T})
+    fieldnames(T)
+end
+
+ColDict(t::DNextTable) = ColDict(copy(t.pkey), t,
+                                copy(colnames(t)), Any[columns(t)...])
+
+function Base.getindex(d::ColDict{<:DNextTable})
+    table(d.columns...; names=d.names, pkey=d.pkey)
+end
 
 function trylength(t)::Nullable{Int}
     len = 0
@@ -127,7 +136,7 @@ function fromchunks(::Type{<:AbstractVector}, cs::AbstractArray, args...; kwargs
     lengths = length.(domain.(cs))
     dmnchunks = DomainBlocks((1,), (cumsum(lengths),))
     T = reduce(_promote_type, eltype(chunktype(cs[1])),
-                              eltype.(chunktype.(cs)))
+               eltype.(chunktype.(cs))[2:end])
     DArray(T, ArrayDomain(1:sum(lengths)),
            dmnchunks, cs, (i, x...)->vcat(x...))
 end

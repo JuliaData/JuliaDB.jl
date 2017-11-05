@@ -11,7 +11,8 @@ import Dagger: compute, distribute, free!, gather, load, save
 
 # re-export
 export IndexedTable, NDSparse, NextTable, Columns,
-       table, ndsparse, compute, groupby, groupreduce
+       table, ndsparse, compute, groupby, groupreduce,
+       ColDict, insertafter!, insertbefore!, @cols
 
 include("util.jl")
 include("serialize.jl")
