@@ -15,9 +15,7 @@ We recognized the need for an all-Julia, end-to-end tool that can
 
 We built JuliaDB to fill this void.
 
-JuliaDB is Julia all the way down. This means queries can be composed with Julia code that may use a vast ecosystem of packages.
-
-JuliaDB provides a distributed-array-like data model where the sorted index data comprises the dimensions of the array. It is based on [Dagger](https://github.com/JuliaParallel/Dagger.jl) and [IndexedTables](https://github.com/JuliaComputing/IndexedTables.jl).  Over time, we hope to extend the data model to represent dense arrays and other Julia array types like [`AxisArrays`](https://github.com/JuliaArrays/AxisArrays.jl). On top of this distributed-array-like model, JuliaDB also provides all the familiar relational database operations that are optimized to use the index.
+JuliaDB provides distributed table and array datastructures with convenient functions to load data from CSV. JuliaDB is Julia all the way down. This means queries can be composed with Julia code that may use a vast ecosystem of packages.
 
 ## Getting started
 
@@ -38,5 +36,8 @@ Multiple processes may not be benificial for datasets with less than a few milli
 ## Resources
 
 - [API Reference](api/index.html)
+- [Tutorial](tutorial.html)
+- [Issue tracker](https://github.com/JuliaComputing/JuliaDB.jl/issues)
+- [Source code](https://github.com/JuliaComputing/JuliaDB.jl)
 - [Slack channel]()
 

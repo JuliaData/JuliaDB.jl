@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css?family=Source+Code+Pro|Source+Sans+Pro|Muli:400,600');
+@import url('https://fonts.googleapis.com/css?family=Source+Code+Pro|Lato:400,600|Roboto+Slab:200,400');
 
 
 pre, code {
@@ -7,7 +7,9 @@ pre, code {
 }
 
 pre {
-    padding: 1.5em;
+    background: inherit;
+    border: none;
+    padding: 0 1em;
 }
 
 code {
@@ -15,7 +17,8 @@ code {
 }
 
 body {
-    font-family: 'Source Sans Pro';
+    font-family: 'Lato';
+    font-size: 14px;
     color: #333;
 }
 
@@ -44,22 +47,29 @@ a:visited {
     height: 32px;
 }
 nav.toc ul a.toctext {
+    font-size: 12px;
     color: #3B8686;
 }
 nav.toc {
+    margin-left: 12px;
+    width: 200px;
     background: #fff;
     box-shadow: none;
-    font-family: Muli;
+    font-family: 'Lato';
 }
 .admonition-title {
-    font-family: Muli;
+    font-family: 'Lato';
 }
 #docs header hr {
     display: none;
 }
 
 #docs header {
-    font-family: Muli;
+    font-family: 'Lato';
+}
+
+#docs {
+    margin-left: 212px;
 }
 
 nav.toc li.current > .toctext {
@@ -79,17 +89,19 @@ nav.toc ul.internal a.toctext:hover {
     color: #fff;
 }
 h1,h2,h3{
-    font-family: 'Muli';
+    font-family: 'Roboto Slab';
+    padding-left: 7px;
 }
 h2 {
     margin-top: 32px;
-    font-size: 1.66em;
-    padding-bottom: 8px;
-    border-bottom: 1px solid #eeeeee;
+    font-size: 1.4em;
+    font-weight: 300;
+    border-bottom: none;
 }
 .toc h1 {
     font-size: 40px;
-    font-family: Muli;
+    font-family: 'Lato';
+    font-weight:200;
     color: #79BD9A;
 }
 h2 a.nav-anchor, h2 a.nav-anchor:visited {
@@ -101,4 +113,8 @@ h3 a.nav-anchor, h3 a.nav-anchor:visited, h2 a.nav-anchor:hover {
 
 p {
     line-height: 1.66em;
+}
+
+article section.docstring {
+    border: none;
 }

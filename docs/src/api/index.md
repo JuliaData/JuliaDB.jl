@@ -1,55 +1,58 @@
-```@meta
-CurrentModule = JuliaDB
-```
-
 # JuliaDB API Reference
 
 ## [Data structures](@ref)
 
-- [`Table`](@ref) - JuliaDB's table datastructure
-- [`NDSparse`](@ref) - N-dimensional sparse array datastructure
-- [`ColDict`](@ref) - treat a table as a mutable dictionary of columns
+Core data structures and indexing.
 
-## Indexing
-
-- `reindex` - set a different index for a dataset
-- `rechunk` - re-distribute a distributed dataset
+- [Table](@ref NextTable) - JuliaDB's table datastructure
+- [NDSparse](@ref) - N-dimensional sparse array datastructure
+- [reindex](@ref) - set a different index for a dataset
+- [rechunk](@ref) - re-distribute a distributed dataset
 
 ## [Selection](@ref)
 
-- Conventions in selecting
-- `columns` - extract structs of column vectors
-- `rows` - extract vector of structs
-- `keys` - iterate NDSparse by keys
-- `values` - iterate NDSparse by values
-- `map` - apply a function row-wise
-- `filter` - filter rows
-- `dropna` - drop rows with NA values
+Select subsets of columns, map, reduce and filter.
+
+- [Conventions](@ref)
+- [map](@ref) - apply a function row-wise
+- [filter](@ref) - filter rows
+- [dropna](@ref) - drop rows with NA values
+- [columns](@ref) - extract struct of column vectors
+- [rows](@ref) - extract vector of structs
+- [keys](@ref) - iterate NDSparse by keys
+- [values](@ref) - iterate NDSparse by values
 
 ## [Column manipulation](@ref)
 
-- `setcol` - replace a column
-- `movecol` - rename or move column
-- `addcol` - insert a new column
-- `dropcol` - remove a column
+Treat a table as a mutable dictionary of columns.
 
-## Aggregation
+- [ColDict](@ref) - a dictionary of columns
+- [@cols](@ref) - to modify a table with imperative syntax
+- [push!](@ref) - add a column at the end
+- [setindex!](@ref) - replace a column
+- [insert!](@ref) - insert a column
+- [insertafter!](@ref) - insert a column after another
+- [insertbefore!](@ref) - insert a column before another
+- [`dict[]`](@ref getindex(::ColDict, x...)) - get the table from dict.
 
-- `reduce` - aggregate a dataset using functions or OnlineStats
-- `groupreduce` - aggregate groups of rows
-- `groupby` - collect groups of rows together
+## [Aggregation](@ref)
 
-## Join
+Calculate statistics using OnlineStats, grouped aggregation.
 
-- `join` - join two datasets
-- `merge` - merge two datasets
+- [reduce](@ref) - aggregate a dataset using functions or OnlineStats
+- [groupreduce](@ref) - aggregate groups of rows
+- [groupby](@ref) - collect groups of rows together
+- [reducedim](@ref) - drop a dimension in NDSparse and aggregate
 
-## Updates
+## [Joins](@ref)
 
-- `append` - append new data into a table
+- [join](@ref) - join two datasets
+- [groupjoin](@ref) - join two datasets by grouping (no nullables!)
+- [merge](@ref) - merge two datasets
+- [asofjoin](@ref) - time series asof-join
 
-## Loading and saving
+## [Loading and saving](@ref)
 
-- `loadtable` - load a Table from CSV or saved datasets
-- `loadndsparse` - load an NDSparse from CSV or saved datasets
-- `save` - save a Table or NDSparse
+- [loadtable](@ref) - load a Table from CSV or binary data
+- [loadndsparse](@ref) - load an NDSparse from CSV or binary data
+- [save](@ref) - save a Table or NDSparse to in an efficient format

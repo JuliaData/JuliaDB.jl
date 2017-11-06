@@ -9,6 +9,10 @@ CurrentModule = IndexedTables
 NextTable
 ```
 
+```jldoctest
+
+```
+
 A Table is constructed using the `table` function.
 
 ```@docs
