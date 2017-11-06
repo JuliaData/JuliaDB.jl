@@ -160,6 +160,13 @@ function fromchunks(::Type{<:NextTable}, chunks::AbstractArray,
     DNextTable{T, K}(pkey, domains, chunks[nzidxs])
 end
 
+function Base.map(f, t::DNextTable; select=nothing)
+    # TODO: fix when select has a user-supplied vector
+    delayedmap(t.chunks) do x
+        map(f, x; select=select === nothing ? rows(x) : select)
+    end |> fromchunks
+end
+
 function promote_eltypes(ts::AbstractArray)
     reduce(_promote_type, ts)
 end
