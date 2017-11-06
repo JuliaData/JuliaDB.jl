@@ -10,9 +10,10 @@ import IndexedTables: Table
 import Dagger: compute, distribute, free!, gather, load, save
 
 # re-export
-export IndexedTable, NDSparse, NextTable, Columns,
+export IndexedTable, NDSparse, NextTable, Columns, colnames,
        table, ndsparse, compute, groupby, groupreduce,
-       ColDict, insertafter!, insertbefore!, @cols
+       ColDict, insertafter!, insertbefore!, @cols, setcol, pushcol,
+       popcol, insertcol, insertcolafter, insertcolbefore, permutecols, renamecol
 
 include("util.jl")
 include("serialize.jl")

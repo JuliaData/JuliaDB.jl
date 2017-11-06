@@ -1,5 +1,6 @@
 import IndexedTables: NextTable, table, colnames, reindex,
-                      excludecols, showtable, ColDict
+                      excludecols, showtable, ColDict,
+                      AbstractIndexedTable
 import Dagger: domainchunks, chunks
 
 # re-export the essentials
@@ -25,7 +26,7 @@ end
 """
 A distributed table
 """
-struct DNextTable{T,K}
+struct DNextTable{T,K} <: AbstractIndexedTable
     # primary key columns
     pkey::Vector{Int}
     # extent of values in the pkeys
@@ -84,16 +85,22 @@ function table(::Val{:distributed}, tup::Tup; chunks=nothing, kwargs...)
     fromchunks(cs)
 end
 
+# Copying constructor
+function table(t::DNextTable;
+               columns=t.columns,
+               pkey=t.pkey,
+               presorted=false,
+               copy=true)
+
+    table(columns,
+          pkey=pkey,
+          presorted=presorted,
+          copy=copy)
+end
+
 Base.eltype(dt::DNextTable{T}) where {T} = T
 function colnames{T}(t::DNextTable{T})
     fieldnames(T)
-end
-
-ColDict(t::DNextTable) = ColDict(copy(t.pkey), t,
-                                copy(colnames(t)), Any[columns(t)...])
-
-function Base.getindex(d::ColDict{<:DNextTable})
-    table(d.columns...; names=d.names, pkey=d.pkey)
 end
 
 function trylength(t)::Nullable{Int}
