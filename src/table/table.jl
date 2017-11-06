@@ -167,6 +167,26 @@ function Base.map(f, t::DNextTable; select=nothing)
     end |> fromchunks
 end
 
+import Base.reduce
+
+function reduce(f, t::DNextTable; select=nothing)
+    xs = delayedmap(t.chunks) do x
+        f = isa(f, OnlineStat) ? copy(f) : f # required for > 1 chunks on the same proc
+        reduce(f, x; select=select === nothing ? rows(x) : select)
+    end
+    g = isa(f, OnlineStat) ? merge : f
+    collect(treereduce(delayed(g), xs))
+end
+
+function reduce(f, t::DNextTable, v0; select=nothing)
+    xs = delayedmap(t.chunks) do x
+        f = isa(f, OnlineStat) ? copy(f) : f
+        reduce(f, x; select=select === nothing ? rows(x) : select)
+    end
+    g = isa(f, OnlineStat) ? merge : f
+    merge(collect(treereduce(delayed(g), xs)), v0)
+end
+
 function promote_eltypes(ts::AbstractArray)
     reduce(_promote_type, ts)
 end

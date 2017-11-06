@@ -1,7 +1,7 @@
 __precompile__()
 module JuliaDB
 
-using IndexedTables, Dagger, NamedTuples
+using IndexedTables, Dagger, NamedTuples, OnlineStatsBase
 
 import Base: collect, select, join
 import IndexedTables: NextTable, table, NDSparse, ndsparse, Tup
