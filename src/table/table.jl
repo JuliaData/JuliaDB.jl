@@ -39,7 +39,7 @@ function Dagger.domain(t::NextTable)
     T = eltype(ks)
 
     if isempty(t)
-        return EmptySpace{T}()
+        return t.pkey => EmptySpace{T}()
     end
 
     wrap = T<:NamedTuple ? T : tuple
@@ -148,31 +148,43 @@ function fromchunks(::Type{<:AbstractVector}, cs::AbstractArray, args...; kwargs
            dmnchunks, cs, (i, x...)->vcat(x...))
 end
 
-function fromchunks(::Type{<:NextTable}, chunks::AbstractArray,
+function fromchunks(::Type{<:NextTable}, chunks::AbstractArray;
                     domains::AbstractArray = last.(domain.(chunks)),
-                    pkey=first(domain(first(chunks)));
+                    pkey=first(domain(first(chunks))),
                     K = promote_eltypes(eltype.(domains)),
                     T = promote_eltypes(eltype.(chunktype.(chunks))))
 
-    nzidxs = find(x->!isempty(x), domains)
+    nzidxs = find(!isempty, domains)
     domains = domains[nzidxs]
 
     DNextTable{T, K}(pkey, domains, chunks[nzidxs])
 end
 
-function Base.map(f, t::DNextTable; select=nothing)
+function Base.map(f, t::DNextTable; select=(colnames(t)...))
     # TODO: fix when select has a user-supplied vector
     delayedmap(t.chunks) do x
-        map(f, x; select=select === nothing ? rows(x) : select)
+        map(f, x; select=select)
+    end |> fromchunks
+end
+
+function DataValues.dropna(t::DNextTable, select=(colnames(t)...))
+    delayedmap(t.chunks) do x
+        dropna(x, select)
+    end |> fromchunks
+end
+
+function Base.filter(f, t::DNextTable; select=(colnames(t)...))
+    delayedmap(t.chunks) do x
+        filter(f, x; select=select)
     end |> fromchunks
 end
 
 import Base.reduce
 
-function reduce(f, t::DNextTable; select=nothing)
+function reduce(f, t::DNextTable; select=(colnames(t)...))
     xs = delayedmap(t.chunks) do x
         f = isa(f, OnlineStat) ? copy(f) : f # required for > 1 chunks on the same proc
-        reduce(f, x; select=select === nothing ? rows(x) : select)
+        reduce(f, x; select=select)
     end
     g = isa(f, OnlineStat) ? merge : f
     collect(treereduce(delayed(g), xs))

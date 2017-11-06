@@ -8,12 +8,13 @@ import IndexedTables: NextTable, table, NDSparse, ndsparse, Tup
 import TextParse: csvread
 import IndexedTables: Table
 import Dagger: compute, distribute, free!, gather, load, save
+using DataValues
 
 # re-export
 export IndexedTable, NDSparse, NextTable, Columns, colnames,
        table, ndsparse, compute, groupby, groupreduce,
        ColDict, insertafter!, insertbefore!, @cols, setcol, pushcol,
-       popcol, insertcol, insertcolafter, insertcolbefore, permutecols, renamecol
+       popcol, insertcol, insertcolafter, insertcolbefore, permutecols, renamecol, NA, dropna
 
 include("util.jl")
 include("serialize.jl")
