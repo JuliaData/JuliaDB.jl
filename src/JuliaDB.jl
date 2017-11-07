@@ -21,6 +21,7 @@ include("serialize.jl")
 include("interval.jl")
 include("table/table.jl")
 include("dndsparse.jl")
+include("table/groupby.jl")
 include("iteration.jl")
 include("sort.jl")
 
