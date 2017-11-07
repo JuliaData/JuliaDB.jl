@@ -1,24 +1,40 @@
-@import url('https://fonts.googleapis.com/css?family=Source+Code+Pro|Lato:400,600|Roboto+Slab:200,400');
+@import url('https://fonts.googleapis.com/css?family=Fira+Mono|Lato:400,600|Roboto+Slab:200,400');
 
 
 pre, code {
-  font-family: 'Source Code Pro', monospace !important;
+  font-family: 'Fira Mono', monospace !important;
   font-size: 0.95em;
+}
+
+code {
+    font-weight: bold;
 }
 
 pre {
     background: inherit;
+    background: #f1f1f1;
     border: none;
-    padding: 0 1em;
+    padding: 0;
 }
 
-code {
+pre > code {
+    font-weight: normal;
+    border: 1px solid #f1f1f1;
+    border-radius: 4px;
+    padding: 1em !important;
+}
+
+pre > code.language-none {
     padding: 0.1em 0.25em;
+    border: none;
+}
+code {
+    background: none;
 }
 
 body {
     font-family: 'Lato';
-    font-size: 14px;
+    font-size: 15px;
     color: #333;
 }
 
@@ -69,7 +85,7 @@ nav.toc {
 }
 
 #docs {
-    margin-left: 212px;
+    margin-left: 232px;
 }
 
 nav.toc li.current > .toctext {
@@ -90,19 +106,18 @@ nav.toc ul.internal a.toctext:hover {
 }
 h1,h2,h3{
     font-family: 'Roboto Slab';
-    padding-left: 7px;
+    padding: 0;
 }
 h2 {
-    margin-top: 32px;
+    margin: 0;
+    padding: 0;
     font-size: 1.4em;
-    font-weight: 300;
     border-bottom: none;
 }
 .toc h1 {
     font-size: 40px;
-    font-family: 'Lato';
-    font-weight:200;
-    color: #79BD9A;
+    font-family: 'Roboto Slab';
+    font-weight: 300;
 }
 h2 a.nav-anchor, h2 a.nav-anchor:visited {
     color: #0B486B;
@@ -116,5 +131,22 @@ p {
 }
 
 article section.docstring {
+    padding: 0;
     border: none;
+}
+
+.docstring-binding code {
+    background: none;
+    font-size: 1.2em;
+    padding: 0;
+}
+
+article section.docstring {
+    margin-bottom: 24px;
+    padding-bottom: 24px;
+    border-bottom: 1px solid #eee;
+}
+
+article section.docstring a.source-link {
+    display: none;
 }

@@ -17,7 +17,7 @@ makedocs(
        "Joins" => "api/joins.md",
        "Loading and Saving" => "api/io.md",
    ],
-   assets = ["assets/custom.css"]
+   assets = ["assets/custom.css", "assets/custom.js"]
 )
 
 deploydocs(

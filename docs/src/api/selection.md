@@ -1,32 +1,53 @@
 ```@meta
 CurrentModule = IndexedTables
+DocTestSetup = quote
+    using JuliaDB
+end
 ```
 # Selection
 
-## Conventions
+## Select
 
-## Accessors
+This section deals with the ways of selecting a column or a subset of columns.
 
-```@docs
-columns
-```
-```@docs
-rows
-```
-```@docs
-keys(t::NextTable, args...)
+```@index
 ```
 
 ```@docs
-values(t::NextTable, args...)
+select
 ```
+
+```@docs
+columns(t)
+```
+
+```@docs
+columns(t, selection)
+```
+
+```@docs
+rows(t)
+```
+
+```@docs
+rows(t, selection)
+```
+
+## Map
 
 ```@docs
 map(f, t::NextTable; kwargs...)
-map(f, t::NDSparse; kwargs...)
 ```
 
 ```@docs
+map(f, t::NDSparse; kwargs...)
+```
+## Filter
+
+```@docs
 filter(f, t::NextTable)
+```
+
+```@docs
 filter(f, t::NDSparse)
 ```

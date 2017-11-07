@@ -4,47 +4,44 @@
 
 Core data structures and indexing.
 
-- [Table](@ref NextTable) - JuliaDB's table datastructure
+- [Table](@ref) - JuliaDB's table datastructure
 - [NDSparse](@ref) - N-dimensional sparse array datastructure
 - [reindex](@ref) - set a different index for a dataset
 - [rechunk](@ref) - re-distribute a distributed dataset
 
 ## [Selection](@ref)
 
-Select subsets of columns, map, reduce and filter.
+Select subsets of columns, map, and filter.
 
-- [Conventions](@ref)
+- [select](@ref) - select and transform a column or a subset of columns
 - [map](@ref) - apply a function row-wise
 - [filter](@ref) - filter rows
 - [dropna](@ref) - drop rows with NA values
 - [columns](@ref) - extract struct of column vectors
 - [rows](@ref) - extract vector of structs
-- [keys](@ref) - iterate NDSparse by keys
-- [values](@ref) - iterate NDSparse by values
+- [keys](@ref) - vector of keys of an NDSparse
+- [values](@ref) - vector of values of an NDSparse
 
-## [Column manipulation](@ref)
+Derivatives of [`select`](@ref) that are convenient for modifying a table's columns.
 
-Treat a table as a mutable dictionary of columns.
-
-- [ColDict](@ref) - a dictionary of columns
-- [@cols](@ref) - to modify a table with imperative syntax
-- [push!](@ref) - add a column at the end
-- [setindex!](@ref) - replace a column
-- [insert!](@ref) - insert a column
-- [insertafter!](@ref) - insert a column after another
-- [insertbefore!](@ref) - insert a column before another
-- [`dict[]`](@ref getindex(::ColDict, x...)) - get the table from dict.
+- [pushcol](@ref) - add a column at the end
+- [setcol](@ref) - replace a column
+- [insertcol](@ref) - insert a column
+- [insertcolafter](@ref) - insert a column after another
+- [insertcolbefore](@ref) - insert a column before another
 
 ## [Aggregation](@ref)
 
 Calculate statistics using OnlineStats, grouped aggregation.
 
 - [reduce](@ref) - aggregate a dataset using functions or OnlineStats
-- [groupreduce](@ref) - aggregate groups of rows
+- [groupreduce](@ref) - aggregate groups of rows using functions or OnlineStats
 - [groupby](@ref) - collect groups of rows together
 - [reducedim](@ref) - drop a dimension in NDSparse and aggregate
 
 ## [Joins](@ref)
+
+Combine two or more tables in various join and merge operations.
 
 - [join](@ref) - join two datasets
 - [groupjoin](@ref) - join two datasets by grouping (no nullables!)
