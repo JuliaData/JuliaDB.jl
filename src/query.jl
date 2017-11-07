@@ -7,52 +7,6 @@ import Base: reducedim, mapslices
 export pick
 
 """
-    select(t::DNDSparse, conditions::Pair...)
-
-Filter based on index columns. Conditions are accepted as column-function pairs.
-
-Example: `select(t, 1 => x->x>10, 3 => x->x!=10 ...)`
-"""
-function Base.select(t::DNDSparse, conditions::Pair...)
-    cache_thunks(mapchunks(x -> select(x, conditions...), t, keeplengths=false))
-end
-
-"""
-    select(t::DNDSparse, which...; agg)
-
-Returns a new DNDSparse where only a subset of the index columns (specified by `which`) are kept.
-
-The `agg` keyword argument is a function which specifies how entries with
-equal indices should be aggregated. If `agg` is unspecified, then the repeating
-indices are kept in the output, you can then aggregate using [`aggregate`](@ref)
-"""
-function Base.select(t::DNDSparse{K,V}, which::DimName...; agg=nothing) where {K,V}
-
-    # remove dimensions from bounding boxes
-    sub_dims = [which...]
-    subinterval(intv, idx) = Interval(first(intv)[idx], last(intv)[idx])
-    domains = map(t.domains) do idxspace
-        # We replace the interval with the sub-bounding box as a conservative
-        # estimate of the interval...
-        # `subinterval(idxspace.interval, sub_dims)` would be wrong
-        subbox = subinterval(idxspace.boundingrect, sub_dims)
-        IndexSpace(subbox, subbox, Nullable{Int}())
-    end
-
-    chunks = map(delayed(x -> select(x, which...; agg=agg)), t.chunks)
-
-    t1 = DNDSparse{eltype(domains[1]), V}(domains, chunks)
-
-    if agg !== nothing && has_overlaps(domains, true)
-        with_overlaps(t1) do cs
-            treereduce(delayed((x,y) -> merge(x, y, agg=agg)), cs)
-        end
-    else
-        t1
-    end |> cache_thunks
-end
-
-"""
     aggregate(f, t::DNDSparse)
 
 Combines adjacent rows with equal indices using the given

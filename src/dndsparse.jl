@@ -17,6 +17,8 @@ struct DNDSparse{K,V}
     chunks::Vector
 end
 
+const DDataset = Union{DNextTable, DNDSparse}
+
 function ndsparse(::Val{:distributed}, ks::Tup,
                   vs::Union{Tup, AbstractArray};
                   chunks=nothing, kwargs...)
@@ -316,7 +318,7 @@ function has_overlaps(domains, dims::AbstractVector)
     _has_overlaps(fs, ls, true)
 end
 
-function with_overlaps(f, t::DNDSparse{K,V}, closed=false) where {K,V}
+function with_overlaps(f, t::DDataset, closed=false)
     domains = t.domains
     chunks = t.chunks
 
@@ -344,7 +346,7 @@ function with_overlaps(f, t::DNDSparse{K,V}, closed=false) where {K,V}
     end
 
     cs = collect([f(chunks[group]) for group in groups])
-    DNDSparse{K,V}(stack, cs)
+    fromchunks(cs)
 end
 
 function fromchunks(::Type{<:NDSparse}, chunks::AbstractArray,

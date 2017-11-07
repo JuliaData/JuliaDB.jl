@@ -1,43 +1,48 @@
-import IndexedTables: pkeynames, excludecols, primarykeys, reindex
+import IndexedTables: pkeynames, excludecols, pkeys, reindex
 import Dagger: dsort_chunks
 
-function reindex(dt::DNDSparse, by=pkeynames(dt), select=excludecols(dt, by);
-                 nchunks=nworkers(),
+export reindex, rechunk
+
+using StatsBase
+
+function reindex(t::DDataset, by=pkeynames(t), select=excludecols(t, by))
+    delayedmap(t.chunks) do c
+        reindex(c, by, select)
+    end |> fromchunks
+end
+
+"""
+`rechunk(t::Union{DTable, DNDSparse}[, by[, select]];
+         chunks, closed, nsamples, batchsize)`
+
+Re-chunk a distributed Table or NDSparse.
+"""
+function rechunk(dt::DDataset,
+                 by=pkeynames(dt),
+                 select=excludecols(dt, by);
+
+                 chunks=nworkers(),
                  closed=true,
                  nsamples=2000,
                  batchsize=nworkers())
 
     cs = dt.chunks
 
-    function sortandsample_table(data, nsamples)
-        r = sample(1:length(data), min(length(data), nsamples), replace=false, ordered=true)
-        # TODO: check to see if reindex is redundant
+    function sortandsample(data, nsamples)
+        r = sample(1:length(data), min(length(data), nsamples),
+                   replace=false, ordered=true)
+
         sorted = reindex(data, by, select)
-        (tochunk(sorted), primarykeys(sorted)[r])
-    end
-    cs1 = dsort_chunks(cs, nchunks, nsamples, batchsize=batchsize, sortandsample=sortandsample_ndsparse, merge=_merge, by=keys, sub=subtable)
-    cs2 = compute(delayed((xs...)->[xs...]; meta=true)(cs1...))
-    fromchunks(cs2)
-end
-
-function reindex(dt::DNextTable, by=pkeynames(dt), select=excludecols(dt, by);
-                 nchunks=nworkers(),
-                 closed=true,
-                 batchsize=nworkers(),
-                 nsamples=2000)
-
-    cs = dt.chunks
-
-    function sortandsample_table(data, nsamples)
-        r = sample(1:length(data), min(length(data), nsamples), replace=false, ordered=true)
-        # TODO: check to see if reindex is redundant
-        sorted = reindex(data, by, select)
-        (tochunk(sorted), primarykeys(sorted)[r])
+        (tochunk(sorted), pkeys(sorted)[r])
     end
 
-    cs1 = dsort_chunks(cs, nchunks, nsamples, batchsize=batchsize, sortandsample=sortandsample_table, merge=_merge, by=primarykeys)
-    cs2 = compute(delayed((xs...)->[xs...]; meta=true)(cs1...))
-    tablefromchunks(cs2)
+    dsort_chunks(cs, chunks, nsamples,
+                 batchsize=batchsize,
+                 sortandsample=sortandsample,
+                 merge=_merge,
+                 by=keys,
+                 sub=subtable) |> fromchunks
+
 end
 
 ### Permutedims
