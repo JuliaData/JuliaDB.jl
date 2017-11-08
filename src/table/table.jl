@@ -1,3 +1,4 @@
+import Base:collect
 import IndexedTables: NextTable, table, colnames, reindex,
                       excludecols, showtable, ColDict,
                       AbstractIndexedTable

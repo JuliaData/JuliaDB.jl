@@ -20,7 +20,9 @@ Re-chunk a distributed Table or NDSparse.
 function rechunk(dt::DDataset,
                  by=pkeynames(dt),
                  select=excludecols(dt, by);
-
+                 splitters=nothing,
+                 chunks_presorted=false,
+                 affinities=workers(),
                  chunks=nworkers(),
                  closed=true,
                  nsamples=2000,
@@ -28,19 +30,24 @@ function rechunk(dt::DDataset,
 
     cs = dt.chunks
 
-    function sortandsample(data, nsamples)
+    function sortandsample(data, nsamples, presorted)
         r = sample(1:length(data), min(length(data), nsamples),
                    replace=false, ordered=true)
 
-        sorted = reindex(data, by, select)
-        (tochunk(sorted), pkeys(sorted)[r])
+        sorted = !presorted ? reindex(data, by, select) : data
+        chunk = !presorted ? tochunk(sorted) : nothing
+
+        (chunk, pkeys(sorted)[r])
     end
 
     dsort_chunks(cs, chunks, nsamples,
                  batchsize=batchsize,
                  sortandsample=sortandsample,
+                 affinities=affinities,
+                 splitters=splitters,
+                 chunks_presorted=chunks_presorted,
                  merge=_merge,
-                 by=keys,
+                 by=pkeys,
                  sub=subtable) |> fromchunks
 
 end
