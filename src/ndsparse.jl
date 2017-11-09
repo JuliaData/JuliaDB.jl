@@ -208,7 +208,7 @@ function Dagger.domain(nd::NDSparse)
 end
 
 function subindexspace(t::Union{NDSparse, NextTable}, r)
-    ks = primarykeys(t)
+    ks = pkeys(t)
     T = eltype(typeof(ks))
     wrap = T<:NamedTuple ? T : tuple
 

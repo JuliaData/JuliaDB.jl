@@ -10,9 +10,7 @@ import Dagger: DomainBlocks, ArrayDomain, DArray,
 
 import Base.Iterators: PartitionIterator, start, next, done
 
-const TableLike = Union{DNDSparse, DNextTable}
-
-function Iterators.partition(t::TableLike, n::Integer)
+function Iterators.partition(t::DDataset, n::Integer)
     PartitionIterator(t, n)
 end
 
@@ -22,16 +20,16 @@ struct PartIteratorState{T}
     used::Int
 end
 
-function start(p::PartitionIterator{<:TableLike})
+function start(p::PartitionIterator{<:DDataset})
     c = collect(p.c.chunks[1])
     p = PartIteratorState(1, c, 0)
 end
 
-function done(t::PartitionIterator{<:TableLike}, p::PartIteratorState)
+function done(t::PartitionIterator{<:DDataset}, p::PartIteratorState)
     p.chunkno == length(t.c.chunks) && p.used >= length(p.chunk)
 end
 
-function next(t::PartitionIterator{<:TableLike}, p::PartIteratorState)
+function next(t::PartitionIterator{<:DDataset}, p::PartIteratorState)
     if p.used + t.n <= length(p.chunk)
         # easy
         nextpart = subtable(p.chunk, p.used+1:(p.used+t.n))
@@ -124,7 +122,10 @@ function extractarray(t, f)
     fromchunks(map(delayed(f), t.chunks))
 end
 
-function columns(t::Union{TableLike, DArray}, which::Tuple...)
+# TODO: do this lazily after compute
+# technically it's not necessary to communicate here
+
+function columns(t::Union{DDataset, DArray}, which::Tuple...)
 
     cs = map(delayed(x->columns(x, which...)), t.chunks)
     f = delayed() do c
@@ -148,16 +149,56 @@ function columns(t::Union{TableLike, DArray}, which::Tuple...)
     end
 end
 
+# TODO: make sure this is a DArray of Columns!!
 Base.@pure IndexedTables.colnames(t::DArray{T}) where T<:Tup = fieldnames(T)
 
+isarrayselect(x) = x isa AbstractArray || x isa Pair{<:Any, <:AbstractArray}
+
+function dist_selector(t, f, which::Tup)
+    if any(isarrayselect, which)
+        t1 = compute(t)
+        w1 = map(which) do x
+            isarrayselect(x) ? distfor(t1, x) : x
+        end
+        # this repeats the non-chunks to all other chunks,
+        # then queries with the corresponding chunks
+        broadcast(t1.chunks, w1...) do x...
+            delayed((inp...)->f(inp[1], inp[2:end]))(x...)
+        end |> fromchunks
+    else
+        extractarray(t, x->f(x, which))
+    end
+end
+
+function dist_selector(t, f, which::AbstractArray)
+    which
+end
+
+function dist_selector(t, f, which)
+    extractarray(t, x->f(x,which))
+end
+
+function distfor(t, x::AbstractArray)
+    y = rows(t)
+    if length(y) != length(x)
+        error("Input column is not the same length as the table")
+    end
+    distribute(x, domainchunks(y)).chunks
+end
+
+function distfor(t, x::Pair{<:Any, <:AbstractArray})
+    cs = distfor(t, x[2])
+    [delayed(c->x[1]=>c)(c) for c in cs]
+end
+
 for f in [:rows, :pkeys]
-    @eval function $f(t::TableLike)
+    @eval function $f(t::DDataset)
         extractarray(t, x -> $f(x))
     end
 
     if f !== :pkeys
-        @eval function $f(t::TableLike, which::Union{Int, Symbol})
-            extractarray(t, x -> $f(x, which))
+        @eval function $f(t::DDataset, which)
+            dist_selector(t, $f, which)
         end
     end
 end
@@ -168,14 +209,14 @@ for f in [:keys, :values]
     end
 
     @eval function $f(t::DNDSparse, which::Union{Int, Symbol})
-        extractarray(t, x -> $f(x, which))
+        dist_selector(t, $f, which)
     end
 end
 
-function column(t::TableLike, name)
+function column(t::DDataset, name)
     extractarray(t, x -> column(x, name))
 end
-function column(t::TableLike, xs::AbstractArray)
+function column(t::DDataset, xs::AbstractArray)
     # distribute(xs, rows(t).subdomains)
     xs
 end
