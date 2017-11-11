@@ -1,40 +1,9 @@
-export select, convertdim, aggregate, reducedim_vec, aggregate_vec
 
 import IndexedTables: convertdim, aggregate, aggregate_vec, reducedim_vec, pick
-import Base: reducedim, mapslices
+import Base: reducedim, mapslices, aggregate
 
 # re-export
 export pick
-
-"""
-    aggregate(f, t::DNDSparse)
-
-Combines adjacent rows with equal indices using the given
-2-argument reduction function `f`.
-"""
-function aggregate(f, t::DNDSparse; kwargs...)
-    t1 = mapchunks(c->aggregate(f, c; kwargs...), t, keeplengths=false)
-    if has_overlaps(t1.domains, true)
-        overlap_merge = (x, y) -> merge(x, y, agg=f)
-        t2 = rechunk(t1, merge=(ts...) -> _merge(overlap_merge, ts...), closed=true)
-        cache_thunks(t2)
-    else
-        cache_thunks(t1)
-    end
-end
-
-"""
-    aggregate_vec(f::Function, x::DNDSparse)
-
-Combine adjacent rows with equal indices using a function from vector to scalar,
-e.g. `mean`.
-"""
-function aggregate_vec(f, t::DNDSparse)
-    if has_overlaps(t.domains, true)
-        t = rechunk(t, closed=true) # Should not have chunks that are continuations
-    end
-    mapchunks(c->aggregate_vec(f, c), t, keeplengths=false) |> cache_thunks
-end
 
 # Filter on data field
 """
@@ -83,53 +52,16 @@ function convertdim(t::DNDSparse{K,V}, d::DimName, xlat;
 
     t1 = DNDSparse{eltype(domains[1]),V}(domains, chunks)
 
-    if agg !== nothing && has_overlaps(domains, true)
+    if agg !== nothing && has_overlaps(domains)
         overlap_merge(x, y) = merge(x, y, agg=agg)
         chunk_merge(ts...)  = _merge(overlap_merge, ts...)
         cache_thunks(rechunk(t1, merge=chunk_merge, closed=true))
     elseif vecagg != nothing
-        aggregate_vec(vecagg, t1) # already cached
+        groupby(vecagg, t1) # already cached
     else
         cache_thunks(t1)
     end
 end
-
-"""
-    reducedim(f, t::DNDSparse, dims)
-
-Remove `dims` dimensions from `t`, aggregate any rows with equal indices
-using 2-argument function `f`.
-
-See also [`reducedim_vec`](@ref), [`select`](@ref) and [`aggregate`](@ref).
-"""
-function reducedim(f, x::DNDSparse, dims)
-    keep = setdiff([1:ndims(x);], dims) # TODO: Allow symbols
-    if isempty(keep)
-        throw(ArgumentError("to remove all dimensions, use `reduce(f, A)`"))
-    end
-    cache_thunks(select(x, keep..., agg=f))
-end
-
-reducedim(f, x::DNDSparse, dims::Symbol) = reducedim(f, x, [dims])
-
-"""
-    reducedim_vec(f::Function, t::DNDSparse, dims)
-
-Like `reducedim`, except uses a function mapping a vector of values to a scalar instead of a 2-argument scalar function.
-
-See also [`reducedim`](@ref) and [`aggregate_vec`](@ref).
-"""
-function reducedim_vec(f, x::DNDSparse, dims)
-    keep = setdiff([1:ndims(x);], dims)
-    if isempty(keep)
-        throw(ArgumentError("to remove all dimensions, use `reduce(f, A)`"))
-    end
-
-    t = select(x, keep...; agg=nothing)
-    cache_thunks(aggregate_vec(f, t))
-end
-
-reducedim_vec(f, x::DNDSparse, dims::Symbol) = reducedim_vec(f, x, [dims])
 
 keyindex(t::DNDSparse, i::Int) = i
 keyindex(t::DNDSparse{K}, i::Symbol) where {K} = findfirst(x->x===i, fieldnames(K))
@@ -140,11 +72,18 @@ function mapslices(f, x::DNDSparse, dims; name=nothing)
         throw(ArgumentError("$dims must be the trailing dimensions of the table. You can use `permutedims` first to permute the dimensions."))
     end
 
-    t = has_overlaps(x.domains, iterdims) ?
-        rechunk(x, closed=true, by=(iterdims...)) : x
+    # Note: the key doesn't need to be put in a tuple, this is
+    # also bad for sortperm, but is required since DArrays aren't
+    # parameterized by the container type Columns
+    tmp = ndsparse((keys(x, (iterdims...)),), (keys(x, (dims...)), values(x)))
 
-    cache_thunks(mapchunks(y -> mapslices(f, y, dims, name=name),
-                           t, keeplengths=false))
+    cs = delayedmap(tmp.chunks) do c
+        y = ndsparse(IndexedTables.concat_cols(columns(keys(c))[1], columns(values(c))[1]), columns(values(c))[2])
+        mapslices(f, y, dims; name=nothing)
+    end
+    fromchunks(cs)
+  # cache_thunks(mapchunks(y -> mapslices(f, y, dims, name=name),
+  #                        t, keeplengths=false))
 end
 
 mapslices(f, x::DNDSparse, dims::Symbol; name=nothing) =

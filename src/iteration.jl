@@ -54,8 +54,8 @@ function next(t::PartitionIterator{<:DDataset}, p::PartIteratorState)
                     used = length(nextchunk)
                 else
                     part = _merge(part, subtable(nextchunk, 1:r))
-                    r = 0
                     used = r
+                    r = 0
                 end
             end
         end
@@ -127,25 +127,27 @@ end
 
 function columns(t::Union{DDataset, DArray}, which::Tuple...)
 
-    cs = map(delayed(x->columns(x, which...)), t.chunks)
-    f = delayed() do c
-        map(tochunk, c)
+    cs = delayedmap(t.chunks) do c
+        x = columns(c, which...)
+        if isa(x, AbstractArray)
+            tochunk(x)
+        elseif isa(x, Tup)
+            map(tochunk, x)
+        else
+            # this should never happen
+            error("Columns $which could not be extracted")
+        end
     end
 
-    tuples = collect(get_context(), treereduce(delayed(vcat), map(f, cs)))
-
-    if isa(tuples, Tuple)
+    tuples = collect(get_context(), treereduce(delayed(vcat), cs))
+    if length(cs) == 1
         tuples = [tuples]
     end
 
-    # tuples is a vector of tuples
-    map(tuples...) do cstup...
-        cs = [cstup...]
-        T = chunktype(cs[1])
-        ls = length.(domain.(cs))
-        d = ArrayDomain((1:sum(ls),))
-        dchunks = DomainBlocks((1,), (cumsum(ls),))
-        DArray(eltype(T), d, dchunks, cs, (i, x...) -> vcat(x...))
+    if isa(tuples[1], Tup)
+        map((xs...)->fromchunks([xs...]), tuples...)
+    else
+        fromchunks(tuples)
     end
 end
 
@@ -208,7 +210,7 @@ for f in [:keys, :values]
         extractarray(t, x -> $f(x))
     end
 
-    @eval function $f(t::DNDSparse, which::Union{Int, Symbol})
+    @eval function $f(t::DNDSparse, which)
         dist_selector(t, $f, which)
     end
 end

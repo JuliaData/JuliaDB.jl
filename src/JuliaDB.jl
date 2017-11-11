@@ -22,7 +22,6 @@ include("interval.jl")
 include("table.jl")
 include("ndsparse.jl")
 include("groupby.jl")
-include("join.jl")
 include("iteration.jl")
 include("sort.jl")
 
@@ -30,6 +29,8 @@ include("io.jl")
 include("printing.jl")
 
 include("indexing.jl")
+include("selection.jl")
+include("reduce.jl")
 include("query.jl")
 include("join.jl")
 

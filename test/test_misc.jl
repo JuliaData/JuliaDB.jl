@@ -7,7 +7,7 @@ using Base.Test
                      Columns(c=[1,2,3,4,5], d=[5,4,3,2,1]))
     for i=[2, 3, 5]
         d = compute(distribute(t, i))
-        dist = map(get, map(JuliaDB.nrows, d.subdomains))
+        dist = map(get, map(JuliaDB.nrows, d.domains))
         @test map(length, Dagger.domainchunks(keys(d, 1))) == dist
         @test collect(keys(d, 2)) == t.index.columns[2]
         @test collect( values(d, 2)) == t.data.columns[2]
@@ -17,9 +17,9 @@ end
 @testset  "printing" begin
     x = distribute(NDSparse([1], [1]), 1)
     @test repr(x) == """
-    Distributed NDSparse with 1 rows in 1 chunks:
-
-    ──┬──
+    1-d Distributed NDSparse with 1 values (Int64) in 1 chunks:
+    1 │
+    ──┼──
     1 │ 1"""
 end
 
@@ -27,19 +27,19 @@ import JuliaDB: chunks, index_spaces, has_overlaps
 @testset "has_overlaps" begin
     t = NDSparse(Columns([1,1,2,2,2,3], [1,2,1,1,2,1]), [1,2,3,4,5,6])
     d = distribute(t, [2,3,1])
-    i = d.subdomains
+    i = d.domains
+    @test !has_overlaps(i, closed=false)
     @test !has_overlaps(i)
-    @test !has_overlaps(i, true)
 
     d = distribute(t, [2,2,2])
-    i = d.subdomains
+    i = d.domains
+    @test !has_overlaps(i, closed=false)
     @test !has_overlaps(i)
-    @test !has_overlaps(i, true)
 
     d = distribute(t, [2,1,3])
-    i = d.subdomains
-    @test !has_overlaps(i)
-    @test has_overlaps(i, true)
+    i = d.domains
+    @test !has_overlaps(i, closed=false)
+    @test has_overlaps(i)
 end
 
 import JuliaDB: with_overlaps, delayed

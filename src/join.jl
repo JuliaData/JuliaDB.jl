@@ -7,7 +7,7 @@ function rechunk_together(left, right, lkey, rkey,
     l = reindex(left, lkey, lselect)
     r = reindex(right, rkey, rselect)
 
-    if has_overlaps(left.domains, true)
+    if has_overlaps(left.domains)
         l = rechunk(left, lkey, lselect, chunks=chunks)
     end
 
@@ -120,7 +120,7 @@ picks the value from `right`.
 """
 function leftjoin(op, left::DNDSparse{K,V}, right::DNDSparse,
                   joinwhen = boxhasoverlap,
-                  chunkjoin = (+,x,y)->((@show +, x, y); @show leftjoin(+,x,y))) where {K,V}
+                  chunkjoin = leftjoin) where {K,V}
 
     out_chunks = Any[]
 
@@ -177,7 +177,6 @@ By default `agg` picks the value from `right`.
 function merge(left::DNDSparse{I1,D1}, right::DNDSparse{I2,D2}; agg=IndexedTables.right) where {I1,I2,D1,D2}
     out_domains = Any[]
     out_chunks = Any[]
-    usedup_right = Array{Bool}(length(right.domains))
 
     I = promote_type(I1, I2)        # output index type
     D = promote_type(D1, D2)        # output data type
@@ -186,8 +185,8 @@ function merge(left::DNDSparse{I1,D1}, right::DNDSparse{I2,D2}; agg=IndexedTable
                     vcat(left.chunks, right.chunks))
 
     overlap_merge(x, y) = merge(x, y, agg=agg)
-    if has_overlaps(t.domains, agg!==nothing)
-        t = reindex(t,
+    if has_overlaps(t.domains)
+        t = rechunk(t,
                     merge=(x...)->_merge(overlap_merge, x...),
                     closed=agg!==nothing)
     end

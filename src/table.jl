@@ -161,25 +161,6 @@ function fromchunks(::Type{<:NextTable}, chunks::AbstractArray;
     DNextTable{T, K}(pkey, domains, chunks[nzidxs])
 end
 
-function Base.map(f, t::DNextTable; select=(colnames(t)...))
-    # TODO: fix when select has a user-supplied vector
-    delayedmap(t.chunks) do x
-        map(f, x; select=select)
-    end |> fromchunks
-end
-
-function DataValues.dropna(t::DNextTable, select=(colnames(t)...))
-    delayedmap(t.chunks) do x
-        dropna(x, select)
-    end |> fromchunks
-end
-
-function Base.filter(f, t::DNextTable; select=(colnames(t)...))
-    delayedmap(t.chunks) do x
-        filter(f, x; select=select)
-    end |> fromchunks
-end
-
 import Base.reduce
 
 function reduce(f, t::DNextTable; select=(colnames(t)...))
@@ -222,6 +203,8 @@ function compute(ctx, t::DNextTable)
         t
     end
 end
+
+distribute(t::DNextTable, cs) = table(t, chunks=cs)
 
 collect(t::DNextTable) = collect(get_context(), t)
 

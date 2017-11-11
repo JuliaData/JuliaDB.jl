@@ -5,9 +5,9 @@ export reindex, rechunk
 
 using StatsBase
 
-function reindex(t::DDataset, by=pkeynames(t), select=excludecols(t, by))
+function reindex(t::DDataset, by=pkeynames(t), select=excludecols(t, by); kwargs...)
     delayedmap(t.chunks) do c
-        reindex(c, by, select)
+        reindex(c, by, select; kwargs...)
     end |> fromchunks
 end
 
@@ -19,7 +19,8 @@ Re-chunk a distributed Table or NDSparse.
 """
 function rechunk(dt::DDataset,
                  by=pkeynames(dt),
-                 select=excludecols(dt, by);
+                 select=dt isa DNextTable ? excludecols(dt, by) : valuenames(dt);
+                 merge=_merge,
                  splitters=nothing,
                  chunks_presorted=false,
                  affinities=workers(),
@@ -46,7 +47,7 @@ function rechunk(dt::DDataset,
                  affinities=affinities,
                  splitters=splitters,
                  chunks_presorted=chunks_presorted,
-                 merge=_merge,
+                 merge=merge,
                  by=pkeys,
                  sub=subtable) |> fromchunks
 

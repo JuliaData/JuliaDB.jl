@@ -1,7 +1,7 @@
 import Dagger: chunktype, domain, tochunk, distribute,
                chunks, Context, compute, gather, free!
 
-import IndexedTables: eltypes, astuple, colnames, ndsparse
+import IndexedTables: eltypes, astuple, colnames, ndsparse, pkeynames, valuenames
 
 
 boundingrect(x::IndexSpace) = x.boundingrect
@@ -21,7 +21,7 @@ const DDataset = Union{DNextTable, DNDSparse}
 
 function ndsparse(::Val{:distributed}, ks::Tup,
                   vs::Union{Tup, AbstractArray};
-                  chunks=nothing, kwargs...)
+                  closed=true, chunks=nothing, agg=nothing, kwargs...)
 
     if chunks === nothing
         # this means the vectors are distributed.
@@ -55,8 +55,8 @@ function ndsparse(::Val{:distributed}, ks::Tup,
 
     function makechunk(args...)
         k = Columns(args[1:ndims]..., names=inames)
-        v = iscols ? Columns(args[ndims+1:end], names=dnames) : args[end]
-        ndsparse(k,v)
+        v = iscols ? Columns(args[ndims+1:end]..., names=dnames) : args[end]
+        ndsparse(k,v; agg=agg, kwargs...)
     end
 
     cs = Array{Any}(nchunks)
@@ -66,7 +66,11 @@ function ndsparse(::Val{:distributed}, ks::Tup,
                 [vdarrays.chunks[i]])
         cs[i] = delayed(makechunk)(args...)
     end
-    fromchunks(cs)
+    fromchunks(cs, closed=closed, merge=(x,y)->merge(x,y, agg=agg))
+end
+
+function ndsparse(x::DNDSparse; kwargs...)
+    ndsparse(columns(x, pkeynames(x)), values(x); kwargs...)
 end
 Base.eltype(dt::DNDSparse{K,V}) where {K,V} = V
 IndexedTables.dimlabels(dt::DNDSparse{K}) where {K} = fieldnames(K)
@@ -75,12 +79,26 @@ keytype(dt::DNDSparse{K}) where {K} = astuple(K)
 
 # TableLike API
 Base.@pure function IndexedTables.colnames{K,V}(t::DNDSparse{K,V})
-    dnames = fieldnames(V)
+    dnames = V<:Tup ? fieldnames(V) : [1]
     if all(x->isa(x, Integer), dnames)
         dnames = map(x->x+nfields(K), dnames)
     end
     vcat(fieldnames(K), dnames)
 end
+
+Base.@pure pkeynames(t::DNDSparse{K,V}) where {K, V} = (fieldnames(K)...)
+function IndexedTables.valuenames{K,V}(t::DNDSparse{K,V})
+    if V <: Tup
+        if V<:NamedTuple
+            (fieldnames(V)...)
+        else
+            ((ndims(t) + (1:nfields(V)))...)
+        end
+    else
+        ndims(t) + 1
+    end
+end
+
 
 const compute_context = Ref{Union{Void, Context}}(nothing)
 get_context() = compute_context[] == nothing ? Context() : compute_context[]
@@ -307,7 +325,7 @@ function _has_overlaps(firsts, lasts, closed)
     return false
 end
 
-function has_overlaps(domains, closed=false)
+function has_overlaps(domains; closed=true)
     _has_overlaps(first.(domains), last.(domains), closed)
 end
 
@@ -352,6 +370,7 @@ end
 function fromchunks(::Type{<:NDSparse}, chunks::AbstractArray,
                     domains::AbstractArray = map(domain, chunks);
                     KV = getkvtypes(chunks),
+                    merge=_merge,
                     closed = false,
                     allowoverlap = false)
 
@@ -360,8 +379,8 @@ function fromchunks(::Type{<:NDSparse}, chunks::AbstractArray,
 
     dt = DNDSparse{KV...}(domains, chunks[nzidxs])
 
-    if !allowoverlap && has_overlaps(domains, closed)
-        return reindex(dt, closed=closed)
+    if !allowoverlap && has_overlaps(domains, closed=closed)
+        return rechunk(dt, closed=closed, merge=merge)
     else
         return dt
     end
@@ -423,6 +442,8 @@ function distribute(nds::NDSparse{V}, rowgroups::AbstractArray;
     cache_thunks(fromchunks(chunks, domains, KV = (realK, V),
                             allowoverlap=allowoverlap, closed=closed))
 end
+
+distribute(t::DNDSparse, cs) = ndsparse(t, chunks=cs)
 
 """
     distribute(itable::NDSparse, nchunks::Int=nworkers())
