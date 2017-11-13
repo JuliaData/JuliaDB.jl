@@ -148,6 +148,9 @@ h1,h2,h3{
 p strong {
     color: #543139;
 }
+h1 {
+    font-weight: bold;
+}
 h2 {
     font-weight: 400;
     margin: 0;
