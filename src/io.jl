@@ -32,23 +32,49 @@ end
 Base.@deprecate loadfiles(files, delim=','; opts...) loadndsparse(files; delim=delim, opts...)
 
 """
-`loadtable(files::Union{AbstractVector,String}, delim = ','; <options>)`
+`loadtable(files::Union{AbstractVector,String}; <options>)`
 
-Load a collection of CSV `files` into a DNDSparse, where `files` is either a vector
-of file paths, or the path of a directory containing files to load.
+Load a [table](@ref Table) from CSV files.
 
-# Arguments:
+`files` is either a vector of file paths, or a directory name.
+
+# Options:
+
+- `indexcols::Vector` -- columns to use as primary key columns. (defaults to [])
+- `datacols::Vector` -- non-indexed columns. (defaults to all columns but indexed columns)
+- `distributed::Bool` -- should the output dataset be loaded in a distributed way? If true, this will use all available worker processes to load the data. (defaults to true if workers are available, false if not)
+- `chunks::Bool` -- number of chunks to create when loading distributed. (defaults to number of workers)
+- `delim::Char` -- the delimiter character. (defaults to `,`)
+- `quotechar::Char` -- quote character. (defaults to `"`)
+- `escapechar::Char` -- escape character. (defaults to `\\`)
+- `header_exists::Bool` -- does header exist in the files? (defaults to true)
+- `colnames::Vector{String}` -- specify column names for the files, use this with (`header_exists=true`, otherwise first row is discarded). By default column names are assumed to be present in the file.
+- `samecols` -- a vector of tuples of strings where each tuple contains alternative names for the same column. For example, if some files have the name "vendor_id" and others have the name "VendorID", pass `samecols=[("VendorID", "vendor_id")]`.
+- `colparsers` -- either a vector or dictionary of data types or an [`AbstractToken` object](https://juliacomputing.com/TextParse.jl/stable/#Available-AbstractToken-types-1) from [TextParse](https://juliacomputing.com/TextParse.jl/stable) package. By default, these are inferred automatically. See `type_detect_rows` option below.
+- `type_detect_rows`: number of rows to use to infer the initial `colparsers` defaults to 20.
+- `nastrings::Vector{String}` -- strings that are to be considered NA. (defaults to `TextParse.NA_STRINGS`)
+- `skiplines_begin::Char` -- skip some lines in the beginning of each file. (doesn't skip by default)
 
 - `usecache::Bool`: use cached metadata from previous loads while loading the files. Set this to `false` if you are changing other options.
-
-All other arguments options are the same as those listed in [`ingest`](@ref).
-
-See also [`ingest`](@ref).
 """
 function loadtable(files::Union{AbstractVector,String}; opts...)
     _loadtable(NextTable, files; opts...)[1]
 end
 
+"""
+`loadndsparse(files::Union{AbstractVector,String}; <options>)`
+
+Load an [NDSparse](@ref) from CSV files.
+
+`files` is either a vector of file paths, or a directory name.
+
+# Options:
+
+- `indexcols::Vector` -- columns to use as indexed columns. (by default a `1:n` implicit index is used.)
+- `datacols::Vector` -- non-indexed columns. (defaults to all columns but indexed columns)
+All other options are identical to those in [`loadtable`](@ref)
+
+"""
 function loadndsparse(files::Union{AbstractVector,String}; opts...)
     _loadtable(NDSparse, files; opts...)[1]
 end
@@ -316,13 +342,10 @@ end
 
 
 """
-    load(dir::AbstractString; tomemory)
+`load(dir::AbstractString; tomemory)`
 
 Load a saved `DNDSparse` from `dir` directory. Data can be saved
-using `ingest` or `save` functions. If `tomemory` option is true,
-then data is loaded into memory rather than mmapped.
-
-See also [`ingest`](@ref), [`save`](@ref)
+using the `save` function.
 """
 function load(dir::AbstractString; copy=false)
     dtable_file = joinpath(dir, JULIADB_INDEXFILE)
@@ -332,17 +355,13 @@ function load(dir::AbstractString; copy=false)
 end
 
 """
-    save(t::DNDSparse, outputdir::AbstractString)
+`save(t::Union{DNDSparse, DTable}, outputdir::AbstractString)`
 
-Saves a `DNDSparse` to disk. This function blocks till all
-chunks have been computed and saved. Saved data can
-be loaded with `load`.
-
-See also [`ingest`](@ref), [`load`](@ref)
+Saves a distributed dataset to disk. Saved data can be loaded with `load`.
 """
-function save(t::DNDSparse{K,V}, outputdir::AbstractString) where {K,V}
+function save(t::DDataset, outputdir::AbstractString)
     chunks = Dagger.savechunks(t.chunks, outputdir)
-    saved_t = DNDSparse{K,V}(t.domains, chunks)
+    saved_t = fromchunks(chunks)
     open(joinpath(outputdir, JULIADB_INDEXFILE), "w") do io
         serialize(io, saved_t)
     end

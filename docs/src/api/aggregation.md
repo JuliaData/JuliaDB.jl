@@ -1,3 +1,10 @@
+```@meta
+CurrentModule = JuliaDB
+DocTestSetup = quote
+    using JuliaDB
+end
+```
+
 # Aggregation
 
 ## Reduce
@@ -14,4 +21,10 @@ groupreduce
 
 ```@docs
 groupby
+```
+
+## Reducedim
+
+```@docs
+reducedim
 ```

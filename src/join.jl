@@ -158,22 +158,10 @@ function asofpred(lbrect, rbrect)
      !isless(last(lbrect), first(rbrect)))
 end
 
-"""
-    asofjoin(left::DNDSparse, right::DNDSparse)
-
-Keeps the indices of `left` but uses the value from `right` corresponding to highest
-index less than or equal to that of left.
-"""
 function asofjoin(left::DNDSparse, right::DNDSparse)
     leftjoin(IndexedTables.right, left, right, asofpred, (op, x,y)->asofjoin(x,y))
 end
 
-"""
-    merge(left::DNDSparse, right::DNDSparse; agg)
-
-Merges `left` and `right` combining rows with matching indices using `agg`.
-By default `agg` picks the value from `right`.
-"""
 function merge(left::DNDSparse{I1,D1}, right::DNDSparse{I2,D2}; agg=IndexedTables.right) where {I1,I2,D1,D2}
     out_domains = Any[]
     out_chunks = Any[]

@@ -11,7 +11,7 @@ end
 A Table is a collection of tuples or named tuples. These tuples are "rows" of the table. The values of the same field in all rows form a "column".
 A Table can be constructed by passing the columns to the `table` function. The `names` argument sets the names of the columns:
 
-```jldoctest
+```jldoctest tbl
 julia> t = table([1,2,3], [4,5,6], names=[:x, :y])
 Table with 3 rows, 2 columns:
 x  y
@@ -23,7 +23,7 @@ x  y
 
 Since a table iterates over rows, indexing with an iteger will return the row at that position:
 
-```jldoctest
+```jldoctest tbl
 julia> row = t[2]
 (x = 2, y = 5)
 
@@ -38,7 +38,7 @@ The returned value is a named tuple in this case.
 
 Further, indexing a table with a range of indices or generally any array of integer indices will return a new table with those subset of rows.
 
-```jldoctest
+```jldoctest tbl
 julia> t[2:3]
 Table with 2 rows, 2 columns:
 x  y
@@ -62,7 +62,7 @@ x  y
 
 Passing the `pkey` option to `table` constructor will select the primary keys.
 
-```jldoctest
+```jldoctest tbl
 julia> b = table([2,1,2,1],[2,3,1,3],[4,5,6,7], names=[:x,:y,:z], pkey=(:x,:y))
 Table with 4 rows, 3 columns:
 x  y  z
@@ -85,7 +85,7 @@ table
 
 An `NDSparse` object is a collection of values sparsely distributed over domains which may be discrete or continuous. For example, stock prices are sparsely distributed over the domains of stock ticker symbols, and timestamps.
 
-```jldoctest
+```jldoctest nds
 julia> prices = ndsparse(@NT(ticker=["GOOG", "GOOG", "KO", "KO"],
                          date=Date.(["2017-11-10", "2017-11-11",
                                      "2017-11-10", "2017-11-11"])),
@@ -103,7 +103,7 @@ ticker  date       │
 
 The indexing syntax can be used for lookup:
 
-```jldoctest
+```jldoctest nds
 julia> prices["KO", Date("2017-11-10")]
 46.23
 

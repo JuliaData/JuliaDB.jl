@@ -81,3 +81,7 @@ insertcolafter
 ```@docs
 insertcolbefore
 ```
+
+```@docs
+renamecol
+```

@@ -1,5 +1,5 @@
 ```@meta
-CurrentModule = [`IndexedTables, JuliaDB`]
+CurrentModule = JuliaDB
 DocTestSetup = quote
     using JuliaDB
 end
