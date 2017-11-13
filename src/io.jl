@@ -1,8 +1,8 @@
-export loadfiles, ingest, ingest!, load, save
+export loadfiles, ingest, ingest!, load, save, loadndsparse, loadtable
 
 const JULIADB_DIR = ".juliadb"
-const JULIADB_FILECACHE = "csv_metadata.jls"
-const JULIADB_INDEXFILE = "juliadb_index.jls"
+const JULIADB_FILECACHE = "csv_metadata"
+const JULIADB_INDEXFILE = "juliadb_index"
 
 function files_from_dir(dir)
     dir = abspath(dir)
@@ -29,8 +29,10 @@ function distribute_implicit_index_space!(chunkrefs, o=1)
     end
 end
 
+Base.@deprecate loadfiles(files, delim=','; opts...) loadndsparse(files; delim=delim, opts...)
+
 """
-    loadfiles(files::Union{AbstractVector,String}, delim = ','; <options>)
+`loadtable(files::Union{AbstractVector,String}, delim = ','; <options>)`
 
 Load a collection of CSV `files` into a DNDSparse, where `files` is either a vector
 of file paths, or the path of a directory containing files to load.
@@ -43,11 +45,19 @@ All other arguments options are the same as those listed in [`ingest`](@ref).
 
 See also [`ingest`](@ref).
 """
-function loadfiles(files::Union{AbstractVector,String}, delim=','; opts...)
-    _loadfiles(files, delim; opts...)[1]
+function loadtable(files::Union{AbstractVector,String}; opts...)
+    _loadtable(NextTable, files; opts...)[1]
 end
 
-function _loadfiles(files::Union{AbstractVector,String}, delim=','; usecache=true, chunks=nworkers(), opts...)
+function loadndsparse(files::Union{AbstractVector,String}; opts...)
+    _loadtable(NDSparse, files; opts...)[1]
+end
+
+# Can load both NDSparse and table
+function _loadtable(T, files::Union{AbstractVector,String};
+                    chunks=nothing,
+                    distributed=chunks != nothing || length(procs()) > 1,
+                    delim=',', usecache=true, opts...)
 
     if isa(files, String)
         if !isdir(files)
@@ -72,18 +82,27 @@ function _loadfiles(files::Union{AbstractVector,String}, delim=','; usecache=tru
         mkdir(cachedir)
     end
 
-    if isa(chunks, Int)
-        chunks = Dagger.split_range(1:length(files), chunks)
+    if chunks === nothing && distributed
+        chunks = nworkers()
     end
 
-    filegroups = filter(!isempty, map(x->files[x], chunks))
+    if !distributed
+        filegroups = [files]
+    else
+        if isa(chunks, Int)
+            chunks = Dagger.split_range(1:length(files), chunks)
+        end
+
+        filegroups = filter(!isempty, map(x->files[x], chunks))
+    end
 
     unknown = filegroups
     validcache = []
     metadata = nothing
 
     # Read metadata about a subset of files if safe to
-    metafile = joinpath(cachedir, JULIADB_FILECACHE)
+    ext = T <: NextTable ? ".tbl" : ".nds"
+    metafile = joinpath(cachedir, JULIADB_FILECACHE * ext)
     if usecache && isfile(metafile)
         try
             metadata = open(deserialize, metafile, "r")
@@ -112,20 +131,24 @@ function _loadfiles(files::Union{AbstractVector,String}, delim=','; usecache=tru
     if isempty(unknown)
         # we read all required metadata from cache
         ii = !isnull(validcache[1].handle.offset)
+        if !distributed
+            return collect(validcache[1]), ii
+        end
         return cache_thunks(fromchunks(validcache)), ii
     end
 
     allfiles = collect(Iterators.flatten(unknown))
     sz = sum(filesize, allfiles)
-    println("Reading $(length(allfiles)) csv files totalling $(format_bytes(sz)) in $(length(chunks)) batches...")
+    batches = chunks !== nothing ? length(chunks) : 1
+    println("Reading $(length(allfiles)) csv files totalling $(format_bytes(sz)) in $(batches) batches...")
     # Load the data first into memory
-    load_f(f) = makecsvchunk(f, delim; opts...)
+    load_f(f) = makecsvchunk(T, f, delim; opts...)
     data = map(delayed(load_f), unknown)
 
     chunkrefs = collect(get_context(), delayed((xs...)->[xs...])(data...))
 
     ii = !isnull(chunkrefs[1].handle.offset)
-    if ii
+    if T<:NDSparse && ii
         lastidx = reduce(max, 0, first.(last.(domain.(validcache)))) + 1
         distribute_implicit_index_space!(chunkrefs, lastidx)
     end
@@ -142,7 +165,7 @@ function _loadfiles(files::Union{AbstractVector,String}, delim=','; usecache=tru
     order = [findfirst(column(cache, :files), f) for f in filegroups] # keep order of the input files
     cs = column(cache, :metadata)[order]
 
-    if !isnull(chunkrefs[1].handle.offset)
+    if T<:NDSparse && !isnull(chunkrefs[1].handle.offset)
         distribute_implicit_index_space!(cs, 1)
     end
     ii = ii || !isnull(chunkrefs[1].handle.offset)
@@ -151,14 +174,19 @@ function _loadfiles(files::Union{AbstractVector,String}, delim=','; usecache=tru
         serialize(io, cache)
     end
 
-    return cache_thunks(fromchunks(cs)), ii
+    if !distributed
+        return collect(cs[1]), ii
+    else
+        return cache_thunks(fromchunks(cs)), ii
+    end
 end
 
 ## CSV reader
-const _read_cache = Dict{Tuple{Vector{String}, Dict},Any}()
-const _cached_on = Dict{Tuple{Vector{String}, Dict},Any}() # workers register here once they have read a file
+const _read_cache = Dict{Tuple{Type, Vector{String}, Dict},Any}()
+const _cached_on = Dict{Tuple{Type, Vector{String}, Dict},Any}() # workers register here once they have read a file
 
 mutable struct CSVChunk
+    T::Type
     files::AbstractArray
     cache::Bool
     delim::Char
@@ -167,7 +195,7 @@ mutable struct CSVChunk
 end
 
 # make sure cache matches a certain subset of options
-csvkey(csv::CSVChunk) = (csv.files, filter((k,v)->(k in (:colnames,:indexcols,:datacols)), csv.opts))
+csvkey(csv::CSVChunk) = (csv.T, csv.files, filter((k,v)->(k in (:colnames,:indexcols,:datacols)), csv.opts))
 
 function Dagger.affinity(c::CSVChunk)
     # use filesize as a measure of data size
@@ -199,7 +227,8 @@ function _collect(ctx, csv::CSVChunk)
     else
         #println("CACHE MISS $csv")
         #@show myid()
-        data, ii = _load_table(csv.files, csv.delim; csv.opts...)
+        ii = false
+        data, ii = _loadtable_serial(csv.T, csv.files; delim=csv.delim, csv.opts...)
 
         if ii && isnull(csv.offset)
             csv.offset = 1
@@ -220,8 +249,8 @@ function _collect(ctx, csv::CSVChunk)
     return data, ii
 end
 
-function makecsvchunk(file, delim; cache=true, opts...)
-    handle = CSVChunk(file, cache, delim, Dict(opts), nothing)
+function makecsvchunk(T, file, delim; cache=true, opts...)
+    handle = CSVChunk(T, file, cache, delim, Dict(opts), nothing)
     # We need to actually load the data to get things like
     # the type and Domain. It will get cached if cache is true
     nds, ii = _collect(get_context(), handle)
@@ -243,9 +272,8 @@ All keyword arguments are passed to loadfiles. `delim` is a keyword argument to 
 Equivalent to calling `loadfiles` and then `save` on the result of
 `loadfiles`. See also [`loadfiles`](@ref) and [`save`](@ref)
 """
-function ingest(files::Union{AbstractVector,String}, outputdir::AbstractString;
-                delim = ',', opts...)
-    save(loadfiles(files, delim; opts...), outputdir)
+function ingest(files::Union{AbstractVector,String}, outputdir::AbstractString; opts...)
+    save(loadndsparse(files; opts...), outputdir)
 end
 
 """
@@ -261,13 +289,16 @@ function ingest!(files::Union{AbstractVector,String}, inputdir::AbstractString, 
     end
 
     x = load(outputdir)
-    y, ii = _loadfiles(files, delim; chunks=chunks, opts...)
-    if ii
+    y, ii = _loadtable(NDSparse, files; delim=delim, chunks=chunks, opts...)
+    if ii && isa(y, DNDSparse)
         # append new chunk by setting the implicit index
         len = get(trylength(x))
         distribute_implicit_index_space!(y.chunks, len+1)
         m = fromchunks(vcat(x.chunks, y.chunks))
     else
+        if isa(y, DNDSparse)
+            y = distribute(y, 1)
+        end
         m = merge(x, y, agg=nothing) # this will keep repeated vals
     end
     if abspath(outputdir) == abspath(inputdir)
