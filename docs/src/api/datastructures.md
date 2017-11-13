@@ -8,7 +8,7 @@ end
 
 ## Table
 
-A Table is an iterator of tuples or named tuples. These tuples are "rows" of the table. The value of the same field in all rows form a "column".
+A Table is a collection of tuples or named tuples. These tuples are "rows" of the table. The values of the same field in all rows form a "column".
 A Table can be constructed by passing the columns to the `table` function. The `names` argument sets the names of the columns:
 
 ```jldoctest
@@ -83,7 +83,47 @@ table
 
 ## NDSparse
 
-An NDSparse array datastructure
+An `NDSparse` object is a collection of values sparsely distributed over domains which may be discrete or continuous. For example, stock prices are sparsely distributed over the domains of stock ticker symbols, and timestamps.
+
+```jldoctest
+julia> prices = ndsparse(@NT(ticker=["GOOG", "GOOG", "KO", "KO"],
+                         date=Date.(["2017-11-10", "2017-11-11",
+                                     "2017-11-10", "2017-11-11"])),
+                         [1029.74, 1028.23, 46.23, 46.53])
+2-d NDSparse with 4 values (Float64):
+ticker  date       │
+───────────────────┼────────
+"GOOG"  2017-11-10 │ 1029.74
+"GOOG"  2017-11-11 │ 1028.23
+"KO"    2017-11-10 │ 46.23
+"KO"    2017-11-11 │ 46.53
+```
+
+`NDSparse` maps tuples of indices of arbitrary types to values, just like an Array maps tuples of integer indices to values. Here, the indices are shown to the left of the vertical line, while the values they map to are to the right.
+
+The indexing syntax can be used for lookup:
+
+```jldoctest
+julia> prices["KO", Date("2017-11-10")]
+46.23
+
+julia> prices["KO", :]
+2-d NDSparse with 2 values (Float64):
+ticker  date       │
+───────────────────┼──────
+"KO"    2017-11-10 │ 46.23
+"KO"    2017-11-11 │ 46.53
+
+julia> prices[:, Date("2017-11-10")]
+2-d NDSparse with 2 values (Float64):
+ticker  date       │
+───────────────────┼────────
+"GOOG"  2017-11-10 │ 1029.74
+"KO"    2017-11-10 │ 46.23
+```
+
+
+Similarly, other array operations like [`broadcast`](@ref), [`reducedim`](@ref), and [`mapslices`](@ref) are defined for `NDSparse` as for `Array`s.
 
 An NDSparse is constructed using the `ndsparse` function.
 
@@ -92,6 +132,8 @@ ndsparse
 ```
 
 ## Indexing
+
+This section describes the `reindex` and `rechunk` functions which let you change the indexed columns in a table or NDSparse, and sort the contents of a distributed table or NDSparse respectively.
 
 ```@docs
 reindex

@@ -12,9 +12,10 @@ using DataValues
 
 # re-export
 export IndexedTable, NDSparse, NextTable, Columns, colnames,
-       table, ndsparse, compute, groupby, groupreduce,
+       table, ndsparse, compute, groupby, groupreduce, groupjoin,
        ColDict, insertafter!, insertbefore!, @cols, setcol, pushcol,
-       popcol, insertcol, insertcolafter, insertcolbefore, permutecols, renamecol, NA, dropna
+       popcol, insertcol, insertcolafter, insertcolbefore, permutecols,
+       renamecol, NA, dropna
 
 include("util.jl")
 include("serialize.jl")

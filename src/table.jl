@@ -257,6 +257,6 @@ function Base.show(io::IO, big::DNextTable)
     len = trylength(big)
     vals = isnull(len) ? "" : " with $(get(len)) rows"
     header = "Distributed Table$vals in $(length(big.chunks)) chunks:"
-    cstyle = Dict([i=>:bold for i in t.pkey])
+    cstyle = Dict(i=>:bold for i in t.pkey)
     showtable(io, t; header=header, ellipsis=:end, cstyle=cstyle)
 end

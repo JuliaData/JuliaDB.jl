@@ -12,10 +12,24 @@ function reindex(t::DDataset, by=pkeynames(t), select=excludecols(t, by); kwargs
 end
 
 """
-`rechunk(t::Union{DTable, DNDSparse}[, by[, select]];
-         chunks, closed, nsamples, batchsize)`
+`rechunk(t::Union{DTable, DNDSparse}[, by[, select]]; <options>)`
 
-Re-chunk a distributed Table or NDSparse.
+Reindex and sort a distributed dataset by keys selected by `by`.
+
+Optionally `select` specifies which non-indexed fields are kept. By default this is all fields not mentioned in `by` for Table and the value columns for NDSparse.
+
+# Options:
+- `chunks` -- how to distribute the data. This can be:
+    1. An integer -- number of chunks to create
+    2. An vector of `k` integers -- number of elements in each of the `k` chunks. `sum(k)` must be same as `length(t)`
+    3. The distribution of another array. i.e. `vec.subdomains` where `vec` is a distributed array.
+- `merge::Function` -- a function which merges two sub-table or sub-ndsparse into one NDSparse. They may have overlaps in their indices.
+- `splitters::AbstractVector` -- specify keys to split by. To create `n` chunks you would need to pass `n-1` splitters and also the `chunks=n` option.
+- `chunks_sorted::Bool` -- are the chunks sorted locally? If true, this skips sorting or re-indexing them.
+- `affinities::Vector{<:Integer}` -- which processes (Int pid) should each output chunk be created on. If unspecified all workers are used.
+- `closed::Bool` -- if true, the same key will not be present in multiple chunks (although sorted). `true` by default.
+- `nsamples::Integer` -- number of keys to randomly sample from each chunk to estimate splitters in the sorting process. (See [samplesort](https://en.wikipedia.org/wiki/Samplesort)). Defaults to 2000.
+- `batchsize::Integer` -- how many chunks at a time from the input should be loaded into memory at any given time. This will essentially sort in batches of `batchsize` chunks.
 """
 function rechunk(dt::DDataset,
                  by=pkeynames(dt),

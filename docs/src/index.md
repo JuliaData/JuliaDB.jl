@@ -1,6 +1,8 @@
 ```@meta
 CurrentModule = JuliaDB
 ```
+# JuliaDB
+![](https://juliacomputing.com/assets/img/new/4dots.svg)
 
 ## Overview
 
@@ -19,7 +21,7 @@ JuliaDB provides distributed table and array datastructures with convenient func
 
 ## Getting started
 
-JuliaDB works on Julia 0.6 or higher. To install it, run:
+JuliaDB works on Julia 0.6. To install it, run:
 
 ```julia
 Pkg.add("JuliaDB")

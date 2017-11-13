@@ -12,7 +12,6 @@ makedocs(
        "API Reference" => "api/index.md",
        "Data Structures" => "api/datastructures.md",
        "Selection" => "api/selection.md",
-       "Column manipulation" => "api/coldict.md",
        "Aggregation" => "api/aggregation.md",
        "Joins" => "api/joins.md",
        "Loading and Saving" => "api/io.md",

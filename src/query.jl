@@ -1,6 +1,6 @@
 
 import IndexedTables: convertdim, aggregate, aggregate_vec, reducedim_vec, pick
-import Base: reducedim, mapslices, aggregate
+import Base: reducedim, mapslices
 
 # re-export
 export pick
