@@ -1,7 +1,7 @@
-import Base:collect
+import Base:collect, ==
 import IndexedTables: NextTable, table, colnames, reindex,
                       excludecols, showtable, ColDict,
-                      AbstractIndexedTable
+                      AbstractIndexedTable, Dataset
 import Dagger: domainchunks, chunks
 
 # re-export the essentials
@@ -87,16 +87,16 @@ function table(::Val{:distributed}, tup::Tup; chunks=nothing, kwargs...)
 end
 
 # Copying constructor
-function table(t::DNextTable;
-               columns=t.columns,
+function table(t::Union{NextTable, DNextTable};
+               columns=IndexedTables.columns(t),
                pkey=t.pkey,
                presorted=false,
-               copy=true)
+               copy=true, kwargs...)
 
-    table(columns,
+    table(columns;
           pkey=pkey,
           presorted=presorted,
-          copy=copy)
+          copy=copy, kwargs...)
 end
 
 Base.eltype(dt::DNextTable{T}) where {T} = T
@@ -163,13 +163,24 @@ end
 
 import Base.reduce
 
+_apply_merge(f::Series, y, x) = merge(y,x)
+_apply_merge(f::Tup, y::Tup, x::Tup) = map(_apply_merge, f, y, x)
+_apply_merge(f, xs...) = IndexedTables._apply(f, xs...)
+
 function reduce(f, t::DNextTable; select=(colnames(t)...))
     xs = delayedmap(t.chunks) do x
         f = isa(f, OnlineStat) ? copy(f) : f # required for > 1 chunks on the same proc
         reduce(f, x; select=select)
     end
-    g = isa(f, OnlineStat) ? merge : f
-    collect(treereduce(delayed(g), xs))
+    if f isa Tup
+        g, _ = IndexedTables.init_funcs(f, false)
+    elseif f isa OnlineStat
+        g = Series(f)
+    else
+        g = f
+    end
+    h = (a,b)->_apply_merge(g,a,b)
+    collect(treereduce(delayed(h), xs))
 end
 
 function reduce(f, t::DNextTable, v0; select=nothing)

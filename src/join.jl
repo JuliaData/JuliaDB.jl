@@ -2,18 +2,18 @@
 export rechunk_together
 
 function rechunk_together(left, right, lkey, rkey,
-                          lselect, rselect; chunks=nworkers())
+                          lselect=excludecols(left, lkey), rselect=excludecols(right, rkey); chunks=nworkers())
     # we will assume that right has to be aligned to left
     l = reindex(left, lkey, lselect)
     r = reindex(right, rkey, rselect)
 
-    if has_overlaps(left.domains)
-        l = rechunk(left, lkey, lselect, chunks=chunks)
+    if has_overlaps(l.domains)
+        l = rechunk(l, lkey, lselect, chunks=chunks)
     end
 
     splitters = map(last, l.domains)
 
-    r = rechunk(right, rkey, rselect,
+    r = rechunk(r, rkey, rselect,
                 splitters=splitters[1:end-1],
                 chunks_presorted=true,
                 affinities=map(x->first(Dagger.affinity(x))[1].pid, l.chunks),
@@ -30,17 +30,25 @@ function Base.join(f, left::DNextTable, right::DNextTable;
                    kwargs...)
 
     l, r = rechunk_together(compute(left), compute(right),
-                            lkey, rkey, rselect, lselect,
+                            lkey, rkey, lselect, rselect,
                             chunks=chunks)
 
     delayedmap(l.chunks, r.chunks) do x, y
         join(f, x, y, how=how, lkey=lkey, rkey=rkey,
-             lselect=lselect, rselect=rselect, kwargs...)
+             lselect=lselect, rselect=rselect; kwargs...)
     end |> fromchunks
 end
 
-function Base.join(left::DNextTable, right::DNextTable; kwargs...)
-    join(IndexedTables.concat_tup, left, right; kwargs...)
+function Base.join(left::DNextTable, right::DNextTable; how=:inner, kwargs...)
+    f = how === :anti ? ((x,y)->x) : IndexedTables.concat_tup
+    join(f, left, right; how=how, kwargs...)
+end
+
+function groupjoin(left::DNextTable, right::DNextTable; how=:inner, kwargs...)
+    join(left, right; how=how, group=true, kwargs...)
+end
+function groupjoin(f, left::DNextTable, right::DNextTable; how=:inner, kwargs...)
+    join(f, left, right; how=how, group=true, kwargs...)
 end
 
 ## NDSparse join
@@ -180,6 +188,11 @@ function merge(left::DNDSparse{I1,D1}, right::DNDSparse{I2,D2}; agg=IndexedTable
     end
 
     return cache_thunks(t)
+end
+
+function merge(left::DNextTable, right::DNextTable; chunks=nworkers())
+    l, r = rechunk_together(left, right, pkeynames(left), pkeynames(right); chunks=chunks)
+    fromchunks(delayedmap(merge, l.chunks, r.chunks))
 end
 
 function subbox(i::Interval, idx)

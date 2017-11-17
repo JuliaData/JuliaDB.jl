@@ -1,10 +1,10 @@
 __precompile__()
 module JuliaDB
 
-using IndexedTables, Dagger, NamedTuples, OnlineStatsBase
+using IndexedTables, Dagger, NamedTuples, OnlineStats
 
 import Base: collect, select, join
-import IndexedTables: NextTable, table, NDSparse, ndsparse, Tup
+import IndexedTables: NextTable, table, NDSparse, ndsparse, Tup, groupjoin
 import TextParse: csvread
 import IndexedTables: Table
 import Dagger: compute, distribute, free!, gather, load, save
@@ -22,6 +22,16 @@ include("serialize.jl")
 include("interval.jl")
 include("table.jl")
 include("ndsparse.jl")
+
+# equality
+
+function (==)(x::DDataset, y::Union{Dataset, DDataset})
+    y1 = distribute(y, length.(domainchunks(rows(x))))
+    res = delayed(==, get_result=true).(x.chunks, y1.chunks)
+    all(collect(delayed((xs...) -> [xs...])(res...)))
+end
+(==)(x::Dataset, y::DDataset) = y == x
+
 include("groupby.jl")
 include("iteration.jl")
 include("sort.jl")

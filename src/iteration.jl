@@ -193,17 +193,22 @@ function distfor(t, x::Pair{<:Any, <:AbstractArray})
     [delayed(c->x[1]=>c)(c) for c in cs]
 end
 
-for f in [:rows, :pkeys]
-    @eval function $f(t::DDataset)
-        extractarray(t, x -> $f(x))
-    end
+function rows(t::DDataset)
+    extractarray(t, rows)
+end
 
-    if f !== :pkeys
-        @eval function $f(t::DDataset, which)
-            dist_selector(t, $f, which)
-        end
+function rows(t::DDataset, which)
+    dist_selector(t, rows, which)
+end
+
+function pkeys(t::DNextTable)
+    if isempty(t.pkey)
+        Columns((Base.OneTo(length(compute(t))),))
+    else
+        extractarray(t, pkeys)
     end
 end
+pkeys(t::DNDSparse) = keys(t)
 
 for f in [:keys, :values]
     @eval function $f(t::DNDSparse)

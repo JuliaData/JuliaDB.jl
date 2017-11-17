@@ -73,6 +73,7 @@ function ndsparse(x::DNDSparse; kwargs...)
     ndsparse(columns(x, pkeynames(x)), values(x); kwargs...)
 end
 Base.eltype(dt::DNDSparse{K,V}) where {K,V} = V
+Base.keytype(dt::DNDSparse{K,V}) where {K,V} = IndexedTables.astuple(K)
 IndexedTables.dimlabels(dt::DNDSparse{K}) where {K} = fieldnames(K)
 Base.ndims(dt::DNDSparse{K}) where {K} = nfields(K)
 keytype(dt::DNDSparse{K}) where {K} = astuple(K)
