@@ -1,5 +1,5 @@
 using JuliaDB
-using OnlineStatsBase
+using OnlineStats
 using Base.Test
 
 @testset "online stats" begin

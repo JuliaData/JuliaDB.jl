@@ -1,7 +1,6 @@
-using OnlineStatsBase
-using StatsBase
+using OnlineStats
 
-import OnlineStatsBase: Series, merge, OnlineStat
+import OnlineStats: Series, OnlineStat
 
 export aggregate_stats, Series
 
