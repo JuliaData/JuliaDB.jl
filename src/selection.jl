@@ -17,7 +17,7 @@ function DataValues.dropna(t::DDataset, select=(colnames(t)...))
     end |> fromchunks
 end
 
-function Base.filter(f, t::DDataset; select=nothing)
+function Base.filter(f, t::DDataset; select=isa(f, Union{Tuple, Pair}) ? nothing : valuenames(t))
     delayedmap(t.chunks) do x
         filter(f, x; select=select)
     end |> fromchunks

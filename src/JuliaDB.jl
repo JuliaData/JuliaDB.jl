@@ -30,6 +30,9 @@ function (==)(x::DDataset, y::Union{Dataset, DDataset})
     res = delayed(==, get_result=true).(x.chunks, y1.chunks)
     all(collect(delayed((xs...) -> [xs...])(res...)))
 end
+function (==)(x::DDataset, y::Dataset)
+    collect(x) == y
+end
 (==)(x::Dataset, y::DDataset) = y == x
 
 include("groupby.jl")

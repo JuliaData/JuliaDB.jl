@@ -6,8 +6,7 @@ function reducedim(f, x::DNDSparse, dims)
     if isempty(keep)
         throw(ArgumentError("to remove all dimensions, use `reduce(f, A)`"))
     end
-    @show x, keep, f
-    cache_thunks(select(x, keep..., agg=f))
+    cache_thunks(selectkeys(x, (keep...), agg=f))
 end
 
 reducedim(f, x::DNDSparse, dims::Symbol) = reducedim(f, x, [dims])
@@ -25,7 +24,7 @@ function reducedim_vec(f, x::DNDSparse, dims)
         throw(ArgumentError("to remove all dimensions, use `reduce(f, A)`"))
     end
 
-    t = select(x, keep...; agg=nothing)
+    t = selectkeys(x, (keep...); agg=nothing)
     cache_thunks(aggregate_vec(f, t))
 end
 
