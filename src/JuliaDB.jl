@@ -46,6 +46,7 @@ include("indexing.jl")
 include("selection.jl")
 include("reduce.jl")
 include("query.jl")
+include("online-stats.jl")
 include("join.jl")
 
 include("diagnostics.jl")
