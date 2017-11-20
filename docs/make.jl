@@ -3,15 +3,20 @@ using Documenter, JuliaDB, IndexedTables, Dagger, TextParse, Glob
 load_dir(x) = map(file -> joinpath("lib", x, file), readdir(joinpath(Base.source_dir(), "src", "lib", x)))
 
 makedocs(
-   modules = [JuliaDB],
+   modules = [JuliaDB, IndexedTables, NamedTuples],
    clean = false,
    format = [:html],#, :latex],
    sitename = "JuliaDB",
    pages = Any[
-       "Manual" => "index.md",
-       "API Reference" => "apireference.md"
+       "Home" => "index.md",
+       "API Reference" => "api/index.md",
+       "Data Structures" => "api/datastructures.md",
+       "Selection" => "api/selection.md",
+       "Aggregation" => "api/aggregation.md",
+       "Joins" => "api/joins.md",
+       "Loading and Saving" => "api/io.md",
    ],
-   assets = ["assets/custom.css"]
+   assets = ["assets/custom.css", "assets/custom.js"]
 )
 
 deploydocs(

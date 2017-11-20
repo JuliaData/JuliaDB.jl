@@ -31,7 +31,7 @@ function mmread(::Type{PooledArray}, io, mmap)
     PooledArray(PooledArrays.RefArray(refs), pool)
 end
 
-# Columns, IndexedTable
+# Columns, NDSparse
 
 function mmwrite(io::AbstractSerializer, xs::Columns)
     Base.serialize_type(io, MMSer{Columns})
@@ -59,16 +59,16 @@ function mmread(::Type{Columns}, io, mmap)
     end
 end
 
-function mmwrite(io::AbstractSerializer, xs::IndexedTable)
-    Base.serialize_type(io, MMSer{IndexedTable})
+function mmwrite(io::AbstractSerializer, xs::NDSparse)
+    Base.serialize_type(io, MMSer{NDSparse})
 
     flush!(xs)
     mmwrite(io, xs.index)
     mmwrite(io, xs.data)
 end
 
-function mmread(::Type{IndexedTable}, io, mmap)
+function mmread(::Type{NDSparse}, io, mmap)
     idx = deserialize(io)
     data = deserialize(io)
-    IndexedTable(idx, data, presorted=true, copy=false)
+    NDSparse(idx, data, presorted=true, copy=false)
 end

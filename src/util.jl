@@ -1,3 +1,4 @@
+import IndexedTables: astuple
 using NamedTuples
 
 using PooledArrays
@@ -6,30 +7,6 @@ using DataValues
 
 # re-export
 export @NT
-
-function tuplesetindex(x::Tuple{Vararg{Any,N}}, v, i) where N
-    ntuple(Val{N}) do j
-        i == j ? v : x[j]
-    end
-end
-
-@generated function tuplesetindex(x::NamedTuple, v, i::Symbol)
-    fields = fieldnames(x)
-    :(@NT($(fields...))(tuplesetindex(x, v, findfirst($fields, i))...))
-end
-
-@generated function tuplesetindex(x::NamedTuple, v, i::Int)
-    fields = fieldnames(x)
-    N = length(fields)
-    quote
-        tup = Base.@ntuple $N j -> i == j ? v : x[j]
-        @NT($(fields...))(tuplesetindex(tup, v, i)...)
-    end
-end
-
-function tuplesetindex(x::Union{NamedTuple, Tuple}, v::Tuple, i::Tuple)
-    reduce((t, j)->tuplesetindex(t, v[j], i[j]), x, 1:length(i))
-end
 
 function treereduce(f, xs, v0=xs[1])
     length(xs) == 0 && return v0
@@ -40,8 +17,12 @@ function treereduce(f, xs, v0=xs[1])
 end
 
 
-function subtable(nds, r)
-    Table(keys(nds)[r], values(nds)[r], presorted=true, copy=false)
+function subtable(nds::NDSparse, r)
+    NDSparse(keys(nds)[r], values(nds)[r], presorted=true, copy=false)
+end
+
+function subtable(t::NextTable, r)
+    t[r]
 end
 
 function extrema_range(x::AbstractArray{T}, r::UnitRange) where T
@@ -65,24 +46,7 @@ using Glob
 
 export @dateformat_str, load, csvread, load_table, glob
 
-"""
-    load_table(file::AbstractString;
-              indexcols, datacols, filenamecol, agg, presorted, copy, kwargs...)
-
-Load a CSV file into an Table data. `indexcols` (AbstractArray)
-specifies which columns form the index of the data, `datacols`
-(AbstractArray) specifies which columns are to be used as the data.
-`agg`, `presorted`, `copy` options are passed on to `Table`
-constructor, any other keyword argument is passed on to `readcsv`
-
-Returns an IndexedTable. A single implicit dimension with
-values 1:N will be added if no `indexcols` (or `indexcols=[]`)
-is specified.
-"""
-function load_table(args...; kwargs...)
-    # just return the table
-    _load_table(args...; kwargs...)[1]
-end
+Base.@deprecate load_table(args...;kwargs...) loadndsparse(args...; distributed=false, kwargs...)
 
 function prettify_filename(f)
     f = basename(f)
@@ -92,7 +56,8 @@ function prettify_filename(f)
     return f
 end
 
-function _load_table(file::Union{IO, AbstractString, AbstractArray}, delim=',';
+function _loadtable_serial(T, file::Union{IO, AbstractString, AbstractArray};
+                      delim=',',
                       indexcols=[],
                       datacols=nothing,
                       filenamecol=nothing,
@@ -169,7 +134,7 @@ function _load_table(file::Union{IO, AbstractString, AbstractArray}, delim=',';
         nullableidx = find(x->eltype(x) <: Union{DataValue,Nullable}, indexvecs)
         if !isempty(nullableidx)
             badcol_names = header[_indexcols[nullableidx]]
-            error("Indexed columns may not contain Nullables or NAs. Column(s) with nullables: $(join(badcol_names, ", ", " and "))")
+            warn("Indexed columns may contain Nullables or NAs. Column(s) with nullables: $(join(badcol_names, ", ", " and ")). This will result in wrong sorting.")
         end
 
         index = Columns(indexvecs...; names=indexcolnames)
@@ -210,9 +175,12 @@ function _load_table(file::Union{IO, AbstractString, AbstractArray}, delim=',';
 
     data = Columns(datavecs...; names=datacolnames)
 
-    Table(index, data), implicitindex
+    if T<:NextTable && implicitindex
+        T(data), true
+    else
+        convert(T, index, data), implicitindex
+    end
 end
-
 
 function lookupbyheader(header, key)
     if isa(key, Symbol)
@@ -245,7 +213,7 @@ function approx_size(cs::Columns)
     sum(map(approx_size, astuple(cs.columns)))
 end
 
-function approx_size(t::IndexedTable)
+function approx_size(t::NDSparse)
     approx_size(t.data) + approx_size(t.index)
 end
 
@@ -319,3 +287,28 @@ function randomsample(n, r::Range)
     end
     return output
 end
+
+function tuplesetindex(x::Tuple{Vararg{Any,N}}, v, i) where N
+    ntuple(Val{N}) do j
+        i == j ? v : x[j]
+    end
+end
+
+@generated function tuplesetindex(x::NamedTuple, v, i::Symbol)
+    fields = fieldnames(x)
+    :(@NT($(fields...))(tuplesetindex(x, v, findfirst($fields, i))...))
+end
+
+@generated function tuplesetindex(x::NamedTuple, v, i::Int)
+    fields = fieldnames(x)
+    N = length(fields)
+    quote
+        tup = Base.@ntuple $N j -> i == j ? v : x[j]
+        @NT($(fields...))(tuplesetindex(tup, v, i)...)
+    end
+end
+
+function tuplesetindex(x::Union{NamedTuple, Tuple}, v::Tuple, i::Tuple)
+    reduce((t, j)->tuplesetindex(t, v[j], i[j]), x, 1:length(i))
+end
+

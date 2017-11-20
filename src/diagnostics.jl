@@ -16,7 +16,7 @@ function time_table(log; profile=false)
                        gc_diff=getfields(log, :gc_diff))
     end
 
-    IndexedTable(idx, data)
+    NDSparse(idx, data)
 end
 
 function add_gc_diff(x,y)

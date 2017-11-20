@@ -1,22 +1,58 @@
-@import url('https://fonts.googleapis.com/css?family=Source+Code+Pro|Source+Sans+Pro|Muli:400,600');
+@import url('https://fonts.googleapis.com/css?family=Fira+Mono|Lato:400,600|Roboto+Slab:100,300,400');
 
+/*
+ * link color: 1dc6f8
+ * code color: 5dc2c4
+ * header color: fc5362
+ * sidebar color: fbe1b2
+ * highlight color: ffc23b
+ */
+/*
+ * CardSox
+ *
+ * pink e6526d
+ * maroon 543139
+ * gray 5c6962
+ * graybg c4d3cb
+ * yellow fff000
+ */
 
 pre, code {
-  font-family: 'Source Code Pro', monospace !important;
+  font-family: 'Fira Mono', monospace !important;
   font-size: 0.95em;
 }
 
-pre {
-    padding: 1.5em;
+code {
+    font-weight: bold;
 }
 
-code {
+pre {
+    background: inherit;
+    background: #f1f1f1;
+    border: none;
+    padding: 0;
+}
+
+pre > code {
+    font-weight: normal;
+    border: 1px solid #f1f1f1;
+    border-radius: 4px;
+    padding: 1em !important;
+}
+
+pre > code.language-none {
     padding: 0.1em 0.25em;
+    border: none;
+}
+code {
+    background: none;
+    color: #454545;
 }
 
 body {
-    font-family: 'Source Sans Pro';
-    color: #333;
+    font-family: 'Lato';
+    font-size: 15px;
+    color: #444;
 }
 
 
@@ -31,74 +67,137 @@ a {
 }
 
 a:visited {
-    color: #79BD9A;
+    color: #e6526d;
+}
+
+a:hover {
+    border-bottom: 2px solid #fff000;
 }
 
 #version-selector {
     display: none;
 }
 #search-query {
-    background-color: #fff;
-    border: 1px solid #dfdfdf;
     border-radius: 8px;
+    border: none;
+    background: #744559;
     height: 32px;
 }
-nav.toc ul a.toctext {
-    color: #3B8686;
+#search-query::placeholder {
+    color: #ddd;
 }
+nav.toc ul a.toctext {
+    font-size: 12px;
+    padding-left: 24px;
+    color: #ddd;
+}
+nav.toc ul a.toctext:hover {
+    border-bottom: none;
+    background: #e6526d;
+}
+nav.toc input {
+    margin: 1em auto;
+}
+
 nav.toc {
-    background: #fff;
+    margin-left: 0;
+    width: 200px;
+    background: #543139;
     box-shadow: none;
-    font-family: Muli;
+    font-family: 'Lato';
+    color: #fff;
 }
 .admonition-title {
-    font-family: Muli;
+    font-family: 'Lato';
 }
 #docs header hr {
     display: none;
 }
 
 #docs header {
-    font-family: Muli;
+    display: none;
+}
+
+#docs {
+    margin-left: 232px;
 }
 
 nav.toc li.current > .toctext {
-    color: #0B486B;
+    color: #ddd;
     border: none;
-    border-bottom: 1px solid #A8DBA8;
+    background: none;
+    border-bottom: 1px solid #e6526d;
+}
+nav.toc li.current:hover > .toctext {
+    border-bottom: 1px solid #e6526d;
 }
 nav.toc ul.internal {
-    background: #ffffff;
+    background: #543139;
     box-shadow: none;
 }
 nav.toc ul.internal a.toctext {
-    color: #0B486B;
-}
-nav.toc ul.internal a.toctext:hover {
-    background: #3B8686;
-    color: #fff;
+    color: #ddd;
+    padding-left: 36px;
 }
 h1,h2,h3{
-    font-family: 'Muli';
+    font-family: 'Roboto Slab';
+    font-weight: 300;
+    color: #e6526d;
+    padding: 0;
+}
+p strong {
+    color: #543139;
+}
+h1 {
+    font-weight: bold;
 }
 h2 {
-    margin-top: 32px;
-    font-size: 1.66em;
-    padding-bottom: 8px;
-    border-bottom: 1px solid #eeeeee;
+    font-weight: 400;
+    margin: 0;
+    padding: 0;
+    font-size: 1.4em;
+    border-bottom: none;
+}
+h2 a {
+    color: #e6526d;
 }
 .toc h1 {
     font-size: 40px;
-    font-family: Muli;
-    color: #79BD9A;
+    font-weight: 300;
+    letter-spacing: -1.3px;
+    color: #f1f1f1;
+    font-family: 'Roboto Slab';
 }
 h2 a.nav-anchor, h2 a.nav-anchor:visited {
-    color: #0B486B;
-}
-h3 a.nav-anchor, h3 a.nav-anchor:visited, h2 a.nav-anchor:hover {
-    color: #3B8686;
+    color: #e6526d;
 }
 
 p {
     line-height: 1.66em;
+}
+
+article section.docstring {
+    padding: 0;
+    border: none;
+}
+
+.docstring-binding code {
+    background: none;
+    font-size: 1.2em;
+    padding: 0;
+    color: #e6526d;
+}
+
+article section.docstring {
+    margin-bottom: 24px;
+    padding-bottom: 24px;
+    border-bottom: 1px solid #ddd;
+}
+
+article section.docstring a.source-link {
+    display: none;
+}
+
+footer {
+    border-top:none;
 }

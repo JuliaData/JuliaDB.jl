@@ -1,55 +1,112 @@
-import Base: collect
-
 import Dagger: chunktype, domain, tochunk, distribute,
                chunks, Context, compute, gather, free!
 
-import IndexedTables: eltypes, astuple, keyselector, valueselector
-
-# re-export the essentials
-export distribute, chunks, compute, gather, free!
-
-const IndexTuple = Union{Tuple, NamedTuple}
-
-"""
-    IndexSpace(interval, boundingrect, nrows)
-
-Metadata about an `IndexedTable`, a chunk of a DTable.
-
-- `interval`: An `Interval` object with the first and the last index tuples.
-- `boundingrect`: An `Interval` object with the lowest and the highest indices as tuples.
-- `nrows`: A `Nullable{Int}` of number of rows in the Table, if knowable
-           (See design doc section on "Knowability of chunk size")
-"""
-struct IndexSpace{T<:IndexTuple}
-    interval::Interval{T}
-    boundingrect::Interval{T}
-    nrows::Nullable{Int}
-end
+import IndexedTables: eltypes, astuple, colnames, ndsparse, pkeynames, valuenames
 
 boundingrect(x::IndexSpace) = x.boundingrect
 interval(x::IndexSpace) = x.interval
 
 """
-A distributed table. Can be constructed using [loadfiles](@ref),
+A distributed NDSparse datastructure.
+Can be constructed using [loadfiles](@ref),
 [ingest](@ref) or [distribute](@ref)
 """
-struct DTable{K,V}
-    subdomains::Vector{IndexSpace{K}}
+struct DNDSparse{K,V}
+    domains::Vector{IndexSpace{K}}
     chunks::Vector
 end
 
-Base.eltype(dt::DTable{K,V}) where {K,V} = V
-IndexedTables.dimlabels(dt::DTable{K}) where {K} = fieldnames(K)
-Base.ndims(dt::DTable{K}) where {K} = nfields(K)
-keytype(dt::DTable{K}) where {K} = astuple(K)
+const DDataset = Union{DNextTable, DNDSparse}
+
+function ndsparse(::Val{:distributed}, ks::Tup,
+                  vs::Union{Tup, AbstractArray};
+                  closed=true, chunks=nothing, agg=nothing, kwargs...)
+
+    if chunks === nothing
+        # this means the vectors are distributed.
+        # pick the first distributed vector and distribute
+        # all others similarly
+        i = findfirst(x->isa(x, ArrayOp), ks)
+        if i != 0
+            darr = ks[i]
+        elseif vs isa Tup && any(x->isa(x, ArrayOp, vs))
+            darr = vs[findfirst(x->isa(x, ArrayOp), vs)]
+        elseif isa(vs, ArrayOp)
+            darr = vs
+        else
+            error("Don't know how to distribute. specify `chunks`")
+        end
+
+        chunks = domainchunks(compute(darr))
+    end
+    kdarrays = map(x->distribute(x, chunks), ks)
+    vdarrays = isa(vs, Tup) ? map(x->distribute(x, chunks), vs) : distribute(vs, chunks)
+
+    if isempty(kdarrays)
+        error("NDSparse must be constructed with at least one index column")
+    end
+
+    nchunks = length(kdarrays[1].chunks)
+    inames = isa(ks, NamedTuple) ? fieldnames(ks) : nothing
+    ndims = length(ks)
+    dnames = isa(vs, NamedTuple) ? fieldnames(vs) : nothing
+    iscols = isa(vs, Tup)
+
+    function makechunk(args...)
+        k = Columns(args[1:ndims]..., names=inames)
+        v = iscols ? Columns(args[ndims+1:end]..., names=dnames) : args[end]
+        ndsparse(k,v; agg=agg, kwargs...)
+    end
+
+    cs = Array{Any}(nchunks)
+    for i = 1:nchunks
+        args = Any[map(x->x.chunks[i], kdarrays)...]
+        append!(args, isa(vs, Tup) ? [map(x->x.chunks[i], vdarrays)...] :
+                [vdarrays.chunks[i]])
+        cs[i] = delayed(makechunk)(args...)
+    end
+    fromchunks(cs, closed=closed, merge=(x,y)->merge(x,y, agg=agg))
+end
+
+function ndsparse(x::DNDSparse; kwargs...)
+    ndsparse(columns(x, pkeynames(x)), values(x); kwargs...)
+end
+Base.eltype(dt::DNDSparse{K,V}) where {K,V} = V
+Base.keytype(dt::DNDSparse{K,V}) where {K,V} = IndexedTables.astuple(K)
+IndexedTables.dimlabels(dt::DNDSparse{K}) where {K} = fieldnames(K)
+Base.ndims(dt::DNDSparse{K}) where {K} = nfields(K)
+keytype(dt::DNDSparse{K}) where {K} = astuple(K)
+
+# TableLike API
+Base.@pure function IndexedTables.colnames{K,V}(t::DNDSparse{K,V})
+    dnames = V<:Tup ? fieldnames(V) : [1]
+    if all(x->isa(x, Integer), dnames)
+        dnames = map(x->x+nfields(K), dnames)
+    end
+    vcat(fieldnames(K), dnames)
+end
+
+Base.@pure pkeynames(t::DNDSparse{K,V}) where {K, V} = (fieldnames(K)...)
+function IndexedTables.valuenames{K,V}(t::DNDSparse{K,V})
+    if V <: Tup
+        if V<:NamedTuple
+            (fieldnames(V)...)
+        else
+            ((ndims(t) + (1:nfields(V)))...)
+        end
+    else
+        ndims(t) + 1
+    end
+end
+
 
 const compute_context = Ref{Union{Void, Context}}(nothing)
 get_context() = compute_context[] == nothing ? Context() : compute_context[]
 
 """
-    compute(t::DTable; allowoverlap, closed)
+    compute(t::DNDSparse; allowoverlap, closed)
 
-Computes any delayed-evaluations in the `DTable`.
+Computes any delayed-evaluations in the `DNDSparse`.
 The computed data is left on the worker processes.
 Subsequent operations on the results will reuse the chunks.
 
@@ -67,9 +124,9 @@ See also [`collect`](@ref).
     If the result is expected to be big, try `compute(save(t, "output_dir"))` instead.
     See [`save`](@ref) for more.
 """
-compute(t::DTable; kwargs...) = compute(get_context(), t; kwargs...)
+compute(t::DNDSparse; kwargs...) = compute(get_context(), t; kwargs...)
 
-function compute(ctx, t::DTable; allowoverlap=false, closed=false)
+function compute(ctx, t::DNDSparse; allowoverlap=false, closed=false)
     if any(Dagger.istask, t.chunks)
         # we need to splat `thunks` so that Dagger knows the inputs
         # are thunks and they need to be staged for scheduling
@@ -84,15 +141,15 @@ function compute(ctx, t::DTable; allowoverlap=false, closed=false)
     end
 end
 
-function free!(t::DTable)
+function free!(t::DNDSparse)
     foreach(c -> free!(c, force=true), t.chunks)
 end
 
 """
-    collect(t::DTable)
+    collect(t::DNDSparse)
 
-Gets distributed data in a DTable `t` and merges it into
-[IndexedTable](#IndexedTables.IndexedTable) object
+Gets distributed data in a DNDSparse `t` and merges it into
+[NDSparse](#IndexedTables.NDSparse) object
 
 !!! warning
     `collect(t)` requires at least as much memory as the size of the
@@ -100,9 +157,9 @@ Gets distributed data in a DTable `t` and merges it into
     try `compute(save(t, "output_dir"))` instead. See [`save`](@ref) for more.
     This data can be loaded later using [`load`](@ref).
 """
-collect(t::DTable) = collect(get_context(), t)
+collect(t::DNDSparse) = collect(get_context(), t)
 
-function collect(ctx::Context, dt::DTable{T}) where T
+function collect(ctx::Context, dt::DNDSparse{T}) where T
     cs = dt.chunks
     if length(cs) > 0
         collect(ctx, treereduce(delayed(_merge), cs))
@@ -112,14 +169,14 @@ function collect(ctx::Context, dt::DTable{T}) where T
 end
 
 # Fast-path merge if the data don't overlap
-function _merge(f, a::Table, b::Table)
+function _merge(f, a::NDSparse, b::NDSparse)
     if isempty(a)
         b
     elseif isempty(b)
         a
     elseif last(a.index) < first(b.index)
         # can vcat
-        Table(vcat(a.index, b.index), vcat(a.data, b.data),
+        NDSparse(vcat(a.index, b.index), vcat(a.data, b.data),
               presorted=true, copy=false)
     elseif last(b.index) < first(a.index)
         _merge(b, a)
@@ -128,31 +185,26 @@ function _merge(f, a::Table, b::Table)
     end
 end
 
-_merge(f, x::Table) = x
-function _merge(f, x::Table, y::Table, ys::Table...)
+_merge(f, x::NDSparse) = x
+function _merge(f, x::NDSparse, y::NDSparse, ys::NDSparse...)
     treereduce((a,b)->_merge(f, a, b), [x,y,ys...])
 end
 
-_merge(x::Table, y::Table...) = _merge((a,b) -> merge(a, b, agg=nothing), x, y...)
+_merge(x::NDSparse, y::NDSparse...) = _merge((a,b) -> merge(a, b, agg=nothing), x, y...)
 
 """
-    map(f, t::DTable)
+    map(f, t::DNDSparse)
 
 Applies a function `f` on every element in the data of table `t`.
 """
-Base.map(f, dt::DTable) = mapchunks(c->map(f, c), dt)
-
-function Base.reduce(f, dt::DTable)
-    cs = map(delayed(c->reduce(f, c)), dt.chunks)
-    collect(get_context(), treereduce(delayed(f), cs))
-end
+Base.map(f, dt::DNDSparse) = mapchunks(c->map(f, c), dt)
 
 struct EmptySpace{T} end
 
 # Teach dagger how to automatically figure out the
-# metadata (in dagger parlance "domain") about an Table chunk.
-function Dagger.domain(nd::Table)
-    T = eltypes(typeof(nd.index.columns))
+# metadata (in dagger parlance "domain") about an NDSparse chunk.
+function Dagger.domain(nd::NDSparse)
+    T = eltype(keys(nd))
 
     if isempty(nd)
         return EmptySpace{T}()
@@ -168,16 +220,17 @@ function Dagger.domain(nd::Table)
     return IndexSpace(interval, boundingrect, Nullable{Int}(length(nd)))
 end
 
-function subindexspace(nd::IndexedTable, r)
-    T = eltypes(typeof(nd.index.columns))
+function subindexspace(t::Union{NDSparse, NextTable}, r)
+    ks = pkeys(t)
+    T = eltype(typeof(ks))
     wrap = T<:NamedTuple ? T : tuple
 
     if isempty(r)
         return EmptySpace{T}()
     end
 
-    interval = Interval(wrap(nd.index[first(r)]...), wrap(nd.index[last(r)]...))
-    cs = astuple(nd.index.columns)
+    interval = Interval(wrap(ks[first(r)]...), wrap(ks[last(r)]...))
+    cs = astuple(columns(ks))
     extr = map(c -> extrema_range(c, r), cs[2:end])
 
     boundingrect = Interval(wrap(cs[1][first(r)], map(first, extr)...),
@@ -227,32 +280,20 @@ end
 
 # given a chunks index constructed above, give an array of
 # index spaces spanned by the chunks in the index
-function index_spaces(t::Table)
+function index_spaces(t::NDSparse)
     intervals = map(x-> Interval(map(first, x), map(last, x)), t.index)
     boundingrects = map(x-> Interval(map(first, x), map(last, x)), t.data.columns.boundingrect)
     map(IndexSpace, intervals, boundingrects, t.data.columns.length)
 end
 
-function trylength(t::DTable)
-    len = Nullable(0)
-    for l in map(x->x.nrows, t.subdomains)
-        if !isnull(l) && !isnull(len)
-            len = Nullable(get(len) + get(l))
-        else
-            return Nullable{Int}()
-        end
-    end
-    return len
-end
-
 """
-The length of the `DTable` if it can be computed. Will throw an error if not.
+The length of the `DNDSparse` if it can be computed. Will throw an error if not.
 You can get the length of such tables after calling [`compute`](@ref) on them.
 """
-function Base.length(t::DTable)
+function Base.length(t::DNDSparse)
     l = trylength(t)
     if isnull(l)
-        error("The length of the DTable is not yet known since some of its parts are not yet computed. Call `compute` to compute them, and then call `length` on the result of `compute`.")
+        error("The length of the DNDSparse is not yet known since some of its parts are not yet computed. Call `compute` to compute them, and then call `length` on the result of `compute`.")
     else
         get(l)
     end
@@ -279,35 +320,35 @@ function _has_overlaps(firsts, lasts, closed)
     return false
 end
 
-function has_overlaps(subdomains, closed=false)
-    _has_overlaps(first.(subdomains), last.(subdomains), closed)
+function has_overlaps(domains; closed=true)
+    _has_overlaps(first.(domains), last.(domains), closed)
 end
 
-function has_overlaps(subdomains, dims::AbstractVector)
+function has_overlaps(domains, dims::AbstractVector)
     sub(x) = x[dims]
-    fs = sub.(first.(subdomains))
-    ls = sub.(last.(subdomains))
+    fs = sub.(first.(domains))
+    ls = sub.(last.(domains))
     _has_overlaps(fs, ls, true)
 end
 
-function with_overlaps(f, t::DTable{K,V}, closed=false) where {K,V}
-    subdomains = t.subdomains
+function with_overlaps(f, t::DDataset, closed=false)
+    domains = t.domains
     chunks = t.chunks
 
-    if isempty(subdomains)
+    if isempty(domains)
         return t
     end
 
-    if !issorted(subdomains, by=first)
-        perm = sortperm(subdomains, by = first)
-        subdomains = subdomains[perm]
+    if !issorted(domains, by=first)
+        perm = sortperm(domains, by = first)
+        domains = domains[perm]
         chunks = chunks[perm]
     end
 
-    stack = [subdomains[1]]
+    stack = [domains[1]]
     groups = [[1]]
-    for i in 2:length(subdomains)
-        sub = subdomains[i]
+    for i in 2:length(domains)
+        sub = domains[i]
         if hasoverlap(stack[end].interval, sub.interval)
             stack[end] = merge(stack[end], sub)
             push!(groups[end], i)
@@ -318,43 +359,38 @@ function with_overlaps(f, t::DTable{K,V}, closed=false) where {K,V}
     end
 
     cs = collect([f(chunks[group]) for group in groups])
-    DTable{K,V}(stack, cs)
+    fromchunks(cs)
 end
 
-"""
-`fromchunks(chunks::AbstractArray, [subdomains::AbstracArray]; allowoverlap=false)`
-
-Convenience function to create a DTable from an array of chunks.
-The chunks must be non-Thunks. Omits empty chunks in the output.
-"""
-function fromchunks(chunks::AbstractArray,
-                    subdomains::AbstractArray = map(domain, chunks);
+function fromchunks(::Type{<:NDSparse}, chunks::AbstractArray,
+                    domains::AbstractArray = map(domain, chunks);
                     KV = getkvtypes(chunks),
+                    merge=_merge,
                     closed = false,
                     allowoverlap = false)
 
-    nzidxs = find(x->!isempty(x), subdomains)
-    subdomains = subdomains[nzidxs]
+    nzidxs = find(x->!isempty(x), domains)
+    domains = domains[nzidxs]
 
-    dt = DTable{KV...}(subdomains, chunks[nzidxs])
+    dt = DNDSparse{KV...}(domains, chunks[nzidxs])
 
-    if !allowoverlap && has_overlaps(subdomains, closed)
-        return rechunk(dt, closed=closed)
+    if !allowoverlap && has_overlaps(domains, closed=closed)
+        return rechunk(dt, closed=closed, merge=merge)
     else
         return dt
     end
 end
 
-function cache_thunks(dt::DTable)
-    for c in dt.chunks
+function cache_thunks(t)
+    for c in t.chunks
         if isa(c, Dagger.Thunk)
             Dagger.cache_result!(c)
         end
     end
-    dt
+    t
 end
 
-function getkvtypes{N<:Table}(::Type{N})
+function getkvtypes{N<:NDSparse}(::Type{N})
     eltype(N.parameters[3]), N.parameters[1]
 end
 
@@ -371,18 +407,18 @@ function getkvtypes(xs::AbstractArray)
     (K, V)
 end
 
-### Distribute a Table into a DTable
+### Distribute a NDSparse into a DNDSparse
 
 """
-    distribute(itable::IndexedTable, rowgroups::AbstractArray)
+    distribute(itable::NDSparse, rowgroups::AbstractArray)
 
-Distributes an IndexedTable object into a DTable by splitting it up into chunks
+Distributes an NDSparse object into a DNDSparse by splitting it up into chunks
 of `rowgroups` elements. `rowgroups` is a vector specifying the number of
 rows in the chunks.
 
-Returns a `DTable`.
+Returns a `DNDSparse`.
 """
-function distribute(nds::Table{V}, rowgroups::AbstractArray;
+function distribute(nds::NDSparse{V}, rowgroups::AbstractArray;
                      allowoverlap = false, closed = false) where V
     splits = cumsum([0, rowgroups;])
 
@@ -396,21 +432,23 @@ function distribute(nds::Table{V}, rowgroups::AbstractArray;
     # sure that the parts get distributed instead of being left on
     # the master process - which would lead to all operations being serial.
     chunks = map(r->delayed(identity)(subtable(nds, r)), ranges)
-    subdomains = map(r->subindexspace(nds, r), ranges)
+    domains = map(r->subindexspace(nds, r), ranges)
     realK = eltypes(typeof(nds.index.columns))
-    cache_thunks(fromchunks(chunks, subdomains, KV = (realK, V),
+    cache_thunks(fromchunks(chunks, domains, KV = (realK, V),
                             allowoverlap=allowoverlap, closed=closed))
 end
 
-"""
-    distribute(itable::IndexedTable, nchunks::Int=nworkers())
+distribute(t::DNDSparse, cs) = ndsparse(t, chunks=cs)
 
-Distributes an IndexedTable object into a DTable of `nchunks` chunks
+"""
+    distribute(itable::NDSparse, nchunks::Int=nworkers())
+
+Distributes an NDSparse object into a DNDSparse of `nchunks` chunks
 of approximately equal size.
 
-Returns a `DTable`.
+Returns a `DNDSparse`.
 """
-function distribute(nds::Table, nchunks::Int=nworkers();
+function distribute(nds::NDSparse, nchunks::Int=nworkers();
                     allowoverlap = false, closed = false)
     N = length(nds)
     q, r = divrem(N, nchunks)
@@ -420,19 +458,19 @@ function distribute(nds::Table, nchunks::Int=nworkers();
 end
 
 """
-    mapchunks(f, t::DTable; keeplengths=true)
+    mapchunks(f, t::DNDSparse; keeplengths=true)
 
-Applies a function to each chunk in `t`. Returns a new DTable.
+Applies a function to each chunk in `t`. Returns a new DNDSparse.
 If `keeplength` is false, this means that the lengths of the output
 chunks is unknown before [`compute`](@ref). This function is used
-internally by many DTable operations.
+internally by many DNDSparse operations.
 """
-function mapchunks(f, t::DTable{K,V}; keeplengths=true) where {K,V}
+function mapchunks(f, t::DNDSparse{K,V}; keeplengths=true) where {K,V}
     chunks = map(delayed(f), t.chunks)
     if keeplengths
-        DTable{K, V}(t.subdomains, chunks)
+        DNDSparse{K, V}(t.domains, chunks)
     else
-        DTable{K, V}(map(null_length, t.subdomains), chunks)
+        DNDSparse{K, V}(map(null_length, t.domains), chunks)
     end
 end
 
@@ -440,27 +478,14 @@ function null_length(x::IndexSpace)
     IndexSpace(x.interval, x.boundingrect, Nullable{Int}())
 end
 
-function valueselector(t::DTable)
-    T = eltype(t)
-    if T <: Tup
-        if T<:NamedTuple
-            (fieldnames(T)...)
-        else
-            ((ndims(t) + (1:nfields(T)))...)
-        end
-    else
-        ndims(t) + 1
-    end
-end
-
-function subtable{K, V}(t::DTable{K,V}, idx::UnitRange)
+function subtable{K, V}(t::DNDSparse{K,V}, idx)
     if isnull(trylength(t))
         t = compute(t)
     end
     if isempty(idx)
-        return DTable{K, V}(similar(t.subdomains, 0), similar(t.chunks, 0))
+        return DNDSparse{K, V}(similar(t.domains, 0), similar(t.chunks, 0))
     end
-    ls = map(x->get(nrows(x)), t.subdomains)
+    ls = map(x->get(nrows(x)), t.domains)
     cumls = cumsum(ls)
     i = searchsortedlast(cumls, first(idx))
     j = searchsortedfirst(cumls, last(idx))
@@ -469,7 +494,7 @@ function subtable{K, V}(t::DTable{K,V}, idx::UnitRange)
     strt = first(idx) - get(cumls, i-1, 0)
     fin = cumls[j] - last(idx)
 
-    ds = t.subdomains[i:j]
+    ds = t.domains[i:j]
     cs = convert(Vector{Any}, t.chunks[i:j])
     if i==j
         cs[1] = delayed(x->subtable(x, strt:length(x)-fin))(cs[1])
@@ -482,45 +507,33 @@ function subtable{K, V}(t::DTable{K,V}, idx::UnitRange)
         ds[end] = null_length(ds[2])
     end
 
-    DTable{K,V}(ds, cs)
+    DNDSparse{K,V}(ds, cs)
 end
 
-import Base.Iterators: PartitionIterator, start, next, done
+import IndexedTables: showtable
 
-function Iterators.partition(t::DTable, n::Integer)
-    PartitionIterator(t, n)
-end
-
-struct PartIteratorState
-    chunkno::Int
-    chunk::IndexedTable
-    used::Int
-end
-
-function start(p::PartitionIterator{<:DTable})
-    c = collect(p.c.chunks[1])
-    p = PartIteratorState(1, c, 0)
-end
-
-function done(t::PartitionIterator{<:DTable}, p::PartIteratorState)
-    p.chunkno == length(t.c.chunks) && p.used >= length(p.chunk)
-end
-
-function next(t::PartitionIterator{<:DTable}, p::PartIteratorState)
-    if p.used + t.n <= length(p.chunk)
-        # easy
-        nextpart = subtable(p.chunk, p.used+1:(p.used+t.n))
-        return nextpart, PartIteratorState(p.chunkno, p.chunk, p.used + t.n)
+function Base.show(io::IO, big::DNDSparse)
+    h, w = displaysize(io)
+    showrows = h - 5 # This will trigger an ellipsis when there's
+                     # more to see than the screen fits
+    t = first(Iterators.partition(big, showrows))
+    if !(values(t) isa Columns)
+        cnames = colnames(keys(t))
+        eltypeheader = "$(eltype(t))"
     else
-        partial = subtable(p.chunk, p.used+1:length(p.chunk))
-        required = t.n - length(partial)
-        if p.chunkno == length(t.c.chunks)
-            # we're done, last chunk
-            return partial, PartIteratorState(p.chunkno, p.chunk, length(p.chunk))
+        cnames = colnames(t)
+        nf = nfields(eltype(t))
+        if eltype(t) <: NamedTuple
+            eltypeheader = "$(nf) field named tuples"
         else
-            nextchunk = collect(t.c.chunks[p.chunkno+1])
-            partial2 = subtable(nextchunk, 1:required)
-            return _merge(partial, partial2), PartIteratorState(p.chunkno+1, nextchunk, required)
+            eltypeheader = "$(nf)-tuples"
         end
     end
+    len = trylength(big)
+    vals = isnull(len) ? "of" : "with $(get(len)) values"
+    header = "$(ndims(t))-d Distributed NDSparse $vals ($eltypeheader) in $(length(big.chunks)) chunks:"
+    showtable(io, t; header=header, cnames=cnames,
+              divider=ndims(t), ellipsis=:end)
 end
+
+Base.@deprecate_binding DTable DNDSparse
