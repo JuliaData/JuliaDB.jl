@@ -58,7 +58,7 @@ import JuliaDB: with_overlaps, delayed
             cs[1]
         end
     end
-    @test collect(aggregate(+, t1)) == aggregate(+, t)
+    @test collect(groupreduce(+, t1)) == groupreduce(+, t)
     @test group_count == 1
 end
 

@@ -7,10 +7,10 @@ using Base.Test
     t2 = NDSparse(Columns([0,2,2,3], [1,1,2,2]), [1,2,3,4])
 
     j1 = innerjoin(t1,t2)
-    j2 = innerjoin(t1,t2,+)
+    j2 = innerjoin(+, t1,t2)
 
     lj1 = leftjoin(t1,t2)
-    lj2 = leftjoin(t1,t2,+)
+    lj2 = leftjoin(+, t1,t2)
 
     mj1 = merge(t1,t2)
     mj2 = merge(t2,t1)
@@ -20,10 +20,10 @@ using Base.Test
         for n2 = 1:5
             d2 = distribute(t2, n2)
             @test collect(innerjoin(d1, d2)) == j1
-            @test collect(innerjoin(d1, d2, +)) == j2
+            @test collect(innerjoin(+, d1, d2)) == j2
 
             @test collect(leftjoin(d1, d2)) == lj1
-            @test collect(leftjoin(d1, d2, +)) == lj2
+            @test collect(leftjoin(+, d1, d2)) == lj2
 
             @test collect(merge(d1, d2)) == mj1
             @test collect(merge(d2, d1)) == mj2

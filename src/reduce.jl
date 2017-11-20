@@ -2,6 +2,8 @@ import IndexedTables: aggregate, aggregate_vec, reducedim_vec, pick
 import IndexedTables: groupreduce, groupby
 import Base: reducedim
 
+export reducedim_vec, aggregate, aggregate_vec
+
 function reduce(f, t::DDataset; select=valuenames(t))
     xs = delayedmap(t.chunks) do x
         f = isa(f, OnlineStat) ? copy(f) : f # required for > 1 chunks on the same proc
@@ -83,7 +85,7 @@ function reducedim_vec(f, x::DNDSparse, dims)
     end
 
     t = selectkeys(x, (keep...); agg=nothing)
-    cache_thunks(aggregate_vec(f, t))
+    cache_thunks(groupby(f, t))
 end
 
 reducedim_vec(f, x::DNDSparse, dims::Symbol) = reducedim_vec(f, x, [dims])

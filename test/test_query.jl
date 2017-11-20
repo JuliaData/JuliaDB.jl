@@ -31,9 +31,9 @@ end
     for i=[1, 3, 5]
         d = distribute(t, i)
 
-        res = select(t, 1=>x->true, 2=>x->x%2 == 0)
-        @test collect(select(d, 1=>x->true, 2=>x->x%2 == 0)) == res
-        @test collect(select(d, :a=>x->true, :b => x->x%2 == 0)) == res
+        res = filter((1=>x->true, 2=>x->x%2 == 0), t)
+        @test collect(filter((1=>x->true, 2=>x->x%2 == 0), d)) == res
+        @test collect(filter((:a=>x->true, :b => x->x%2 == 0), d)) == res
     end
 end
 
@@ -78,7 +78,7 @@ end
 @testset "select" begin
     t1 = NDSparse(Columns([1,2,3,4], [2,1,1,2]), [1,2,3,4])
     d1 = distribute(t1, 2)
-    @test collect(select(d1, 2, agg=+)) == select(t1, 2, agg=+)
+    @test collect(selectkeys(d1, 2, agg=+)) == selectkeys(t1, 2, agg=+)
 end
 
 @testset "permutedims" begin
