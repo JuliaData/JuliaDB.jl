@@ -1,22 +1,7 @@
 import Dagger: chunktype, domain, tochunk, distribute,
                chunks, Context, compute, gather, free!
 
-<<<<<<< HEAD:src/ndsparse.jl
 import IndexedTables: eltypes, astuple, colnames, ndsparse, pkeynames, valuenames
-=======
-import IndexedTables: eltypes, astuple, keyselector, valueselector
-
-# re-export the essentials
-export distribute, chunks, compute, gather, free!
-
-const IndexTuple = Union{Tuple, NamedTuple}
-
-"""
-    IndexSpace(interval, boundingrect, nrows)
-
-Metadata about an `IndexedTable`, a chunk of a DTable.
->>>>>>> origin/master:src/dtable.jl
-
 
 boundingrect(x::IndexSpace) = x.boundingrect
 interval(x::IndexSpace) = x.interval
@@ -213,11 +198,6 @@ _merge(x::NDSparse, y::NDSparse...) = _merge((a,b) -> merge(a, b, agg=nothing), 
 Applies a function `f` on every element in the data of table `t`.
 """
 Base.map(f, dt::DNDSparse) = mapchunks(c->map(f, c), dt)
-
-function Base.reduce(f, dt::DNDSparse)
-    cs = map(delayed(c->reduce(f, c)), dt.chunks)
-    collect(get_context(), treereduce(delayed(f), cs))
-end
 
 struct EmptySpace{T} end
 
@@ -498,24 +478,7 @@ function null_length(x::IndexSpace)
     IndexSpace(x.interval, x.boundingrect, Nullable{Int}())
 end
 
-<<<<<<< HEAD:src/ndsparse.jl
-function subtable{K, V}(t::DNDSparse{K,V}, idx::UnitRange)
-=======
-function valueselector(t::DTable)
-    T = eltype(t)
-    if T <: Tup
-        if T<:NamedTuple
-            (fieldnames(T)...)
-        else
-            ((ndims(t) + (1:nfields(T)))...)
-        end
-    else
-        ndims(t) + 1
-    end
-end
-
-function subtable{K, V}(t::DTable{K,V}, idx::UnitRange)
->>>>>>> origin/master:src/dtable.jl
+function subtable{K, V}(t::DNDSparse{K,V}, idx)
     if isnull(trylength(t))
         t = compute(t)
     end

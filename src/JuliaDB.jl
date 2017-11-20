@@ -35,7 +35,6 @@ function (==)(x::DDataset, y::Dataset)
 end
 (==)(x::Dataset, y::DDataset) = y == x
 
-include("groupby.jl")
 include("iteration.jl")
 include("sort.jl")
 
@@ -45,8 +44,6 @@ include("printing.jl")
 include("indexing.jl")
 include("selection.jl")
 include("reduce.jl")
-include("query.jl")
-include("online-stats.jl")
 include("join.jl")
 
 include("diagnostics.jl")

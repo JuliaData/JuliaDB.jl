@@ -167,31 +167,6 @@ _apply_merge(f::Series, y, x) = merge(y,x)
 _apply_merge(f::Tup, y::Tup, x::Tup) = map(_apply_merge, f, y, x)
 _apply_merge(f, xs...) = IndexedTables._apply(f, xs...)
 
-function reduce(f, t::DNextTable; select=(colnames(t)...))
-    xs = delayedmap(t.chunks) do x
-        f = isa(f, OnlineStat) ? copy(f) : f # required for > 1 chunks on the same proc
-        reduce(f, x; select=select)
-    end
-    if f isa Tup
-        g, _ = IndexedTables.init_funcs(f, false)
-    elseif f isa OnlineStat
-        g = Series(f)
-    else
-        g = f
-    end
-    h = (a,b)->_apply_merge(g,a,b)
-    collect(treereduce(delayed(h), xs))
-end
-
-function reduce(f, t::DNextTable, v0; select=nothing)
-    xs = delayedmap(t.chunks) do x
-        f = isa(f, OnlineStat) ? copy(f) : f
-        reduce(f, x; select=select === nothing ? rows(x) : select)
-    end
-    g = isa(f, OnlineStat) ? merge : f
-    merge(collect(treereduce(delayed(g), xs)), v0)
-end
-
 function promote_eltypes(ts::AbstractArray)
     reduce(_promote_type, ts)
 end
