@@ -369,7 +369,7 @@ function save(t::DDataset, outputdir::AbstractString)
     saved_t
 end
 
-function _makerelative!(t::DNDSparse, dir::AbstractString)
+function _makerelative!(t, dir::AbstractString)
     foreach(t.chunks) do c
         h = c.handle
         if isa(h, FileRef)

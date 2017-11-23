@@ -66,6 +66,8 @@ import Dagger: Chunk
     end
     missingcoltbl = loadndsparse(joinpath(@__DIR__, "missingcols"), datacols=[:a, :x, :y], usecache=false, chunks=2)
     @test eltype(missingcoltbl) == @NT(a,x,y){Int, DataValue{Int}, DataValue{Float64}}
+
+    @test collect(loadtable(shuffle_files,chunks=2)) == table(spdata_unordered.data)
     # file name as a column:
     @test unique(keys(loadndsparse(path, indexcols=[:year, :date, :ticker],filenamecol=:year, usecache=false, chunks=2), :year)|> collect) == string.(2010:2015)
     @test collect(spdata_dist) == spdata
@@ -109,6 +111,14 @@ end
     x = JuliaDB.save(distribute(t, 4), n)
     t1 = load(n)
     @test collect(t1) == collect(x)
+    @test !any(c->isempty(Dagger.affinity(c.handle)), t1.chunks)
+    rm(n, recursive=true)
+
+    t = table([1,2,3,4], [1,2,3,4], chunks=2)
+    n = tempname()
+    x = JuliaDB.save(t, n)
+    t1 = load(n)
+    @test collect(t1) == collect(t)
     @test !any(c->isempty(Dagger.affinity(c.handle)), t1.chunks)
     rm(n, recursive=true)
 end
