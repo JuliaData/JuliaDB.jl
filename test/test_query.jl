@@ -105,3 +105,15 @@ end
         #@test collect(res3) == mapslices(g, t, ())
     end
 end
+
+@testset "flatten" begin
+    x = table([1,2], [[3,4], [5,6]], names=[:x, :y], chunks=2)
+    @test flatten(x, 2) == table([1,1,2,2], [3,4,5,6], names=[:x,:y])
+
+    x = table([1,2], [table([3,4],[5,6], names=[:a,:b]), table([7,8], [9,10], names=[:a,:b])], names=[:x, :y], chunks=2)
+    @test flatten(x, :y) == table([1,1,2,2], [3,4,7,8], [5,6,9,10], names=[:x,:a, :b])
+
+    t = table([1,1,2,2], [3,4,5,6], names=[:x,:y], chunks=2)
+    @test groupby((:normy => x->Iterators.repeated(mean(x), length(x)),),
+                  t, :x, select=:y, flatten=true) == table([1,1,2,2], [3.5,3.5,5.5,5.5], names=[:x, :normy])
+end

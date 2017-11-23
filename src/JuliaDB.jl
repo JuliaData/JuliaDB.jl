@@ -15,7 +15,7 @@ export IndexedTable, NDSparse, NextTable, Columns, colnames,
        table, ndsparse, compute, groupby, groupreduce, groupjoin,
        ColDict, insertafter!, insertbefore!, @cols, setcol, pushcol,
        popcol, insertcol, insertcolafter, insertcolbefore, permutecols,
-       renamecol, NA, dropna
+       renamecol, NA, dropna, flatten
 
 include("util.jl")
 include("serialize.jl")
@@ -44,6 +44,7 @@ include("printing.jl")
 include("indexing.jl")
 include("selection.jl")
 include("reduce.jl")
+include("flatten.jl")
 include("join.jl")
 
 include("diagnostics.jl")
