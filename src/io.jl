@@ -267,7 +267,7 @@ function _collect(ctx, csv::CSVChunk)
         end
     end
 
-    if ii && data.index[1][1] != get(csv.offset, 1)
+    if isa(data, NDSparse) && ii && data.index[1][1] != get(csv.offset, 1)
         o = get(csv.offset,1)
         data.index.columns[1][:] = o:(o+length(data)-1)
     end

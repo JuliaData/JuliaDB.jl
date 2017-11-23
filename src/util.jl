@@ -176,7 +176,7 @@ function _loadtable_serial(T, file::Union{IO, AbstractString, AbstractArray};
     data = Columns(datavecs...; names=datacolnames)
 
     if T<:NextTable && implicitindex
-        T(data), true
+        table(data), true
     else
         convert(T, index, data), implicitindex
     end
