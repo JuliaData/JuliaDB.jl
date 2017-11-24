@@ -10,3 +10,4 @@ PooledArrays 0.0.2
 OnlineStats v0.13.0
 StatsBase
 DataValues
+QueryOperators

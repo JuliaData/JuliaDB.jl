@@ -9,6 +9,7 @@ import TextParse: csvread
 import IndexedTables: Table
 import Dagger: compute, distribute, free!, gather, load, save
 using DataValues
+import QueryOperators
 
 # re-export
 export IndexedTable, NDSparse, NextTable, Columns, colnames,
@@ -46,6 +47,8 @@ include("selection.jl")
 include("reduce.jl")
 include("flatten.jl")
 include("join.jl")
+
+include("queryintegration.jl")
 
 include("diagnostics.jl")
 
