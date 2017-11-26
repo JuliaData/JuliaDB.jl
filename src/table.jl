@@ -163,10 +163,6 @@ end
 
 import Base.reduce
 
-_apply_merge(f::Series, y, x) = merge(y,x)
-_apply_merge(f::Tup, y::Tup, x::Tup) = map(_apply_merge, f, y, x)
-_apply_merge(f, xs...) = IndexedTables._apply(f, xs...)
-
 function promote_eltypes(ts::AbstractArray)
     reduce(_promote_type, ts)
 end

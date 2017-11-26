@@ -1,22 +1,27 @@
-import IndexedTables: aggregate, aggregate_vec, reducedim_vec, pick
+import IndexedTables: aggregate, aggregate_vec, reducedim_vec, _convert
 import IndexedTables: groupreduce, groupby
 import Base: reducedim
 
 export reducedim_vec, aggregate, aggregate_vec
+
+_merger(f) = f
+_merger(f::Series) = merge
+_merger(f::Tup) = map(_merger, f)
 
 function reduce(f, t::DDataset; select=valuenames(t))
     xs = delayedmap(t.chunks) do x
         f = isa(f, OnlineStat) ? copy(f) : f # required for > 1 chunks on the same proc
         reduce(f, x; select=select)
     end
+    if f isa OnlineStat
+        f = Series(f)
+    end
     if f isa Tup
         g, _ = IndexedTables.init_funcs(f, false)
-    elseif f isa OnlineStat
-        g = Series(f)
     else
         g = f
     end
-    h = (a,b)->_apply_merge(g,a,b)
+    h = (a,b)->IndexedTables._apply(_merger(g), a,b)
     collect(treereduce(delayed(h), xs))
 end
 
@@ -33,15 +38,17 @@ function groupreduce(f, t::DDataset, by=pkeynames(t); kwargs...)
     function groupchunk(x)
         groupreduce(f, x, by; kwargs...)
     end
-    if f isa Tup
+    if f isa OnlineStat
+        f = Series(f)
+    end
+    if f isa Tup || t isa DNextTable
         g, _ = IndexedTables.init_funcs(f, false)
-    elseif f isa OnlineStat
-        g = Series(f)
     else
         g = f
     end
-    h = (a,b)->_apply_merge(g,a,b)
-    mergechunk(x, y) = groupreduce(h, _merge(x, y))
+    h = _merger(g)
+    mergef = (x,y) -> IndexedTables._apply(h, x,y)
+    mergechunk(x, y) = _convert(NextTable, merge(_convert(NDSparse, x), _convert(NDSparse, y), agg=mergef))
 
     t1 = fromchunks(delayedmap(groupchunk, t.chunks))
     with_overlaps(t1, true) do cs
