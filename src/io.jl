@@ -107,6 +107,12 @@ function _loadtable(T, files::Union{AbstractVector,String};
     if !isdir(cachedir)
         mkdir(cachedir)
     end
+    if !usecache
+        empty!(JuliaDB._cached_on)
+        map(procs()) do pid
+            remotecall_fetch(()->empty!(JuliaDB._read_cache), pid)
+        end
+    end
 
     if chunks === nothing && distributed
         chunks = nworkers()
