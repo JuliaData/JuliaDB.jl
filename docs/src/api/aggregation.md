@@ -23,6 +23,10 @@ groupreduce
 groupby
 ```
 
+```@docs
+flatten
+```
+
 ## Reducedim
 
 ```@docs
