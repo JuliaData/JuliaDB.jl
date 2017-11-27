@@ -48,7 +48,15 @@ function groupreduce(f, t::DDataset, by=pkeynames(t); kwargs...)
     end
     h = _merger(g)
     mergef = (x,y) -> IndexedTables._apply(h, x,y)
-    mergechunk(x, y) = _convert(NextTable, merge(_convert(NDSparse, x), _convert(NDSparse, y), agg=mergef))
+    function mergechunk(x, y)
+        # use NDSparse's merge
+        if x isa NextTable
+            z = merge(_convert(NDSparse, x), _convert(NDSparse, y), agg=mergef)
+            _convert(NextTable, z)
+        else
+            merge(x,y, agg=mergef)
+        end
+    end
 
     t1 = fromchunks(delayedmap(groupchunk, t.chunks))
     with_overlaps(t1, true) do cs
