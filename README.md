@@ -1,6 +1,6 @@
 | Documentation | Master Build | Test Coverage |
 |---------------|--------------|---------------|
-| [![](https://img.shields.io/badge/docs-stable-blue.svg)](https://github.com/JuliaComputing/JuliaDB.jl/stable) [![](https://img.shields.io/badge/docs-latest-blue.svg)](https://github.com/JuliaComputing/JuliaDB.jl/latest) | [![Build Status](https://travis-ci.org/JuliaComputing/JuliaDB.jl.svg?branch=master)](https://travis-ci.org/JuliaComputing/JuliaDB.jl) | [![codecov](https://codecov.io/gh/JuliaComputing/JuliaDB.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/JuliaComputing/JuliaDB.jl)
+| [![](https://img.shields.io/badge/docs-latest-blue.svg)](http://juliadb.org/latest/api/) | [![Build Status](https://travis-ci.org/JuliaComputing/JuliaDB.jl.svg?branch=master)](https://travis-ci.org/JuliaComputing/JuliaDB.jl) | [![codecov](https://codecov.io/gh/JuliaComputing/JuliaDB.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/JuliaComputing/JuliaDB.jl)
 
 
 # JuliaDB
