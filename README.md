@@ -20,3 +20,7 @@ We built JuliaDB to fill this void.
 
 - JuliaDB provides distributed table and array datastructures with convenient functions to load data from CSV. 
 - JuliaDB is Julia all the way down. This means queries can be efficiently composed with packages from the entire Julia ecosystem.
+
+### Get started
+
+http://juliadb.org/latest/
