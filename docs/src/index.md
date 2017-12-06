@@ -38,7 +38,6 @@ Multiple processes may not be benificial for datasets with less than a few milli
 ## Resources
 
 - [API Reference](api/index.html)
-- [Tutorial](tutorial.html)
 - [Issue tracker](https://github.com/JuliaComputing/JuliaDB.jl/issues)
 - [Source code](https://github.com/JuliaComputing/JuliaDB.jl)
 - [Slack channel]()
