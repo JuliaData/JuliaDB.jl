@@ -86,11 +86,16 @@ function _loadtable(T, files::Union{AbstractVector,String};
                     delim=',', usecache=true, opts...)
 
     if isa(files, String)
-        if !isdir(files)
-            throw(ArgumentError("Specified path does not refer to an existing directory."))
+        if isdir(files)
+            cachedir = joinpath(files, JULIADB_DIR)
+            files = files_from_dir(files)
+        elseif isfile(files)
+            files = [files]
+            cachedir = JULIADB_DIR
+        else
+            throw(ArgumentError("Specified is neither a file, nor a directory."))
         end
-        cachedir = joinpath(files, JULIADB_DIR)
-        files = files_from_dir(files)
+        cachedir = JULIADB_DIR
     else
         for file in files
             if !isfile(file)

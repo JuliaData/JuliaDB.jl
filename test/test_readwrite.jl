@@ -60,6 +60,7 @@ spdata_ingest_unordered = ingest!(shuffle_files[4:end], ingest_output_unordered,
 
 import Dagger: Chunk
 @testset "Load" begin
+    @test loadtable("missingcols/t1.csv") == table([0,0,0], [1,2,3], names=[:a,:x])
     cache = joinpath(JuliaDB.JULIADB_DIR, JuliaDB.JULIADB_FILECACHE)
     if isfile(cache)
         rm(cache)
