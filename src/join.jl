@@ -30,24 +30,46 @@ function Base.join(f, left::DDataset, right::DDataset;
                    lkey=pkeynames(left), rkey=pkeynames(right),
                    lselect=left isa DNDSparse ? valuenames(left) : excludecols(left, lkey),
                    rselect=right isa DNDSparse ? valuenames(right) : excludecols(right, rkey),
-                   broadcast=false,
+                   broadcast=nothing,
                    keepkeys=false,
                    chunks=nworkers(),
                    kwargs...)
-    if broadcast !== nothing
+    cl = compute(left)
+    cr = compute(right)
+
+    if broadcast === :left
+        error("only broadcast = :right is supported at the moment")
+    elseif broadcast === :right
+        if !(how in [:inner, :left, :anti])
+            error("Can only do inner, left, or anti join with broadcast = :right")
+        end
+        if length(cr.chunks) == 1
+            right_ser = cr.chunks[1]
+        else
+            right_ser = collect(cr)
+        end
+        ps = map(x->first(Dagger.affinity(x))[1], cl.chunks)
+        tasks = [delayed(identity)(right_ser) for p in ps]
+        for (t, p) in zip(tasks, ps)
+            t.affinity = Nullable([p=>1])
+        end
+        r = fromchunks(tasks)
+        l = cl
     else
+        l, r = rechunk_together(left, right, lkey, rkey, lselect, rselect,
+                                chunks=chunks, keepkeys=keepkeys)
     end
 
-    l, r = rechunk_together(compute(left), compute(right),
-                            lkey, rkey, lselect, rselect,
-                            chunks=chunks, keepkeys=keepkeys)
-
     delayedmap(l.chunks, r.chunks) do x, y
-        if keepkeys
+        if keepkeys && broadcast === nothing
             vs = rows(x, excludecols(x, pkeynames(x)))
             k = columns(vs)[1]
             v = columns(vs)[2]
             join(f, convert(IndexedTables.collectiontype(x), k, v), y, lkey=lkey, keepkeys=true, how=how; kwargs...)
+        elseif broadcast !== nothing
+            join(f, x, y, lkey=lkey, rkey=rkey,
+                 lselect=lselect, rselect=rselect,
+                 keepkeys=keepkeys, how=how; kwargs...)
         else
             join(f, x, y, how=how; kwargs...)
         end
@@ -65,6 +87,14 @@ end
 
 function groupjoin(left::DDataset, right::DDataset; how=:inner, kwargs...)
     join(left, right; how=how, group=true, kwargs...)
+end
+
+function join(left::DDataset, right::IndexedTables.Dataset; how=:inner, kwargs...)
+    if how in [:inner, :left, :anti]
+        join(left, distribute(right, 1), broadcast=:right, how=how; kwargs...)
+    else
+        join(left, distribute(right, 1), how=how; kwargs...)
+    end
 end
 
 ## NDSparse join
