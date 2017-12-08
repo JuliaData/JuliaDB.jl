@@ -76,24 +76,24 @@ function Base.join(f, left::DDataset, right::DDataset;
     end |> fromchunks
 end
 
-function Base.join(left::DDataset, right::DDataset; how=:inner, kwargs...)
+function Base.join(left::DDataset, right; how=:inner, kwargs...)
     f = how === :anti ? ((x,y)->x) : IndexedTables.concat_tup
     join(f, left, right; how=how, kwargs...)
 end
 
-function groupjoin(f, left::DDataset, right::DDataset; how=:inner, kwargs...)
+function groupjoin(f, left::DDataset, right; how=:inner, kwargs...)
     join(f, left, right; how=how, group=true, kwargs...)
 end
 
-function groupjoin(left::DDataset, right::DDataset; how=:inner, kwargs...)
+function groupjoin(left::DDataset, right; how=:inner, kwargs...)
     join(left, right; how=how, group=true, kwargs...)
 end
 
-function join(left::DDataset, right::IndexedTables.Dataset; how=:inner, kwargs...)
+function join(f, left::DDataset, right::IndexedTables.Dataset; how=:inner, kwargs...)
     if how in [:inner, :left, :anti]
-        join(left, distribute(right, 1), broadcast=:right, how=how; kwargs...)
+        join(f, left, distribute(right, 1), broadcast=:right, how=how; kwargs...)
     else
-        join(left, distribute(right, 1), how=how; kwargs...)
+        join(f, left, distribute(right, 1), how=how; kwargs...)
     end
 end
 
