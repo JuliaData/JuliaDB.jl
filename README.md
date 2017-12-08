@@ -1,15 +1,26 @@
+| Docs | Build | Coverage |
+|------|-------|----------|
+| [![](https://img.shields.io/badge/docs-latest-blue.svg)](http://juliadb.org/latest/) | [![Build Status](https://travis-ci.org/JuliaComputing/JuliaDB.jl.svg?branch=master)](https://travis-ci.org/JuliaComputing/JuliaDB.jl) | [![codecov](https://codecov.io/gh/JuliaComputing/JuliaDB.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/JuliaComputing/JuliaDB.jl)
+
+
 # JuliaDB
 
-[![Build Status](https://travis-ci.org/JuliaComputing/JuliaDB.jl.svg?branch=master)](https://travis-ci.org/JuliaComputing/JuliaDB.jl)
+### JuliaDB is a package for working with large persistent data sets
 
-JuliaDB is a package for working with large persistent data sets.
-Given a set of CSV files, it builds and saves an index that allows the data to be accessed
-efficiently in the future.
-It also supports an "ingest" mode that converts data to a more efficient binary format.
+We recognized the need for an all-Julia, end-to-end tool that can
 
-JuliaDB is based on [Dagger](https://github.com/JuliaParallel/Dagger.jl) and
-[IndexedTables](https://github.com/JuliaComputing/IndexedTables.jl), providing a distributed-array-like
-data model.
-Over time, we hope to expand this to include dense arrays and other Julia array types.
+- **Load multi-dimensional datasets quickly and incrementally.**
+- **Index the data and perform filter, aggregate, sort and join operations.**
+- **Save results and load them efficiently later.**
+- **Use Julia's built-in parallelism to fully utilize any machine or cluster.**
 
-<a href="http://juliadb.org"><img src="https://img.shields.io/badge/%20%F0%9F%93%96%20-Read%20the%20Documentation%20%C2%BB-ff69b4.svg?style-plastic" height="24" width="auto"></a>
+We built JuliaDB to fill this void.
+
+### JuliaDB is built on [Dagger](https://github.com/JuliaParallel/Dagger.jl) and [IndexedTables](https://github.com/JuliaComputing/IndexedTables.jl)
+
+- JuliaDB provides distributed array/table datastructures with convenient functions to load data from CSV. 
+- JuliaDB is Julia all the way down. This means queries can be efficiently composed with packages from the entire Julia ecosystem.
+
+### Get started
+
+http://juliadb.org/latest/
