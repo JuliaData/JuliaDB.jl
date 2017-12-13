@@ -34,4 +34,7 @@ using JuliaDB
 
     @test collect(pairs(x)) == [@NT(a=1,b=1)=>@NT(c=3), @NT(a=1,b=2)=>@NT(c=4)]
     @test collect(pairs(y)) == [@NT(a=1,b=1)=>3, @NT(a=1,b=2)=>4]
+
+    x = ndsparse(([1,2], [3,4]), @NT(x=[0,1],), chunks=2)
+    @test ndsparse(keys(x), pushcol(values(x), :y, [1,2])) == ndsparse(([1,2], [3,4]), @NT(x=[0,1], y=[1,2]))
 end

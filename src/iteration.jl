@@ -125,6 +125,10 @@ end
 # TODO: do this lazily after compute
 # technically it's not necessary to communicate here
 
+function Base.getindex(d::ColDict{<:DArray})
+    rows(table(d.columns...; names=d.names))
+end
+
 function columns(t::Union{DDataset, DArray}, which::Tuple...)
 
     cs = delayedmap(t.chunks) do c

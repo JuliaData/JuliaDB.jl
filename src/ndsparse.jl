@@ -69,6 +69,10 @@ function ndsparse(::Val{:distributed}, ks::Tup,
                 allowoverlap=false)
 end
 
+function ndsparse(x::Dagger.DArray{<:Tup}, y; kwargs...)
+    ndsparse(columns(x), y; kwargs...)
+end
+
 function ndsparse(x::DNDSparse; kwargs...)
     ndsparse(columns(x, pkeynames(x)), values(x); kwargs...)
 end
