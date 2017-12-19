@@ -199,11 +199,11 @@ function distfor(t, x::Pair{<:Any, <:AbstractArray})
     [delayed(c->x[1]=>c)(c) for c in cs]
 end
 
-function rows(t::DDataset)
+function rows(t::Union{DDataset, DArray})
     extractarray(t, rows)
 end
 
-function rows(t::DDataset, which)
+function rows(t::Union{DDataset, DArray}, which)
     dist_selector(t, rows, which)
 end
 
