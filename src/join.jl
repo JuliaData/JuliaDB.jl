@@ -60,12 +60,20 @@ function Base.join(f, left::DDataset, right::DDataset;
                                 chunks=chunks, keepkeys=keepkeys)
     end
 
-    delayedmap(l.chunks, r.chunks) do x, y
-        if keepkeys && broadcast === nothing
+    i = 1
+    j = 1
+
+    cs = []
+    rempty = delayed(empty!∘copy)(r.chunks[end])
+    lempty = delayed(empty!∘copy)(l.chunks[end])
+
+    function joinchunks(x, y)
+        res=if keepkeys && broadcast === nothing
             vs = rows(x, excludecols(x, pkeynames(x)))
             k = columns(vs)[1]
             v = columns(vs)[2]
-            join(f, convert(IndexedTables.collectiontype(x), k, v), y, lkey=lkey, keepkeys=true, how=how; kwargs...)
+            join(f, convert(IndexedTables.collectiontype(x), k, v),
+                 y, lkey=lkey, keepkeys=true, how=how; kwargs...)
         elseif broadcast !== nothing
             join(f, x, y, lkey=lkey, rkey=rkey,
                  lselect=lselect, rselect=rselect,
@@ -73,7 +81,41 @@ function Base.join(f, left::DDataset, right::DDataset;
         else
             join(f, x, y, how=how; kwargs...)
         end
-    end |> fromchunks
+    end
+
+    while i <= length(l.chunks) && j <= length(r.chunks)
+        c1 = l.chunks[i]
+        c2 = r.chunks[j]
+
+        d1 = domain(c1) isa Pair ? domain(c1)[2] : domain(c1)
+        d2 = domain(c1) isa Pair ? domain(c2)[2] : domain(c2)
+        if hasoverlap(d1.interval, d2.interval)
+            i += 1
+            j += 1
+        elseif last(d1.interval) < last(d2.interval)
+            # this means there's no corresponding chunk on the right
+            c2 = rempty
+            i += 1
+        else
+            # this means there's no corresponding chunk on the left
+            c1 = lempty
+            j += 1
+        end
+        c = delayed(joinchunks)(c1,c2)
+        push!(cs, c)
+    end
+
+    while i <= length(l.chunks)
+        push!(cs, delayed(joinchunks)(l.chunks[i], rempty))
+        i+=1
+    end
+
+    while j <= length(r.chunks)
+        push!(cs, delayed(joinchunks)(lempty, r.chunks[j]))
+        j += 1
+    end
+
+    fromchunks(cs)
 end
 
 function Base.join(left::DDataset, right; how=:inner, kwargs...)
