@@ -129,10 +129,9 @@ function Base.getindex(d::ColDict{<:DArray})
     rows(table(d.columns...; names=d.names))
 end
 
-function columns(t::Union{DDataset, DArray}, which::Tuple...)
-
+function columns(t::Union{DDataset, DArray})
     cs = delayedmap(t.chunks) do c
-        x = columns(c, which...)
+        x = columns(c)
         if isa(x, AbstractArray)
             tochunk(x)
         elseif isa(x, Tup)
@@ -142,7 +141,6 @@ function columns(t::Union{DDataset, DArray}, which::Tuple...)
             error("Columns $which could not be extracted")
         end
     end
-
     tuples = collect(get_context(), treereduce(delayed(vcat), cs))
     if length(cs) == 1
         tuples = [tuples]
@@ -153,6 +151,10 @@ function columns(t::Union{DDataset, DArray}, which::Tuple...)
     else
         fromchunks(tuples)
     end
+end
+
+function columns(t::Union{DDataset, DArray}, which::Tuple)
+    columns(rows(t, which))
 end
 
 # TODO: make sure this is a DArray of Columns!!
