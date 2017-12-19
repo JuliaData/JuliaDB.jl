@@ -19,9 +19,14 @@ end
     roundtrip(Columns(x=[1,2], y=["x","y"]))
 end
 
-@testset "NDSparse" begin
-    NDSparse(Columns([1,2], ["x","y"]))
+@testset "ndsparse" begin
+    ndsparse(Columns([1,2], ["x","y"]))
                  Columns(x=[1,2], y=["x","y"]) |> roundtrip
+end
+
+@testset "table" begin
+    table([1,2], ["x","y"]) |> roundtrip
+    table(Columns(x=[1,2], y=["x","y"])) |> roundtrip
 end
 
 

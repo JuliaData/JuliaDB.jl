@@ -82,6 +82,7 @@ end
 # Can load both NDSparse and table
 function _loadtable(T, files::Union{AbstractVector,String};
                     chunks=nothing,
+                    output=nothing,
                     distributed=chunks != nothing || length(procs()) > 1,
                     delim=',', usecache=true, opts...)
 
@@ -93,7 +94,7 @@ function _loadtable(T, files::Union{AbstractVector,String};
             files = [files]
             cachedir = JULIADB_DIR
         else
-            throw(ArgumentError("Specified is neither a file, nor a directory."))
+            throw(ArgumentError("Specified path is neither a file, nor a directory."))
         end
         cachedir = JULIADB_DIR
     else
@@ -214,7 +215,7 @@ function _loadtable(T, files::Union{AbstractVector,String};
     if !distributed
         return collect(cs[1]), ii
     else
-        return cache_thunks(fromchunks(cs)), ii
+        return cache_thunks(fromchunks(cs, output=output)), ii
     end
 end
 
@@ -310,7 +311,7 @@ Equivalent to calling `loadfiles` and then `save` on the result of
 `loadfiles`. See also [`loadfiles`](@ref) and [`save`](@ref)
 """
 function ingest(files::Union{AbstractVector,String}, outputdir::AbstractString; opts...)
-    save(loadndsparse(files; opts...), outputdir)
+    loadndsparse(files; output=outputdir,  opts...)
 end
 
 """
@@ -358,11 +359,17 @@ end
 Load a saved `DNDSparse` from `dir` directory. Data can be saved
 using the `save` function.
 """
-function load(dir::AbstractString; copy=false)
-    dtable_file = joinpath(dir, JULIADB_INDEXFILE)
-    t = open(deserialize, dtable_file)
-    _makerelative!(t, dir)
-    t
+function load(f::AbstractString)
+    if isdir(f)
+        dtable_file = joinpath(f, JULIADB_INDEXFILE)
+        t = open(deserialize, dtable_file)
+        _makerelative!(t, f)
+        t
+    elseif isfile(f)
+        MemPool.unwrap_payload(open(deserialize, f))
+    else
+        error("$f is not a file or directory")
+    end
 end
 
 """
@@ -371,13 +378,14 @@ end
 Saves a distributed dataset to disk. Saved data can be loaded with `load`.
 """
 function save(t::DDataset, outputdir::AbstractString)
-    chunks = Dagger.savechunks(t.chunks, outputdir)
-    saved_t = fromchunks(chunks)
-    open(joinpath(outputdir, JULIADB_INDEXFILE), "w") do io
-        serialize(io, saved_t)
+    fromchunks(t.chunks, output=outputdir)
+end
+
+function save(data::Dataset, f::AbstractString)
+    sz = open(f, "w") do io
+        serialize(io, MemPool.MMWrap(data))
     end
-    _makerelative!(saved_t, outputdir)
-    saved_t
+    load(f)
 end
 
 function _makerelative!(t, dir::AbstractString)
