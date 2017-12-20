@@ -20,8 +20,8 @@ end
 end
 
 @testset "ndsparse" begin
-    ndsparse(Columns([1,2], ["x","y"]))
-                 Columns(x=[1,2], y=["x","y"]) |> roundtrip
+    ndsparse(Columns([1,2], ["x","y"]),
+             Columns(x=[1,2], y=["x","y"])) |> roundtrip
 end
 
 @testset "table" begin
@@ -47,7 +47,7 @@ const spdata = loadndsparse(files;
                             distributed=false,
                             header_exists=true,
                             indexcols=1:2)
-
+files = glob("*.csv", "sample")
 shuffle_files = shuffle(files)
 const spdata_unordered = loadndsparse(shuffle_files;
                                       distributed=false,

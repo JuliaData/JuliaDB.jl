@@ -131,13 +131,13 @@ end
 Construct a distributed object from chunks. Calls `fromchunks(T, cs)`
 where T is the type of the data in the first chunk. Computes any thunks.
 """
-function fromchunks(cs::AbstractArray, args...; output=nothing, kwargs...)
+function fromchunks(cs::AbstractArray, args...; output=nothing, fnoffset=0, kwargs...)
     if output !== nothing
         if !isdir(output)
             mkdir(output)
         end
         cs = Any[begin
-            fn = lpad(idx, 5, "0")
+            fn = lpad(idx+fnoffset, 5, "0")
             delayed(Dagger.savechunk, get_result=true)(
                 c, output, fn)
         end for (idx, c) in enumerate(cs)]
@@ -148,12 +148,7 @@ function fromchunks(cs::AbstractArray, args...; output=nothing, kwargs...)
         else
             cs = compute(get_context(), vec_thunk)
         end
-        x = fromchunks(cs)
-        open(joinpath(output, JULIADB_INDEXFILE), "w") do io
-            serialize(io, x)
-        end
-        _makerelative!(x, output)
-        return x
+        return fromchunks(cs)
     elseif any(x->isa(x, Thunk), cs)
         vec_thunk = delayed((refs...) -> [refs...]; meta=true)(cs...)
         cs = compute(get_context(), vec_thunk)
