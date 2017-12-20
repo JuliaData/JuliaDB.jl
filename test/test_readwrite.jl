@@ -54,13 +54,13 @@ const spdata_unordered = loadndsparse(shuffle_files;
                                       indexcols=[])
 
 ingest_output = tempname()
-spdata_ingest = ingest(files, ingest_output, indexcols=1:2, chunks=2)
+spdata_ingest = loadndsparse(files, output=ingest_output, indexcols=1:2, chunks=2)
 ingest_output_unordered = tempname()
 # note: this will result in a different table if files[3:end] is ingested first
-spdata_ingest_unordered = ingest(shuffle_files[1:3], ingest_output_unordered,
+spdata_ingest_unordered = loadndsparse(shuffle_files[1:3], output=ingest_output_unordered,
                                  indexcols=[], chunks=2)
-spdata_ingest_unordered = ingest!(shuffle_files[4:end], ingest_output_unordered,
-                                 indexcols=[])
+spdata_ingest_unordered = loadndsparse(shuffle_files[4:end], output=ingest_output_unordered,
+                                       append=true, indexcols=[])
 # this should also test appending new files
 
 import Dagger: Chunk
