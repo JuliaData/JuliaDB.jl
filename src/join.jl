@@ -11,8 +11,11 @@ function rechunk_together(left, right, lkey, rkey,
     end
     r = reindex(right, rkey, rselect)
 
-    if has_overlaps(l.domains)
+    if has_overlaps(l.domains, closed=true)
         l = rechunk(l, chunks=chunks)
+    elseif !issorted(l.domains, by=first)
+        perm = sortperm(l.domains, by=first)
+        l = fromchunks(l.chunks[perm], domains=l.domains[perm])
     end
 
     splitters = map(last, l.domains)
@@ -87,8 +90,8 @@ function Base.join(f, left::DDataset, right::DDataset;
         c1 = l.chunks[i]
         c2 = r.chunks[j]
 
-        d1 = domain(c1) isa Pair ? domain(c1)[2] : domain(c1)
-        d2 = domain(c1) isa Pair ? domain(c2)[2] : domain(c2)
+        d1 = l.domains[i]
+        d2 = r.domains[j]
         if hasoverlap(d1.interval, d2.interval)
             i += 1
             j += 1
