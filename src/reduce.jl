@@ -64,16 +64,22 @@ function groupreduce(f, t::DDataset, by=pkeynames(t); kwargs...)
     end
 end
 
-function groupby(f, t::DDataset, by=pkeynames(t); select=excludecols(t, by), kwargs...)
+function groupby(f, t::DDataset, by=pkeynames(t); select=t isa DNDSparse ? valuenames(t) : excludecols(t, by), kwargs...)
     if by != pkeynames(t) || has_overlaps(t.domains, closed=true)
         t = rechunk(t, by, select)
-    end
+        if select isa Tuple
+            return groupby(f, t; kwargs...)
+        else
+            sel = t isa DNDSparse ? valuenames(t) : nfields(eltype(t))
+            return groupby(f, t; select=sel, kwargs...)
+        end
+    else
+        function groupchunk(x)
+            groupby(f, x, by; select=select, kwargs...)
+        end
 
-    function groupchunk(x)
-        groupby(f, x, by; select=select, kwargs...)
+        return fromchunks(delayedmap(groupchunk, t.chunks))
     end
-
-    fromchunks(delayedmap(groupchunk, t.chunks))
 end
 
 function reducedim(f, x::DNDSparse, dims)
