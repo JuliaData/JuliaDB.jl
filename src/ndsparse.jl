@@ -367,8 +367,8 @@ function with_overlaps(f, t::DDataset, closed=false)
     fromchunks(cs)
 end
 
-function fromchunks(::Type{<:NDSparse}, chunks::AbstractArray,
-                    domains::AbstractArray = map(domain, chunks);
+function fromchunks(::Type{<:NDSparse}, chunks::AbstractArray;
+                    domains::AbstractArray = map(domain, chunks),
                     KV = getkvtypes(chunks),
                     merge=_merge,
                     closed = false,
@@ -439,7 +439,7 @@ function distribute(nds::NDSparse{V}, rowgroups::AbstractArray;
     chunks = map(r->delayed(identity)(subtable(nds, r)), ranges)
     domains = map(r->subindexspace(nds, r), ranges)
     realK = eltypes(typeof(nds.index.columns))
-    cache_thunks(fromchunks(chunks, domains, KV = (realK, V),
+    cache_thunks(fromchunks(chunks, domains=domains, KV = (realK, V),
                             allowoverlap=allowoverlap, closed=closed))
 end
 

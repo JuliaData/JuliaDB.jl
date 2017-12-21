@@ -1,4 +1,6 @@
 
+export insert_row!
+
 """
     t[idx...]
 
@@ -52,3 +54,42 @@ function _getindex(t::DNDSparse{K,V}, idxs) where {K,V}
     end |> cache_thunks
 end
 
+# update a given domain to include a new key
+function update_domain(d::IndexSpace{<:NamedTuple}, key::Tuple)
+    knt = namedtuple(fieldnames(first(d))...)(key...)
+    IndexSpace(Interval(min(first(d.interval), knt),
+                        max(last(d.interval), knt)),
+               Interval(map(min, first(d.interval), knt),
+                        map(max, last(d.interval), knt)),
+               Nullable{Int}())
+end
+
+function update_domain(d::IndexSpace{<:Tuple}, key::Tuple)
+    IndexSpace(Interval(min(first(d.interval), key),
+                        max(last(d.interval), key)),
+               Interval(map(min, first(d.interval), key),
+                        map(max, last(d.interval), key)),
+               Nullable{Int}())
+end
+
+function insert_row!(x::DNDSparse{K,T}, idxs::Tuple, val) where {K,T}
+    perm = sortperm(x.domains, by=last)
+    cs = convert(Array{Any}, x.chunks[perm])
+    ds = x.domains[perm]
+    i = searchsortedfirst(astuple.(last.(x.domains)), idxs)
+    if i >= length(cs)
+        i = length(cs)
+        ds[end] = update_domain(ds[end], idxs)
+    end
+
+    cs[i] = delayed(x->(x[idxs...] = val; x))(cs[i])
+    fromchunks(cs, domains=ds, KV=(K,T))
+end
+
+function insert_row!(x::DNDSparse{K,T}, idxs::NamedTuple, val) where {K,T}
+    insert_row!(s, astuple(idxs), val)
+end
+
+function Base.setindex!(x::DNDSparse, val, idxs...)
+    insert_row!(x, idxs, val)
+end
