@@ -187,12 +187,12 @@ end
 Saves a distributed dataset to disk. Saved data can be loaded with `load`.
 """
 function save(x::DDataset, output::AbstractString)
-    fromchunks(x.chunks, output=output)
+    y = fromchunks(x.chunks, output=output)
     open(joinpath(output, JULIADB_INDEXFILE), "w") do io
-        serialize(io, x)
+        serialize(io, y)
     end
-    _makerelative!(x, output)
-    x
+    _makerelative!(y, output)
+    y
 end
 
 function save(data::Dataset, f::AbstractString)
