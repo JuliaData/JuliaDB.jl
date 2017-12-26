@@ -25,8 +25,8 @@ width(::Continuous) = 1
 function merge(c1::Continuous, c2::Continuous)
     Continuous(merge(c1.series, c2.series))
 end
-Base.mean(c::Continuous) = value(c.series)[1]
-Base.std(c::Continuous) = c.series.stats[2].σ2
+Base.mean(c::Continuous)::Float64 = value(c.series)[1]
+Base.std(c::Continuous)::Float64 = c.series.stats[2].σ2
 function Base.show(io::IO, c::Continuous)
     write(io, "Continous(μ=$(mean(c)), σ=$(std(c)))")
 end
@@ -34,18 +34,17 @@ Base.@propagate_inbounds function tomat!(A, c::Continuous, xs,
                                          dropna=Val{false}())
     m = mean(c)
     s = std(c)
-    for i in eachindex(xs)
+    for i in 1:length(xs)
         x =  xs[i]
         if dropna isa Val{true}
             if isnull(x)
                 continue
             else
-                y = get(x)
+                A[i, 1] = (get(x) - m) / s
             end
         else
-            y = x
+            A[i, 1] = (x - m) / s
         end
-        A[i, 1] = (y - m) / s
     end
     A
 end
@@ -62,19 +61,13 @@ function Base.show(io::IO, c::Categorical)
     write(io, "Categorical($(collect(keys(dict(c)))))")
 end
 Base.@propagate_inbounds function tomat!(A, c::Categorical, xs, dropna=Val{false}())
-    w = width(c)
     ks = collect(keys(dict(c)))
-    labeldict = Dict(zip(ks, 1:length(ks)))
-    labels = map(xs) do x
-        labeldict[x]
-    end
-    for i = 1:w
-        for j = 1:length(xs)
-            if dropna isa Val{true} && isnull(xs[j])
-                continue
-            end
-            A[j, i] = i == labels[j]
+    labeldict = Dict{eltype(ks), Int}(zip(ks, 1:length(ks)))
+    for i = 1:length(xs)
+        if dropna isa Val{true} && isnull(xs[i])
+            continue
         end
+        A[i, labeldict[xs[i]]] = one(eltype(A))
     end
     A
 end
@@ -98,11 +91,11 @@ const Schema = Dict{Symbol,Any}
 
 # vecTs: type of column vectors in each chunk
 function schema(cols, names)
-   d = Schema()
-   for (col, name) in zip(cols, names)
-       d[name] = schema(col)
-   end
-   d
+    d = Schema()
+    for (col, name) in zip(cols, names)
+        d[name] = schema(col)
+    end
+    d
 end
 
 function schema(t::Union{Dataset, DDataset})
@@ -115,7 +108,8 @@ function tomat!(A, schemas::Schema, t)
     for col in colnames(t)
         schema = schemas[col]
         tomat!(view(A, 1:length(t), j+1:j+width(schema)),
-               schema, column(t, col))
+                   schema, column(t, col))
+
         j += width(schema)
     end
     A
@@ -125,5 +119,8 @@ splitschema(xs::Schema, ks...) =
   filter((k,v) -> k ∉ ks, xs),
   filter((k,v) -> k ∈ ks, xs)
 
-tomat(sch, xs) = tomat!(Array{Float32}(length(xs), width(sch)), sch, xs)
-tomat(t::Dataset) = tomat(schema(t), t)
+function tomat(sch, xs)
+    tomat!(Array{Float32}(length(xs), width(sch)), sch, xs)
+end
+tomat(t) = tomat(schema(t), t)
+tomat(t::DDataset) = tomat(schema(t), t)
