@@ -1,75 +1,129 @@
-# Not correct for `map(pick(:foo), t)`
-Base.names(t::DTable) = fieldnames(eltype(t))
-Base.names(t::IndexedTable) = fieldnames(eltype(t))
+using JuliaDB
+
+import Base: merge
 
 # Core schema types
 
+schema(xs::AbstractArray) = nothing # catch-all
+merge(::Void, ::Void) = nothing
 width(::Void) = 0
-numeric(::Void, x) = []
+tomat!(A, ::Void, xs) = A
 
-struct Continuous{T}
-  μ::T
-  σ::T
+# distributed schema calculation
+function schema(xs::DArray)
+    collect(treereduce(delayed(merge), delayedmap(schema, xs.chunks)))
 end
+schema(xs::ArrayOp) = schema(compute(xs))
 
+struct Continuous
+  series::Series
+end
+function schema(xs::AbstractArray{<:Real})
+    Continuous(Series(xs, Mean(), Variance()))
+end
 width(::Continuous) = 1
-numeric(c::Continuous, x) = (x - c.μ) / c.σ
-
-struct Categorical{T}
-  items::Vector{T}
+function merge(c1::Continuous, c2::Continuous)
+    Continuous(merge(c1.series, c2.series))
+end
+Base.mean(c::Continuous) = value(c.series)[1]
+Base.std(c::Continuous) = c.series.stats[2].σ2
+function Base.show(io::IO, c::Continuous)
+    write(io, "Continous(μ=$(mean(c)), σ=$(std(c)))")
+end
+Base.@propagate_inbounds function tomat!(A, c::Continuous, xs,
+                                         dropna=Val{false}())
+    m = mean(c)
+    s = std(c)
+    for i in eachindex(xs)
+        x =  xs[i]
+        if dropna isa Val{true}
+            if isnull(x)
+                continue
+            else
+                y = get(x)
+            end
+        else
+            y = x
+        end
+        A[i, 1] = (y - m) / s
+    end
+    A
 end
 
-width(c::Categorical) = length(c.items)
-numeric(c::Categorical, x) = x .== c.items
+
+struct Categorical
+  series::Series
+end
+schema(xs::PooledArray) = Categorical(Series(xs, CountMap(eltype(xs))))
+dict(c::Categorical) = c.series.stats[1].d
+width(c::Categorical) = length(dict(c))
+merge(c1::Categorical, c2::Categorical) = Categorical(merge(c1.series, c2.series))
+function Base.show(io::IO, c::Categorical)
+    write(io, "Categorical($(collect(keys(dict(c)))))")
+end
+Base.@propagate_inbounds function tomat!(A, c::Categorical, xs, dropna=Val{false}())
+    w = width(c)
+    ks = collect(keys(dict(c)))
+    labeldict = Dict(zip(ks, 1:length(ks)))
+    labels = map(xs) do x
+        labeldict[x]
+    end
+    for i = 1:w
+        for j = 1:length(xs)
+            if dropna isa Val{true} && isnull(xs[j])
+                continue
+            end
+            A[j, i] = i == labels[j]
+        end
+    end
+    A
+end
 
 struct Maybe{T}
   feature::T
 end
-
+schema(xs::DataValueArray) = Maybe(schema(dropna(xs)))
 width(c::Maybe) = width(c.feature) + 1
-numeric(c::Maybe, x) =
-  DataValues.isna(x) ?
-    [0, zeros(width(c.feature))...] :
-    [1, numeric(c.feature, get(x))...]
+merge(m1::Maybe, m2::Maybe) = Maybe(merge(m1.feature, m2.feature))
+nulls(xs) = Base.Generator(isnull, xs)
+nulls(xs::DataValueArray) = xs.isnull
+Base.@propagate_inbounds function tomat!(A, c::Maybe, xs, dropna=Val{true}())
+    copy!(A, CartesianRange((1:length(xs), 1:1)), reshape(nulls(xs), (length(xs), 1)), CartesianRange((1:length(xs), 1:1)))
+    tomat!(view(A, 1:length(xs), 2:size(A, 2)), c.feature, xs, Val{true}())
+end
 
 # Schema inference
 
 const Schema = Dict{Symbol,Any}
 
-schema(t) = Schema(col => schema(column(t, col)) for col in names(t))
+# vecTs: type of column vectors in each chunk
+function schema(cols, names)
+   d = Schema()
+   for (col, name) in zip(cols, names)
+       d[name] = schema(col)
+   end
+   d
+end
+
+function schema(t::Union{Dataset, DDataset})
+    schema(collect(columns(t)), colnames(t))
+end
 
 width(sch::Schema) = sum(width(s) for s in values(sch))
-
-schema(::AbstractVector) = nothing
-
-schema(xs::AbstractVector{T}) where T <: Real =
-  Continuous{Float64}(mean(xs), std(xs))
-
-schema(xs::PooledArray{T}) where T = Categorical{T}(unique(xs))
-
-schema(xs::AbstractVector{<:DataValue}) = Maybe(schema(dropna(xs)))
-
-# Can't use dropna
-schema(xs::DArray{<:DataValue{<:Real}}) = Maybe(Continuous(mean(xs), std(xs)))
+function tomat!(A, schemas::Schema, t)
+    j = 0
+    for col in colnames(t)
+        schema = schemas[col]
+        tomat!(view(A, 1:length(t), j+1:j+width(schema)),
+               schema, column(t, col))
+        j += width(schema)
+    end
+    A
+end
 
 splitschema(xs::Schema, ks...) =
   filter((k,v) -> k ∉ ks, xs),
   filter((k,v) -> k ∈ ks, xs)
 
-# Dataset construction
-
-tovec(sch::Schema, row::NamedTuple) =
-  Float32.(vcat(map(col -> numeric(get(sch, col, nothing), getfield(row, col)), fieldnames(row))...))
-
-tomat(sch::Schema, data) =
-  reduce(hcat, map(r -> tovec(sch, r), data))
-
-# Summary stats
-
-using OnlineStats
-
-Base.mean(xs::DArray{<:DataValue}) =
-  Dagger.reduceblock(x->Series(dropna(x), Mean()), x->reduce(merge, x), xs).stats[1].μ
-
-Base.std(xs::DArray{<:DataValue}) =
-  √Dagger.reduceblock(x->Series(dropna(x), Variance()), x->reduce(merge, x), xs).stats[1].σ2
+tomat(sch, xs) = tomat!(Array{Float32}(length(xs), width(sch)), sch, xs)
+tomat(t::Dataset) = tomat(schema(t), t)
