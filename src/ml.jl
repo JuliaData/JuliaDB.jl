@@ -7,7 +7,7 @@ import Base: merge
 schema(xs::AbstractArray) = nothing # catch-all
 merge(::Void, ::Void) = nothing
 width(::Void) = 0
-tomat!(A, ::Void, xs) = A
+featuremat!(A, ::Void, xs) = A
 
 # distributed schema calculation
 function schema(xs::DArray)
@@ -30,7 +30,7 @@ Base.std(c::Continuous)::Float64 = c.series.stats[2].σ2
 function Base.show(io::IO, c::Continuous)
     write(io, "Continous(μ=$(mean(c)), σ=$(std(c)))")
 end
-Base.@propagate_inbounds function tomat!(A, c::Continuous, xs,
+Base.@propagate_inbounds function featuremat!(A, c::Continuous, xs,
                                          dropna=Val{false}())
     m = mean(c)
     s = std(c)
@@ -60,7 +60,7 @@ merge(c1::Categorical, c2::Categorical) = Categorical(merge(c1.series, c2.series
 function Base.show(io::IO, c::Categorical)
     write(io, "Categorical($(collect(keys(dict(c)))))")
 end
-Base.@propagate_inbounds function tomat!(A, c::Categorical, xs, dropna=Val{false}())
+Base.@propagate_inbounds function featuremat!(A, c::Categorical, xs, dropna=Val{false}())
     ks = collect(keys(dict(c)))
     labeldict = Dict{eltype(ks), Int}(zip(ks, 1:length(ks)))
     for i = 1:length(xs)
@@ -80,9 +80,9 @@ width(c::Maybe) = width(c.feature) + 1
 merge(m1::Maybe, m2::Maybe) = Maybe(merge(m1.feature, m2.feature))
 nulls(xs) = Base.Generator(isnull, xs)
 nulls(xs::DataValueArray) = xs.isnull
-Base.@propagate_inbounds function tomat!(A, c::Maybe, xs, dropna=Val{true}())
+Base.@propagate_inbounds function featuremat!(A, c::Maybe, xs, dropna=Val{true}())
     copy!(A, CartesianRange((1:length(xs), 1:1)), reshape(nulls(xs), (length(xs), 1)), CartesianRange((1:length(xs), 1:1)))
-    tomat!(view(A, 1:length(xs), 2:size(A, 2)), c.feature, xs, Val{true}())
+    featuremat!(view(A, 1:length(xs), 2:size(A, 2)), c.feature, xs, Val{true}())
 end
 
 # Schema inference
@@ -103,11 +103,11 @@ function schema(t::Union{Dataset, DDataset})
 end
 
 width(sch::Schema) = sum(width(s) for s in values(sch))
-function tomat!(A, schemas::Schema, t)
+function featuremat!(A, schemas::Schema, t)
     j = 0
     for col in colnames(t)
         schema = schemas[col]
-        tomat!(view(A, 1:length(t), j+1:j+width(schema)),
+        featuremat!(view(A, 1:length(t), j+1:j+width(schema)),
                    schema, column(t, col))
 
         j += width(schema)
@@ -119,8 +119,20 @@ splitschema(xs::Schema, ks...) =
   filter((k,v) -> k ∉ ks, xs),
   filter((k,v) -> k ∈ ks, xs)
 
-function tomat(sch, xs)
-    tomat!(Array{Float32}(length(xs), width(sch)), sch, xs)
+function featuremat(sch, xs)
+    featuremat!(Array{Float32}(length(xs), width(sch)), sch, xs)
 end
-tomat(t) = tomat(schema(t), t)
-tomat(t::DDataset) = tomat(schema(t), t)
+featuremat(t) = featuremat(schema(t), t)
+function featuremat(s, t::DDataset)
+    t = compute(t)
+    w = width(s)
+    h = length(t)
+    lengths = get.(nrows.(t.domains))
+    domains = Dagger.DomainBlocks((1,1), (cumsum(lengths), [w]))
+
+    DArray(Float32,
+           Dagger.ArrayDomain(sum(lengths), w),
+           domains,
+           reshape(delayedmap(x->featuremat(s,x), t.chunks),
+                   (length(t.chunks), 1)))
+end
