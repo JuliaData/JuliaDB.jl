@@ -15,7 +15,7 @@ export IndexedTable, NDSparse, NextTable, Columns, colnames,
        table, ndsparse, compute, groupby, groupreduce, groupjoin,
        ColDict, insertafter!, insertbefore!, @cols, setcol, pushcol,
        popcol, insertcol, insertcolafter, insertcolbefore, permutecols,
-       renamecol, NA, dropna, flatten
+       renamecol, NA, dropna, flatten, ML
 
 include("util.jl")
 include("serialize.jl")

@@ -1,4 +1,13 @@
+module ML
+
 using JuliaDB
+using Dagger
+using OnlineStats
+using PooledArrays
+using DataValues
+
+import Dagger: ArrayOp, DArray, treereduce
+import JuliaDB: Dataset, DDataset, nrows
 
 import Base: merge
 
@@ -119,8 +128,8 @@ function featuremat!(A, schemas::Schema, t)
 end
 
 splitschema(xs::Schema, ks...) =
-  filter((k,v) -> k ∉ ks, xs),
-  filter((k,v) -> k ∈ ks, xs)
+    filter((k,v) -> k ∉ ks, xs),
+    filter((k,v) -> k ∈ ks, xs)
 
 function featuremat(sch, xs)
     featuremat!(Array{Float32}(length(xs), width(sch)), sch, xs)
@@ -138,4 +147,6 @@ function featuremat(s, t::DDataset)
            domains,
            reshape(delayedmap(x->featuremat(s,x), t.chunks),
                    (length(t.chunks), 1)))
+end
+
 end
