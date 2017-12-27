@@ -53,6 +53,9 @@ end
 struct Categorical
   series::Series
 end
+function Categorical(xs::AbstractArray)
+    Categorical(Series(CountMap(Dict(zip(xs, zeros(Int, length(xs)))))))
+end
 schema(xs::PooledArray) = Categorical(Series(xs, CountMap(eltype(xs))))
 dict(c::Categorical) = c.series.stats[1].d
 width(c::Categorical) = length(dict(c))
@@ -105,7 +108,7 @@ end
 width(sch::Schema) = sum(width(s) for s in values(sch))
 function featuremat!(A, schemas::Schema, t)
     j = 0
-    for col in colnames(t)
+    for col in keys(schemas)
         schema = schemas[col]
         featuremat!(view(A, 1:length(t), j+1:j+width(schema)),
                    schema, column(t, col))

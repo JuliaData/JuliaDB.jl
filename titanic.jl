@@ -1,23 +1,25 @@
-using JuliaDB: Categorical, schema, splitschema, width, tomat
+using JuliaDB
+using JuliaDB: Categorical, schema, splitschema, width, featuremat
 
-db = load_table(joinpath(homedir(), "Downloads/titanic.csv"),
+db = loadtable(joinpath(homedir(), "Downloads/train.csv"),
+               escapechar='"',
                 indexcols=["PassengerId"])
 
 sch = JuliaDB.schema(db)
 
 sch[:Survived] = Categorical([0, 1])
 
-tomat(sch, db)
+featuremat(sch, db)
 
 # At this point you'd want to save the schema to disk somewhere
 
 xsch, ysch = splitschema(sch, :Survived)
 
-data = ((tomat(xsch, data), tomat(ysch, data))
-        for data in Iterators.partition(distribute(db), 10))
+data = ((featuremat(xsch, data)', featuremat(ysch, data))
+        for data in Iterators.partition(distribute(db, 1), 10))
 
 # Sample first data point
-first(data)
+@show map(size, first(data))
 
 using Flux
 
@@ -31,10 +33,10 @@ model(first(data)[1])
 
 loss(x, y) = Flux.mse(model(x), y)
 
-opt = Flux.ADAM(params(model))
+opt = Flux.ADAM(Flux.params(model))
 evalcb = Flux.throttle(() -> @show(loss(first(data)...)), 2)
 
-@progress for i = 1:10
+for i = 1:10
   Flux.train!(loss, data, opt, cb = evalcb)
 end
 
