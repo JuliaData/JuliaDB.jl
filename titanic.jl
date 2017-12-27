@@ -1,19 +1,19 @@
 using JuliaDB
-using JuliaDB: Categorical, schema, splitschema, width, featuremat
+import JuliaDB.ML: featuremat
 
 db = loadtable(joinpath(homedir(), "Downloads/train.csv"),
                escapechar='"',
                 indexcols=["PassengerId"])
 
-sch = JuliaDB.schema(db)
+sch = ML.schema(db)
 
-sch[:Survived] = Categorical([0, 1])
+sch[:Survived] = ML.Categorical([0, 1])
 
 featuremat(sch, db)
 
 # At this point you'd want to save the schema to disk somewhere
 
-xsch, ysch = splitschema(sch, :Survived)
+xsch, ysch = ML.splitschema(sch, :Survived)
 
 data = ((featuremat(xsch, data)', featuremat(ysch, data))
         for data in Iterators.partition(distribute(db, 1), 10))
@@ -24,8 +24,8 @@ data = ((featuremat(xsch, data)', featuremat(ysch, data))
 using Flux
 
 model = Chain(
-  Dense(width(xsch), 32, relu),
-  Dense(32, width(ysch)),
+  Dense(ML.width(xsch), 32, relu),
+  Dense(32, ML.width(ysch)),
   softmax)
 
 # See an example prediction
