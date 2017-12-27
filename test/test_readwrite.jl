@@ -19,9 +19,14 @@ end
     roundtrip(Columns(x=[1,2], y=["x","y"]))
 end
 
-@testset "NDSparse" begin
-    NDSparse(Columns([1,2], ["x","y"]))
-                 Columns(x=[1,2], y=["x","y"]) |> roundtrip
+@testset "ndsparse" begin
+    ndsparse(Columns([1,2], ["x","y"]),
+             Columns(x=[1,2], y=["x","y"])) |> roundtrip
+end
+
+@testset "table" begin
+    table([1,2], ["x","y"]) |> roundtrip
+    table(Columns(x=[1,2], y=["x","y"])) |> roundtrip
 end
 
 
@@ -42,24 +47,25 @@ const spdata = loadndsparse(files;
                             distributed=false,
                             header_exists=true,
                             indexcols=1:2)
-
+files = glob("*.csv", "sample")
 shuffle_files = shuffle(files)
 const spdata_unordered = loadndsparse(shuffle_files;
                                       distributed=false,
                                       indexcols=[])
 
 ingest_output = tempname()
-spdata_ingest = ingest(files, ingest_output, indexcols=1:2, chunks=2)
+spdata_ingest = loadndsparse(files, output=ingest_output, indexcols=1:2, chunks=2)
 ingest_output_unordered = tempname()
 # note: this will result in a different table if files[3:end] is ingested first
-spdata_ingest_unordered = ingest(shuffle_files[1:3], ingest_output_unordered,
+spdata_ingest_unordered = loadndsparse(shuffle_files[1:3], output=ingest_output_unordered,
                                  indexcols=[], chunks=2)
-spdata_ingest_unordered = ingest!(shuffle_files[4:end], ingest_output_unordered,
-                                 indexcols=[])
+spdata_ingest_unordered = loadndsparse(shuffle_files[4:end], output=ingest_output_unordered,
+                                       append=true, indexcols=[])
 # this should also test appending new files
 
 import Dagger: Chunk
 @testset "Load" begin
+    @test loadtable("missingcols/t1.csv") == table([0,0,0], [1,2,3], names=[:a,:x])
     cache = joinpath(JuliaDB.JULIADB_DIR, JuliaDB.JULIADB_FILECACHE)
     if isfile(cache)
         rm(cache)

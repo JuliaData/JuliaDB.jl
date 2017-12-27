@@ -1,6 +1,20 @@
 using JuliaDB
 using Base.Test
 
+@testset "setindex!" begin
+    x = ndsparse(([1,2],[2,3]), [4,5], chunks=2)
+    x[2,3] = 6
+    @test x == ndsparse(([1,2], [2,3]), [4,6])
+    x[2,4] = 7
+    @test x == ndsparse(([1,2,2], [2,3,4]), [4,6,7])
+
+    x = ndsparse(@NT(x=[1,2],y=[2,3]), [4,5], chunks=2)
+    x[2,3] = 6
+    @test x == ndsparse(@NT(x=[1,2], y=[2,3]), [4,6])
+    x[2,4] = 7
+    @test x == ndsparse(@NT(x=[1,2,2], y=[2,3,4]), [4,6,7])
+end
+
 @testset "extractarray" begin
 
     t = NDSparse(Columns(a=[1,1,1,2,2], b=[1,2,3,1,2]),

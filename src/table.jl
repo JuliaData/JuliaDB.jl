@@ -131,16 +131,34 @@ end
 Construct a distributed object from chunks. Calls `fromchunks(T, cs)`
 where T is the type of the data in the first chunk. Computes any thunks.
 """
-function fromchunks(cs::AbstractArray, args...; kwargs...)
-    if any(x->isa(x, Thunk), cs)
+function fromchunks(cs::AbstractArray, args...; output=nothing, fnoffset=0, kwargs...)
+    if output !== nothing
+        if !isdir(output)
+            mkdir(output)
+        end
+        cs = Any[begin
+            fn = lpad(idx+fnoffset, 5, "0")
+            delayed(Dagger.savechunk, get_result=true)(
+                c, output, fn)
+        end for (idx, c) in enumerate(cs)]
+
+        vec_thunk = treereduce(delayed(vcat, meta=true), cs)
+        if length(cs) == 1
+            cs = [compute(get_context(), vec_thunk)]
+        else
+            cs = compute(get_context(), vec_thunk)
+        end
+        return fromchunks(cs)
+    elseif any(x->isa(x, Thunk), cs)
         vec_thunk = delayed((refs...) -> [refs...]; meta=true)(cs...)
-        cs = compute(get_context(), vec_thunk) # returns a vector of Chunk objects
+        cs = compute(get_context(), vec_thunk)
     end
     T = chunktype(first(cs))
     fromchunks(T, cs, args...; kwargs...)
 end
 
-function fromchunks(::Type{<:AbstractVector}, cs::AbstractArray, args...; kwargs...)
+function fromchunks(::Type{<:AbstractVector},
+                    cs::AbstractArray, args...; kwargs...)
     lengths = length.(domain.(cs))
     dmnchunks = DomainBlocks((1,), (cumsum(lengths),))
     T = reduce(_promote_type, eltype(chunktype(cs[1])),
@@ -176,9 +194,9 @@ distribute(t::NextTable, chunks) = table(t, chunks=chunks, copy=false)
 
 compute(t::DNextTable; kwargs...) = compute(get_context(), t; kwargs...)
 
-function compute(ctx, t::DNextTable)
+function compute(ctx, t::DNextTable; output=nothing)
     if any(Dagger.istask, t.chunks)
-        fromchunks(NextTable, cs)
+        fromchunks(NextTable, cs, output=output)
     else
         map(Dagger.unrelease, t.chunks) # don't let this be freed
         foreach(Dagger.persist!, t.chunks)

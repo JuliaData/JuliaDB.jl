@@ -9,10 +9,13 @@ function mapslices(f, x::DNDSparse, dims; name=nothing)
     # Note: the key doesn't need to be put in a tuple, this is
     # also bad for sortperm, but is required since DArrays aren't
     # parameterized by the container type Columns
-    tmp = ndsparse((keys(x, (iterdims...)),), (keys(x, (dims...)), values(x)))
+    vals = isempty(dims) ?  values(x) : (keys(x, (dims...)), values(x))
+    tmp = ndsparse((keys(x, (iterdims...)),), vals)
 
     cs = delayedmap(tmp.chunks) do c
-        y = ndsparse(IndexedTables.concat_cols(columns(keys(c))[1], columns(values(c))[1]), columns(values(c))[2])
+        ks = isempty(dims) ? columns(keys(c))[1] : IndexedTables.concat_cols(columns(keys(c))[1], columns(values(c))[1])
+        vs = isempty(dims) ? columns(values(c)) : columns(values(c))[2]
+        y = ndsparse(ks, vs)
         mapslices(f, y, dims; name=nothing)
     end
     fromchunks(cs)

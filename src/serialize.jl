@@ -72,3 +72,19 @@ function mmread(::Type{NDSparse}, io, mmap)
     data = deserialize(io)
     NDSparse(idx, data, presorted=true, copy=false)
 end
+
+function mmwrite(io::AbstractSerializer, xs::NextTable)
+    Base.serialize_type(io, MMSer{NextTable})
+
+    #flush!(xs)
+    mmwrite(io, rows(xs))
+    mmwrite(io, xs.pkey)
+    mmwrite(io, xs.perms)
+end
+
+function mmread(::Type{NextTable}, io, mmap)
+    data = deserialize(io)
+    pkey = deserialize(io)
+    perms = deserialize(io)
+    table(data, pkey=pkey, perms=perms, presorted=true, copy=false)
+end

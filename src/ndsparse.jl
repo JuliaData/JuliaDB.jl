@@ -65,7 +65,12 @@ function ndsparse(::Val{:distributed}, ks::Tup,
                 [vdarrays.chunks[i]])
         cs[i] = delayed(makechunk)(args...)
     end
-    fromchunks(cs, closed=closed, merge=(x,y)->merge(x,y, agg=agg))
+    fromchunks(cs, closed=closed, merge=(x,y)->merge(x,y, agg=agg),
+                allowoverlap=false)
+end
+
+function ndsparse(x::Dagger.DArray{<:Tup}, y; kwargs...)
+    ndsparse(columns(x), y; kwargs...)
 end
 
 function ndsparse(x::DNDSparse; kwargs...)
@@ -126,7 +131,7 @@ See also [`collect`](@ref).
 """
 compute(t::DNDSparse; kwargs...) = compute(get_context(), t; kwargs...)
 
-function compute(ctx, t::DNDSparse; allowoverlap=false, closed=false)
+function compute(ctx, t::DNDSparse; allowoverlap=true, closed=false)
     if any(Dagger.istask, t.chunks)
         # we need to splat `thunks` so that Dagger knows the inputs
         # are thunks and they need to be staged for scheduling
@@ -362,12 +367,12 @@ function with_overlaps(f, t::DDataset, closed=false)
     fromchunks(cs)
 end
 
-function fromchunks(::Type{<:NDSparse}, chunks::AbstractArray,
-                    domains::AbstractArray = map(domain, chunks);
+function fromchunks(::Type{<:NDSparse}, chunks::AbstractArray;
+                    domains::AbstractArray = map(domain, chunks),
                     KV = getkvtypes(chunks),
                     merge=_merge,
                     closed = false,
-                    allowoverlap = false)
+                    allowoverlap = true)
 
     nzidxs = find(x->!isempty(x), domains)
     domains = domains[nzidxs]
@@ -419,7 +424,7 @@ rows in the chunks.
 Returns a `DNDSparse`.
 """
 function distribute(nds::NDSparse{V}, rowgroups::AbstractArray;
-                     allowoverlap = false, closed = false) where V
+                     allowoverlap = true, closed = false) where V
     splits = cumsum([0, rowgroups;])
 
     if splits[end] != length(nds)
@@ -434,7 +439,7 @@ function distribute(nds::NDSparse{V}, rowgroups::AbstractArray;
     chunks = map(r->delayed(identity)(subtable(nds, r)), ranges)
     domains = map(r->subindexspace(nds, r), ranges)
     realK = eltypes(typeof(nds.index.columns))
-    cache_thunks(fromchunks(chunks, domains, KV = (realK, V),
+    cache_thunks(fromchunks(chunks, domains=domains, KV = (realK, V),
                             allowoverlap=allowoverlap, closed=closed))
 end
 
@@ -449,7 +454,7 @@ of approximately equal size.
 Returns a `DNDSparse`.
 """
 function distribute(nds::NDSparse, nchunks::Int=nworkers();
-                    allowoverlap = false, closed = false)
+                    allowoverlap = true, closed = false)
     N = length(nds)
     q, r = divrem(N, nchunks)
     nrows = vcat(collect(_repeated(q, nchunks)))

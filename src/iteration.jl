@@ -125,10 +125,13 @@ end
 # TODO: do this lazily after compute
 # technically it's not necessary to communicate here
 
-function columns(t::Union{DDataset, DArray}, which::Tuple...)
+function Base.getindex(d::ColDict{<:DArray})
+    rows(table(d.columns...; names=d.names))
+end
 
+function columns(t::Union{DDataset, DArray})
     cs = delayedmap(t.chunks) do c
-        x = columns(c, which...)
+        x = columns(c)
         if isa(x, AbstractArray)
             tochunk(x)
         elseif isa(x, Tup)
@@ -138,7 +141,6 @@ function columns(t::Union{DDataset, DArray}, which::Tuple...)
             error("Columns $which could not be extracted")
         end
     end
-
     tuples = collect(get_context(), treereduce(delayed(vcat), cs))
     if length(cs) == 1
         tuples = [tuples]
@@ -149,6 +151,10 @@ function columns(t::Union{DDataset, DArray}, which::Tuple...)
     else
         fromchunks(tuples)
     end
+end
+
+function columns(t::Union{DDataset, DArray}, which::Tuple)
+    columns(rows(t, which))
 end
 
 # TODO: make sure this is a DArray of Columns!!
@@ -193,11 +199,11 @@ function distfor(t, x::Pair{<:Any, <:AbstractArray})
     [delayed(c->x[1]=>c)(c) for c in cs]
 end
 
-function rows(t::DDataset)
+function rows(t::Union{DDataset, DArray})
     extractarray(t, rows)
 end
 
-function rows(t::DDataset, which)
+function rows(t::Union{DDataset, DArray}, which)
     dist_selector(t, rows, which)
 end
 

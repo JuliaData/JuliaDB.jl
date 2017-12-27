@@ -2,13 +2,20 @@
 export rechunk_together
 
 function rechunk_together(left, right, lkey, rkey,
-                          lselect=excludecols(left, lkey), rselect=excludecols(right, rkey); chunks=nworkers())
+                          lselect=excludecols(left, lkey), rselect=excludecols(right, rkey); chunks=nworkers(), keepkeys=false)
     # we will assume that right has to be aligned to left
-    l = reindex(left, lkey, lselect)
+    if keepkeys
+        l = reindex(left, lkey, (pkeynames(left), lselect))
+    else
+        l = reindex(left, lkey, lselect)
+    end
     r = reindex(right, rkey, rselect)
 
-    if has_overlaps(l.domains)
-        l = rechunk(l, lkey, lselect, chunks=chunks)
+    if has_overlaps(l.domains, closed=true)
+        l = rechunk(l, chunks=chunks)
+    elseif !issorted(l.domains, by=first)
+        perm = sortperm(l.domains, by=first)
+        l = fromchunks(l.chunks[perm], domains=l.domains[perm])
     end
 
     splitters = map(last, l.domains)
@@ -21,34 +28,118 @@ function rechunk_together(left, right, lkey, rkey,
     l, r
 end
 
-function Base.join(f, left::DNextTable, right::DNextTable;
+function Base.join(f, left::DDataset, right::DDataset;
                    how=:inner,
                    lkey=pkeynames(left), rkey=pkeynames(right),
-                   lselect=excludecols(left, lkey),
-                   rselect=excludecols(right, rkey),
+                   lselect=left isa DNDSparse ? valuenames(left) : excludecols(left, lkey),
+                   rselect=right isa DNDSparse ? valuenames(right) : excludecols(right, rkey),
+                   broadcast=nothing,
+                   keepkeys=false,
                    chunks=nworkers(),
                    kwargs...)
+    cl = compute(left)
+    cr = compute(right)
 
-    l, r = rechunk_together(compute(left), compute(right),
-                            lkey, rkey, lselect, rselect,
-                            chunks=chunks)
+    if broadcast === :left
+        error("only broadcast = :right is supported at the moment")
+    elseif broadcast === :right
+        if !(how in [:inner, :left, :anti])
+            error("Can only do inner, left, or anti join with broadcast = :right")
+        end
+        if length(cr.chunks) == 1
+            right_ser = cr.chunks[1]
+        else
+            right_ser = collect(cr)
+        end
+        ps = map(x->first(Dagger.affinity(x))[1], cl.chunks)
+        tasks = [delayed(identity)(right_ser) for p in ps]
+        for (t, p) in zip(tasks, ps)
+            t.affinity = Nullable([p=>1])
+        end
+        r = fromchunks(tasks)
+        l = cl
+    else
+        l, r = rechunk_together(left, right, lkey, rkey, lselect, rselect,
+                                chunks=chunks, keepkeys=keepkeys)
+    end
 
-    delayedmap(l.chunks, r.chunks) do x, y
-        join(f, x, y, how=how, lkey=lkey, rkey=rkey,
-             lselect=lselect, rselect=rselect; kwargs...)
-    end |> fromchunks
+    i = 1
+    j = 1
+
+    cs = []
+    rempty = delayed(empty!∘copy)(r.chunks[end])
+    lempty = delayed(empty!∘copy)(l.chunks[end])
+
+    function joinchunks(x, y)
+        res=if keepkeys && broadcast === nothing
+            vs = rows(x, excludecols(x, pkeynames(x)))
+            k = columns(vs)[1]
+            v = columns(vs)[2]
+            join(f, convert(IndexedTables.collectiontype(x), k, v),
+                 y, lkey=lkey, keepkeys=true, how=how; kwargs...)
+        elseif broadcast !== nothing
+            join(f, x, y, lkey=lkey, rkey=rkey,
+                 lselect=lselect, rselect=rselect,
+                 keepkeys=keepkeys, how=how; kwargs...)
+        else
+            join(f, x, y, how=how; kwargs...)
+        end
+    end
+
+    while i <= length(l.chunks) && j <= length(r.chunks)
+        c1 = l.chunks[i]
+        c2 = r.chunks[j]
+
+        d1 = l.domains[i]
+        d2 = r.domains[j]
+        if hasoverlap(d1.interval, d2.interval)
+            i += 1
+            j += 1
+        elseif last(d1.interval) < last(d2.interval)
+            # this means there's no corresponding chunk on the right
+            c2 = rempty
+            i += 1
+        else
+            # this means there's no corresponding chunk on the left
+            c1 = lempty
+            j += 1
+        end
+        c = delayed(joinchunks)(c1,c2)
+        push!(cs, c)
+    end
+
+    while i <= length(l.chunks)
+        push!(cs, delayed(joinchunks)(l.chunks[i], rempty))
+        i+=1
+    end
+
+    while j <= length(r.chunks)
+        push!(cs, delayed(joinchunks)(lempty, r.chunks[j]))
+        j += 1
+    end
+
+    fromchunks(cs)
 end
 
-function Base.join(left::DNextTable, right::DNextTable; how=:inner, kwargs...)
+function Base.join(left::DDataset, right; how=:inner, kwargs...)
     f = how === :anti ? ((x,y)->x) : IndexedTables.concat_tup
     join(f, left, right; how=how, kwargs...)
 end
 
-function groupjoin(left::DNextTable, right::DNextTable; how=:inner, kwargs...)
+function groupjoin(f, left::DDataset, right; how=:inner, kwargs...)
+    join(f, left, right; how=how, group=true, kwargs...)
+end
+
+function groupjoin(left::DDataset, right; how=:inner, kwargs...)
     join(left, right; how=how, group=true, kwargs...)
 end
-function groupjoin(f, left::DNextTable, right::DNextTable; how=:inner, kwargs...)
-    join(f, left, right; how=how, group=true, kwargs...)
+
+function join(f, left::DDataset, right::IndexedTables.Dataset; how=:inner, kwargs...)
+    if how in [:inner, :left, :anti]
+        join(f, left, distribute(right, 1), broadcast=:right, how=how; kwargs...)
+    else
+        join(f, left, distribute(right, 1), how=how; kwargs...)
+    end
 end
 
 ## NDSparse join

@@ -43,7 +43,8 @@ function rechunk(dt::DDataset,
                  nsamples=2000,
                  batchsize=nworkers())
 
-    cs = dt.chunks
+    perm = sortperm(dt.domains, by=first)
+    cs = dt.chunks[perm]
 
     function sortandsample(data, nsamples, presorted)
         r = sample(1:length(data), min(length(data), nsamples),

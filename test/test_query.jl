@@ -104,6 +104,10 @@ end
         #res3 = mapslices(g, d, ())
         #@test collect(res3) == mapslices(g, t, ())
     end
+    t = ndsparse([1,2,3],[4,5,6], chunks=2)
+    @test mapslices(t, ()) do x
+        ndsparse([1,2], first.([x,x]))
+    end == ndsparse(([1,1,2,2,3,3],[1,2,1,2,1,2],), [4,4,5,5,6,6])
 end
 
 @testset "flatten" begin
