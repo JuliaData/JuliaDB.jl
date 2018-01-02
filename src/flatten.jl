@@ -13,10 +13,10 @@ function mapslices(f, x::DNDSparse, dims; name=nothing)
     tmp = ndsparse((keys(x, (iterdims...)),), vals)
 
     cs = delayedmap(tmp.chunks) do c
-        ks = isempty(dims) ? columns(keys(c))[1] : IndexedTables.concat_cols(columns(keys(c))[1], columns(values(c))[1])
+        ks = isempty(dims) ? columns(columns(keys(c))[1]) : IndexedTables.concat_cols(columns(keys(c))[1], columns(values(c))[1])
         vs = isempty(dims) ? columns(values(c)) : columns(values(c))[2]
         y = ndsparse(ks, vs)
-        mapslices(f, y, dims; name=nothing)
+        mapslices(f, y, dims; name=name)
     end
     fromchunks(cs)
   # cache_thunks(mapchunks(y -> mapslices(f, y, dims, name=name),
