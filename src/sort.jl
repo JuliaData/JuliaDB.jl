@@ -40,11 +40,16 @@ function rechunk(dt::DDataset,
                  affinities=workers(),
                  chunks=nworkers(),
                  closed=true,
+                 sortchunks=true,
                  nsamples=2000,
                  batchsize=nworkers())
 
-    perm = sortperm(dt.domains, by=first)
-    cs = dt.chunks[perm]
+    if sortchunks
+        perm = sortperm(dt.domains, by=first)
+        cs = dt.chunks[perm]
+    else
+        cs = dt.chunks
+    end
 
     function sortandsample(data, nsamples, presorted)
         r = sample(1:length(data), min(length(data), nsamples),

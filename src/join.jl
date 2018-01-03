@@ -262,8 +262,6 @@ function asofjoin(left::DNDSparse, right::DNDSparse)
 end
 
 function merge(left::DNDSparse{I1,D1}, right::DNDSparse{I2,D2}; agg=IndexedTables.right) where {I1,I2,D1,D2}
-    out_domains = Any[]
-    out_chunks = Any[]
 
     I = promote_type(I1, I2)        # output index type
     D = promote_type(D1, D2)        # output data type
@@ -275,7 +273,8 @@ function merge(left::DNDSparse{I1,D1}, right::DNDSparse{I2,D2}; agg=IndexedTable
     if has_overlaps(t.domains)
         t = rechunk(t,
                     merge=(x...)->_merge(overlap_merge, x...),
-                    closed=agg!==nothing)
+                    closed=agg!==nothing,
+                    sortchunks=false)
     end
 
     return cache_thunks(t)
