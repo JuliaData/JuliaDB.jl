@@ -1,3 +1,5 @@
+addprocs(2)
+
 using JuliaDB
 using Base.Test
 using TextParse
