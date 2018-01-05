@@ -48,5 +48,6 @@ include("flatten.jl")
 include("join.jl")
 
 include("diagnostics.jl")
+include("recipes.jl")
 
 end # module
