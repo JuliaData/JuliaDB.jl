@@ -1,11 +1,13 @@
 # OnlineStats Integration
 
-[OnlineStats.jl](https://github.com/joshday/OnlineStats.jl) is a package for calculating 
+[**OnlineStats**](https://github.com/joshday/OnlineStats.jl) is a package for calculating 
 statistics and models with online (one observation at a time) parallelizable algorithms.  
 This integrates tightly with JuliaDB's distributed data structures to calculate statistics
 on large datasets.
 
 For the full OnlineStats documentation, see [http://joshday.github.io/OnlineStats.jl/stable/](http://joshday.github.io/OnlineStats.jl/stable/).
+
+---
 
 ## Basics
 
@@ -24,6 +26,8 @@ using JuliaDB, OnlineStats
 
 t = table(@NT(x = randn(100), y = randn(100), z = rand(1:5, 100)))
 ```
+
+---
 
 ## Usage on a single column
 
@@ -44,6 +48,8 @@ reduce((Mean(), Variance()), t; select = :x)
 s = Series(Mean(), Variance(), Sum());
 reduce(s, t; select = :x)
 ```
+
+---
 
 ## Usage on multiple columns
 
