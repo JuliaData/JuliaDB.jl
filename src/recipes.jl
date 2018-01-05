@@ -3,7 +3,6 @@ using RecipesBase
 # threshold to plot partitions rather than data
 const PTHRESH = 10_000
 
-
 #-----------------------------------------------------------------# table and selection
 @recipe function f(t::AbstractIndexedTable, selection; partition::Bool = length(t) > PTHRESH)
     if partition
@@ -26,7 +25,7 @@ end
 
 #--------------------------------------------------------------------# table by itself
 @recipe function f(t::AbstractIndexedTable; forceplot = false)
-    length(t) > PTHRESH && error("Table is too big. Override error with `forceplot = true`.")
+    (length(t) > PTHRESH || forceplot) && error("Table is too big. Override error with `forceplot = true`.")
     cnames = colnames(t)
     layout --> length(cnames)
     label --> hcat(cnames...)
