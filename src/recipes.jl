@@ -4,12 +4,13 @@ using RecipesBase
 const PTHRESH = 10_000
 
 #-----------------------------------------------------------------# table and selection
-@recipe function f(t::AbstractIndexedTable, selection; partition::Bool = length(t) > PTHRESH)
+@recipe function f(t::AbstractIndexedTable, selection::Union{Symbol, Number, Pair}; 
+                   partition = length(t) > PTHRESH, nparts = 50, reducer = nothing)
     if partition
-        reducer = make_reducer(t, selection)
+        reducer = (reducer == nothing) ? make_reducer(t, selection) : reducer
         @series begin 
             title --> selection 
-            reduce(reducer, t; select = selection)
+            reduce(Partition(reducer, nparts), t; select = selection)
         end
     else
         @series begin 
@@ -19,19 +20,15 @@ const PTHRESH = 10_000
     end
 end
 
-function make_reducer(t::AbstractIndexedTable, selection)
-    Partition(Mean())
+function make_reducer(t::Union{NextTable, DNextTable}, selection)
+    T = typeof(t[1][selection])
+    make_reducer(T)
 end
 
-#--------------------------------------------------------------------# table by itself
-@recipe function f(t::AbstractIndexedTable; forceplot = false)
-    (length(t) > PTHRESH || forceplot) && error("Table is too big. Override error with `forceplot = true`.")
-    cnames = colnames(t)
-    layout --> length(cnames)
-    label --> hcat(cnames...)
-    for nm in cnames
-        @series begin 
-            select(t, nm)
-        end
-    end
+function make_reducer(t::Union{NDSparse, DNDSparse}, selection)
+    error("Josh needs to figure out what to do here")
 end
+
+# Default OnlineStat based on data type
+make_reducer(::Type{<:Number}) = Mean()
+make_reducer(::Type{T})  where {T<:Union{AbstractString, Symbol}} = CountMap(T)
