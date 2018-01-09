@@ -4,27 +4,36 @@ using RecipesBase
 const PTHRESH = 10_000
 
 #-----------------------------------------------------------------# table and selection
-@recipe function f(t::AbstractIndexedTable, selection::Union{Symbol, Number, Pair}; 
-                   partition = length(t) > PTHRESH, nparts = 50, reducer = nothing)
-    if partition
-        o = (reducer == nothing) ? 
-            make_reducer(fieldtype(eltype(t), IndexedTables.colindex(t, selection))) : 
-            reducer
+@userplot struct PartitionPlot
+    args
+end
+
+@recipe function f(tp::PartitionPlot; nparts = 50, stat = nothing, by = nothing)
+    t = tp.args[1]
+    selection = tp.args[2]
+    o = (stat == nothing) ? 
+            make_stat(fieldtype(eltype(t), IndexedTables.colindex(t, selection))) : 
+            stat 
+    if by == nothing 
         @series begin 
-            title --> selection 
+            title --> selection
             reduce(Partition(o, nparts), t; select = selection)
         end
     else
-        @series begin 
-            title --> selection
-            collect(select(t, selection))
+        out = collect(groupreduce(Partition(o, nparts), t, by; select = selection))
+        layout --> length(out)
+        for i in 1:length(out)
+            @series begin 
+                title --> string(selection) * " ($(out[i][1]))"
+                subplot --> i
+                out[i][2]
+            end
         end
     end
 end
 
-
 # Default OnlineStat based on data type
-make_reducer(::Type{<:Number}) = Mean()
-make_reducer(::Type{T})  where {T<:Union{AbstractString, Symbol}} = CountMap(T)
+make_stat(::Type{<:Number}) = Mean()
+make_stat(::Type{T})  where {T<:Union{AbstractString, Symbol}} = CountMap(T)
 
-make_reducer(T) = error("No predefined reducer for $T")
+make_stat(T) = error("No predefined reducer for $T")
