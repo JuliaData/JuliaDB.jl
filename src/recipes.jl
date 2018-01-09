@@ -1,9 +1,6 @@
 using RecipesBase
 
-# threshold to plot partitions rather than data
-const PTHRESH = 10_000
-
-#-----------------------------------------------------------------# table and selection
+#-----------------------------------------------------------------# partitionplot
 @userplot struct PartitionPlot
     args
 end
