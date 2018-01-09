@@ -1,24 +1,25 @@
 # Plotting
 
-JuliaDB implements recipes for plotting data columns with [Plots.jl](https://github.com/JuliaPlots/Plots.jl).
+JuliaDB has all access to all the power and flexibility of [Plots](https://github.com/JuliaPlots/Plots.jl)
+via [StatPlots](https://github.com/JuliaPlots/StatPlots.jl) and the `@df` macro.
 
 ```
-using JuliaDB
+using JuliaDB, StatPlots
 
-t = table(@NT(x = randn(100)))
+t = table(@NT(x = randn(100), y = randn(100)))
 
-t2 = table(@NT(x = randn(1_000_000)))
+@df t scatter(:x, :y)
 ```
 
-- If the data is "small" (< 10,000 rows), plotting a table will plot each observation.  
-- If the data is "large", plotting a table will plot the data summarized by an `OnlineStats.Partition`.  
+For handling huge data, JuliaDB also adds `partitionplot` for plotting summaries of data 
+columns, optionally grouped by another column.
 
 ```
-using Plots, OnlineStats
+using JuliaDB, Plots, OnlineStats
 
-# Small table: All observations plotted
-plot(t, :x) 
+t = table(@NT(x = randn(10^6), y = rand(Bool, 10^6)))
 
-# Big table: Plot sections of data summarized by max/min
-plot(t2, :x; reducer = Extrema(), nparts = 75)
+partitionplot(t, :x)
+
+partitionplot(t, :x, by = :y, nparts = 200, stat = Extrema())
 ```
