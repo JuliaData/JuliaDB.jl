@@ -18,7 +18,7 @@ end
         end
     else
         out = collect(groupreduce(Partition(o, nparts), t, by; select = selection))
-        layout --> length(out)
+        layout := length(out)
         for i in 1:length(out)
             @series begin 
                 title --> string(selection) * " ($(out[i][1]))"
@@ -31,6 +31,6 @@ end
 
 # Default OnlineStat based on data type
 make_stat(::Type{<:Number}) = Mean()
-make_stat(::Type{T})  where {T<:Union{AbstractString, Symbol}} = CountMap(T)
+make_stat(::Type{T})  where {T<:Union{AbstractString, Symbol, Bool}} = CountMap(T)
 
-make_stat(T) = error("No predefined reducer for $T")
+make_stat(T) = error("No predefined stat for $T")
