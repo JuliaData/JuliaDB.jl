@@ -86,6 +86,10 @@ function groupby(f, t::DDataset, by=pkeynames(t); select=t isa DNDSparse ? value
     end
 end
 
+# To dispatch correctly when using distributed tables in summarize
+IndexedTables.init_func(ac::IndexedTables.ApplyColwise, t::DArray{<: Tup}) =
+    IndexedTables._init_func(ac, t)
+
 function reducedim(f, x::DNDSparse, dims)
     keep = setdiff([1:ndims(x);], dims) # TODO: Allow symbols
     if isempty(keep)

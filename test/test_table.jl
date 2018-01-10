@@ -195,4 +195,6 @@ import JuliaDB: pkeynames, pkeys, excludecols
     @test filter((p->p[2] / p[1] < 100), x, select=(:t, 3)) == ndsparse(@NT(n = String["b", "c"], t = [0.05, 0.07]), [1, 0])
     @test filter((:x => iseven, :t => (a->a > 0.01)), t) == table(String["c"], [0.07], [0], names=Symbol[:n, :t, :x])
     @test filter((3 => iseven, :t => (a->a > 0.01)), x) == ndsparse(@NT(n = String["c"], t = [0.07]), [0])
+    b = table(["a","a","b","b"], [1,3,5,7], [2,2,2,2], names = [:x, :y, :z], pkey = :x, chunks = 2)
+    @test summarize(mean, b) == table(["a","b"], [2.0,6.0], [2.0,2.0], names = [:x, :y_mean, :z_mean], pkey = :x)
 end
