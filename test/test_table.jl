@@ -195,6 +195,12 @@ import JuliaDB: pkeynames, pkeys, excludecols
     @test filter((p->p[2] / p[1] < 100), x, select=(:t, 3)) == ndsparse(@NT(n = String["b", "c"], t = [0.05, 0.07]), [1, 0])
     @test filter((:x => iseven, :t => (a->a > 0.01)), t) == table(String["c"], [0.07], [0], names=Symbol[:n, :t, :x])
     @test filter((3 => iseven, :t => (a->a > 0.01)), x) == ndsparse(@NT(n = String["c"], t = [0.07]), [0])
+    a = table([1,3,5], [2,2,2], names = [:x, :y], chunks = 2)
+    @test summarize((mean, std), a) ==
+        @NT(x_mean = 3.0, y_mean = 2.0, x_std = 2.0, y_std = 0.0)
+    @test summarize((mean, std), a, select = :x) == @NT(mean = 3.0, std = 2.0)
+    @test summarize(@NT(m = mean, s = std), a) ==
+        @NT(x_m = 3.0, y_m = 2.0, x_s = 2.0, y_s = 0.0)
     b = table(["a","a","b","b"], [1,3,5,7], [2,2,2,2], names = [:x, :y, :z], pkey = :x, chunks = 2)
-    @test summarize(mean, b) == table(["a","b"], [2.0,6.0], [2.0,2.0], names = [:x, :y_mean, :z_mean], pkey = :x)
+    @test summarize(mean, b) == table(["a","b"], [2.0,6.0], [2.0,2.0], names = [:x, :y, :z], pkey = :x)
 end
