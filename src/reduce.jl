@@ -5,7 +5,7 @@ import Base: reducedim
 export reducedim_vec, aggregate, aggregate_vec
 
 _merger(f) = f
-_merger(f::Series) = merge
+_merger(f::OnlineStats.AbstractSeries) = merge
 _merger(f::Tup) = map(_merger, f)
 
 function reduce(f, t::DDataset; select=valuenames(t))
