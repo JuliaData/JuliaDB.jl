@@ -31,7 +31,7 @@ end
             label --> OnlineStats.name(stat,false,false) * " of $sel_x"
             reduce(Partition(stat, nparts), t; select = sel_x)
         else 
-            out = groupreduce(Partition(stat, nparts), t; select = sel_x)
+            out = groupreduce(Partition(stat, nparts), t, by; select = sel_x)
             for i in 1:length(out)
                 @series begin 
                     label --> OnlineStats.name(stat,false,false) * " of $(out[i][1])"
