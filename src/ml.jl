@@ -14,21 +14,34 @@ import Base: merge
 # Core schema types
 
 schema(xs::AbstractArray) = nothing # catch-all
+schema(xs::AbstractArray, ::Void) = nothing # catch-all
 merge(::Void, ::Void) = nothing
 width(::Void) = 0
 featuremat!(A, ::Void, xs) = A
 
 # distributed schema calculation
 function schema(xs::DArray)
-    collect(treereduce(delayed(merge), delayedmap(schema, xs.chunks)))
+    collect(treereduce(delayed(merge),
+                       delayedmap(x -> schema(x), xs.chunks)))
 end
+
+function schema(xs::DArray, T)
+    collect(treereduce(delayed(merge),
+                       delayedmap(x -> schema(x, T), xs.chunks)))
+end
+
 schema(xs::ArrayOp) = schema(compute(xs))
+schema(xs::ArrayOp, T) = schema(compute(xs), T)
 
 struct Continuous
   series::Series
 end
-function schema(xs::AbstractArray{<:Real})
+
+function schema(xs, ::Type{Continuous})
     Continuous(Series(xs, Mean(), Variance()))
+end
+function schema(xs::AbstractArray{<:Real})
+    schema(xs, Continuous)
 end
 width(::Continuous) = 1
 function merge(c1::Continuous, c2::Continuous)
@@ -65,7 +78,15 @@ end
 function Categorical(xs::AbstractArray)
     Categorical(Series(CountMap(Dict(zip(xs, zeros(Int, length(xs)))))))
 end
-schema(xs::PooledArray) = Categorical(Series(xs, CountMap(eltype(xs))))
+
+function schema(xs::AbstractArray, ::Type{Categorical})
+    Categorical(Series(xs, CountMap(eltype(xs))))
+end
+
+function schema(xs::PooledArray)
+    schema(xs, Categorical)
+end
+
 dict(c::Categorical) = c.series.stats[1].d
 width(c::Categorical) = length(dict(c))
 merge(c1::Categorical, c2::Categorical) = Categorical(merge(c1.series, c2.series))
@@ -87,6 +108,9 @@ end
 struct Maybe{T}
   feature::T
 end
+function schema(xs::DataValueArray, T::Type)
+    Maybe(schema(dropna(xs), T))
+end
 schema(xs::DataValueArray) = Maybe(schema(dropna(xs)))
 width(c::Maybe) = width(c.feature) + 1
 merge(m1::Maybe, m2::Maybe) = Maybe(merge(m1.feature, m2.feature))
@@ -102,20 +126,24 @@ end
 const Schema = Dict{Symbol,Any}
 
 # vecTs: type of column vectors in each chunk
-function schema(cols, names)
+function schema(cols, names; hints=Dict())
     d = Schema()
     for (col, name) in zip(cols, names)
-        d[name] = schema(col)
+        if haskey(hints, name)
+            d[name] = schema(col, hints[name])
+        else
+            d[name] = schema(col)
+        end
     end
     d
 end
 
-function schema(t::Union{Dataset, DDataset})
-    schema(collect(columns(t)), colnames(t))
+function schema(t::Union{Dataset, DDataset}; hints=Dict())
+    schema(collect(columns(t)), colnames(t), hints=hints)
 end
 
 width(sch::Schema) = sum(width(s) for s in values(sch))
-function featuremat!(A, schemas::Schema, t)
+function featuremat!(A, schemas::Schema, t::Dataset)
     j = 0
     for col in keys(schemas)
         schema = schemas[col]
@@ -132,9 +160,10 @@ splitschema(xs::Schema, ks...) =
     filter((k,v) -> k ∈ ks, xs)
 
 function featuremat(sch, xs)
-    featuremat!(Array{Float32}(length(xs), width(sch)), sch, xs)
+    featuremat!(zeros(Float32, length(xs), width(sch)), sch, xs)
 end
 featuremat(t) = featuremat(schema(t), t)
+
 function featuremat(s, t::DDataset)
     t = compute(t)
     w = width(s)
