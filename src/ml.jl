@@ -119,6 +119,7 @@ nulls(xs::DataValueArray) = xs.isnull
 Base.@propagate_inbounds function featuremat!(A, c::Maybe, xs, dropna=Val{true}())
     copy!(A, CartesianRange((1:length(xs), 1:1)), reshape(nulls(xs), (length(xs), 1)), CartesianRange((1:length(xs), 1:1)))
     featuremat!(view(A, 1:length(xs), 2:size(A, 2)), c.feature, xs, Val{true}())
+    A
 end
 
 # Schema inference
@@ -160,7 +161,7 @@ splitschema(xs::Schema, ks...) =
     filter((k,v) -> k ∈ ks, xs)
 
 function featuremat(sch, xs)
-    featuremat!(zeros(Float32, length(xs), width(sch)), sch, xs)
+    featuremat!(zeros(Float32, length(xs), width(sch)), sch, xs)'
 end
 featuremat(t) = featuremat(schema(t), t)
 
@@ -169,13 +170,13 @@ function featuremat(s, t::DDataset)
     w = width(s)
     h = length(t)
     lengths = get.(nrows.(t.domains))
-    domains = Dagger.DomainBlocks((1,1), (cumsum(lengths), [w]))
+    domains = Dagger.DomainBlocks((1,1), ([w], cumsum(lengths)))
 
     DArray(Float32,
-           Dagger.ArrayDomain(sum(lengths), w),
+           Dagger.ArrayDomain(w, sum(lengths)),
            domains,
            reshape(delayedmap(x->featuremat(s,x), t.chunks),
-                   (length(t.chunks), 1)))
+                   (1, length(t.chunks))))
 end
 
 end
