@@ -26,6 +26,6 @@ using DataValues
         @test ML.featuremat(PooledArray(["x","y","x"])) == [1  0  1; 0  1  0]
 
         t = table(PooledArray([1,1,2,2]), [1,2,3,4], DataValueArray([1,2,3,4]), ["x", "y", "z", "a"], names=[:a,:b,:c,:d])
-        @test ML.featuremat(t) == collect(ML.featuremat(dist(t)))
+        @test ML.featuremat(t) == collect(ML.featuremat(distribute(t, 2)))
     end
 end
