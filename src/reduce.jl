@@ -65,7 +65,7 @@ function groupreduce(f, t::DDataset, by=pkeynames(t); kwargs...)
 end
 
 function groupby(f, t::DDataset, by=pkeynames(t); select=t isa DNDSparse ? valuenames(t) : excludecols(t, by), kwargs...)
-    if isempty(by)
+    if (by isa Tup) && isempty(by)
         delayed(x -> groupby(f, x, by; select=select))(
             treereduce(delayed(_merge), t.chunks)
         ) |> collect
