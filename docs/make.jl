@@ -15,7 +15,9 @@ makedocs(
        "Aggregation" => "api/aggregation.md",
        "Joins" => "api/joins.md",
        "Loading and Saving" => "api/io.md",
-       "OnlineStats Integration" => "manual/onlinestats.md"
+       "OnlineStats Integration" => "manual/onlinestats.md",
+       "Out-of-core functionality" => "manual/out-of-core.md",
+       "Feature Extraction" => "manual/ml.md",
    ],
    assets = ["assets/custom.css", "assets/custom.js"]
 )
