@@ -27,6 +27,12 @@ groupby
 flatten
 ```
 
+## Summarize
+
+```@docs
+summarize
+```
+
 ## Reducedim
 
 ```@docs
