@@ -45,6 +45,7 @@ Grouping and reduction with functions or Online statistics.
 - [`reduce`](@ref) - aggregate a dataset using functions or OnlineStats
 - [`groupreduce`](@ref) - aggregate groups of rows using functions or OnlineStats
 - [`groupby`](@ref) - collect groups of rows together
+- [`summarize`](@ref) - apply summary functions to selected columns
 - [`reducedim`](@ref) - drop a dimension in NDSparse and aggregate
 
 ## [Joins](@ref)

@@ -96,17 +96,13 @@ end
         d = distribute(t, dist)
         res = mapslices(collect, d, :y)
         @test collect(res) == mapslices(collect, t, 2)
-        f = x->NDSparse(Columns(z=[1,2]), [3,4])
+        f = x->IndexedTables.NDSparse(IndexedTables.Columns(z=[1,2]), [3,4])
         res2 = mapslices(f, d, 2)
         @test collect(res2) == mapslices(f, t, 2)
-        # uncomment when breaking API for mapslices () is released
-        #g = x->NDSparse(Columns(z=[1,2]), [x[1][1],x[2]])
-        #res3 = mapslices(g, d, ())
-        #@test collect(res3) == mapslices(g, t, ())
     end
     t = ndsparse([1,2,3],[4,5,6], chunks=2)
     @test mapslices(t, ()) do x
-        ndsparse([1,2], first.([x,x]))
+        IndexedTables.ndsparse([1,2], first.([x,x]))
     end == ndsparse(([1,1,2,2,3,3],[1,2,1,2,1,2],), [4,4,5,5,6,6])
 end
 

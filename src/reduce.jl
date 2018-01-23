@@ -5,7 +5,7 @@ import Base: reducedim
 export reducedim_vec, aggregate, aggregate_vec
 
 _merger(f) = f
-_merger(f::Series) = merge
+_merger(f::OnlineStats.AbstractSeries) = merge
 _merger(f::Tup) = map(_merger, f)
 
 function reduce(f, t::DDataset; select=valuenames(t))
@@ -65,7 +65,11 @@ function groupreduce(f, t::DDataset, by=pkeynames(t); kwargs...)
 end
 
 function groupby(f, t::DDataset, by=pkeynames(t); select=t isa DNDSparse ? valuenames(t) : excludecols(t, by), kwargs...)
-    if by != pkeynames(t) || has_overlaps(t.domains, closed=true)
+    if (by isa Tup) && isempty(by)
+        delayed(x -> groupby(f, x, by; select=select))(
+            treereduce(delayed(_merge), t.chunks)
+        ) |> collect
+    elseif by != pkeynames(t) || has_overlaps(t.domains, closed=true)
         t = rechunk(t, by, select)
         if select isa Tuple
             return groupby(f, t; kwargs...)

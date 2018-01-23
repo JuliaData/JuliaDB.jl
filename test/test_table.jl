@@ -27,7 +27,7 @@ import JuliaDB: pkeynames, pkeys, excludecols
     x = ndsparse((["a", "b"], [3, 4]), ([5, 6], [7.0, 8.0]), chunks=2)
     x = ndsparse(@NT(x = ["a", "a", "b"], y = [3, 4, 4]), @NT(p = [5, 6, 7], q = [8.0, 9.0, 10.0]), chunks=2)
     @test (keytype(x), eltype(x)) == (Tuple{String,Int64}, NamedTuples._NT_p_q{Int64,Float64})
-    @test x["a", :] == ndsparse(@NT(x = String["a", "a"], y = [3, 4]), Columns(@NT(p = [5, 6], q = [8.0, 9.0])))
+    @test x["a", :] == ndsparse(@NT(y = [3, 4]), Columns(@NT(p = [5, 6], q = [8.0, 9.0])))
     x = ndsparse([1, 2], [3, 4], chunks=2)
     @test pkeynames(x) == (1,)
     x = ndsparse(@NT(t = [0.01, 0.05]), @NT(x = [1, 2], y = [3, 4]), chunks=2)
@@ -54,9 +54,9 @@ import JuliaDB: pkeynames, pkeys, excludecols
     a = table(["a", "b"], [3, 4], pkey=1, chunks=2)
     @test pkeys(a) == Columns((String["a", "b"],))
     t = table([2, 1], [1, 3], [4, 5], names=[:x, :y, :z], pkey=(1, 2), chunks=2)
-    @test excludecols(t, (:x,)) == (:y, :z)
-    @test excludecols(t, (2,)) == (:x, :z)
-    @test excludecols(t, pkeynames(t)) == (:z,)
+    @test excludecols(t, (:x,)) == (2, 3)
+    @test excludecols(t, (2,)) == (1, 3)
+    @test excludecols(t, pkeynames(t)) == (3,)
     @test excludecols([1, 2, 3], (1,)) == ()
     @test convert(NextTable, Columns(x=[1, 2], y=[3, 4]), Columns(z=[1, 2]), presorted=true) == table([1, 2], [3, 4], [1, 2], names=Symbol[:x, :y, :z])
     @test colnames([1, 2, 3]) == [1]
@@ -195,4 +195,12 @@ import JuliaDB: pkeynames, pkeys, excludecols
     @test filter((p->p[2] / p[1] < 100), x, select=(:t, 3)) == ndsparse(@NT(n = String["b", "c"], t = [0.05, 0.07]), [1, 0])
     @test filter((:x => iseven, :t => (a->a > 0.01)), t) == table(String["c"], [0.07], [0], names=Symbol[:n, :t, :x])
     @test filter((3 => iseven, :t => (a->a > 0.01)), x) == ndsparse(@NT(n = String["c"], t = [0.07]), [0])
+    a = table([1,3,5], [2,2,2], names = [:x, :y], chunks = 2)
+    @test summarize((mean, std), a) ==
+        @NT(x_mean = 3.0, y_mean = 2.0, x_std = 2.0, y_std = 0.0)
+    @test summarize((mean, std), a, select = :x) == @NT(mean = 3.0, std = 2.0)
+    @test summarize(@NT(m = mean, s = std), a) ==
+        @NT(x_m = 3.0, y_m = 2.0, x_s = 2.0, y_s = 0.0)
+    b = table(["a","a","b","b"], [1,3,5,7], [2,2,2,2], names = [:x, :y, :z], pkey = :x, chunks = 2)
+    @test summarize(mean, b) == table(["a","b"], [2.0,6.0], [2.0,2.0], names = [:x, :y, :z], pkey = :x)
 end
