@@ -49,26 +49,6 @@ end
 Plot a summary of variable `y` against `x` (`1:length(y)` if not specified).  Using `nparts`
 approximately-equal sections along the x-axis, the data in `y` over each section is 
 summarized by `stat`. 
-
-# Examples 
-
-```@example plot
-using JuliaDB, Plots, OnlineStats
-
-x = randn(10^6)
-y = x + randn(10^6)
-z = x .> 0
-t = table(@NT(x=x, y=y, z=z))
-
-# x by itself
-partitionplot(t, :x, stat = Extrema())
-
-# y by x
-partitionplot(t, :x, :y, stat = Hist(25))
-
-# y by x, grouped by z
-partitionplot(t, :x, :y, stat = Extrema(), by = z)
-```
 """
 partitionplot
 
