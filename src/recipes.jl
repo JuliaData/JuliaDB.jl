@@ -47,12 +47,12 @@ end
     partitionplot(table, x, y; stat=Extrema(), nparts=100, by=nothing)
 
 Plot a summary of variable `y` against `x` (`1:length(y)` if not specified).  Using `nparts`
-approximately equal sections along the x-axis, the data in `y` over the section is 
+approximately-equal sections along the x-axis, the data in `y` over each section is 
 summarized by `stat`. 
 
 # Examples 
 
-```
+```@example plot
 using JuliaDB, Plots, OnlineStats
 
 x = randn(10^6)
