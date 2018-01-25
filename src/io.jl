@@ -172,10 +172,13 @@ using the `save` function.
 """
 function load(f::AbstractString)
     if isdir(f)
-        dtable_file = joinpath(f, JULIADB_INDEXFILE)
-        t = open(deserialize, dtable_file)
-        _makerelative!(t, f)
-        t
+        #dtable_file = joinpath(f, JULIADB_INDEXFILE)
+        #t = open(deserialize, dtable_file)
+        #_makerelative!(t, f)
+        #t
+        fromchunks(delayedmap(sort(filter(x->all(isnumber, x), readdir(f)))) do file
+            open(deserialize, file)
+        end)
     elseif isfile(f)
         MemPool.unwrap_payload(open(deserialize, f))
     else
