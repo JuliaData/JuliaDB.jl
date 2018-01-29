@@ -92,7 +92,7 @@ function reducedim(f, x::DNDSparse, dims)
     if isempty(keep)
         throw(ArgumentError("to remove all dimensions, use `reduce(f, A)`"))
     end
-    cache_thunks(selectkeys(x, (keep...), agg=f))
+    groupreduce(f, x, (keep...), select=valuenames(x))
 end
 
 reducedim(f, x::DNDSparse, dims::Symbol) = reducedim(f, x, [dims])
