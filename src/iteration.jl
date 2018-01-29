@@ -135,7 +135,7 @@ function columns(t::Union{DDataset, DArray})
         if isa(x, AbstractArray)
             tochunk(x)
         elseif isa(x, Tup)
-            map(tochunk, x)
+            map(tochunk, IndexedTables.astuple(x))
         else
             # this should never happen
             error("Columns $which could not be extracted")
@@ -147,7 +147,17 @@ function columns(t::Union{DDataset, DArray})
     end
 
     if isa(tuples[1], Tup)
-        map((xs...)->fromchunks([xs...]), tuples...)
+        arrays = map((xs...)->fromchunks([xs...]), tuples...)
+        if t isa DDataset
+            names = colnames(t)
+        else
+            names = fieldnames(eltype(t))
+        end
+        if all(x -> x isa Symbol, names)
+            IndexedTables.namedtuple(names...)(arrays...)
+        else
+            arrays
+        end
     else
         fromchunks(tuples)
     end
