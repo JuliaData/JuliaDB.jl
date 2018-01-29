@@ -50,7 +50,7 @@ Load a [table](@ref Table) from CSV files.
 - `quotechar::Char` -- quote character. (defaults to `"`)
 - `escapechar::Char` -- escape character. (defaults to `\\`)
 - `header_exists::Bool` -- does header exist in the files? (defaults to true)
-- `colnames::Vector{String}` -- specify column names for the files, use this with (`header_exists=true`, otherwise first row is discarded). By default column names are assumed to be present in the file.
+- `colnames::Vector{String}` -- specify column names for the files, use this with (`header_exists=false`, otherwise first row is discarded). By default column names are assumed to be present in the file.
 - `samecols` -- a vector of tuples of strings where each tuple contains alternative names for the same column. For example, if some files have the name "vendor_id" and others have the name "VendorID", pass `samecols=[("VendorID", "vendor_id")]`.
 - `colparsers` -- either a vector or dictionary of data types or an [`AbstractToken` object](https://juliacomputing.com/TextParse.jl/stable/#Available-AbstractToken-types-1) from [TextParse](https://juliacomputing.com/TextParse.jl/stable) package. By default, these are inferred automatically. See `type_detect_rows` option below.
 - `type_detect_rows`: number of rows to use to infer the initial `colparsers` defaults to 20.
