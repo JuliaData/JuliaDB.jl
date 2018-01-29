@@ -38,6 +38,7 @@ function aggregate_profile(xs)
 end
 
 function aggregate_events(xs)
+    xs = rows(xs)
     sort!(xs, by=x->x.start)
     gc_diff = reduce(add_gc_diff, map(x -> x.gc_diff, xs))
     time_spent = sum(map(x -> x.finish - x.start, xs))
@@ -84,7 +85,7 @@ function stop_tracking_time()
 end
 
 """
-    tracktime(f)
+`tracktime(f)`
 
 Track the time spent on different processes in different
 categories in running `f`.

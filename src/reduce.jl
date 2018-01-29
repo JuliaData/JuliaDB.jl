@@ -22,7 +22,7 @@ function reduce(f, t::DDataset; select=valuenames(t))
         g = f
     end
     h = (a,b)->IndexedTables._apply(_merger(g), a,b)
-    collect(treereduce(delayed(h), xs))
+    collect(get_context(), treereduce(delayed(h), xs))
 end
 
 function reduce(f, t::DDataset, v0; select=nothing)
@@ -31,7 +31,7 @@ function reduce(f, t::DDataset, v0; select=nothing)
         reduce(f, x; select=select === nothing ? rows(x) : select)
     end
     g = isa(f, OnlineStat) ? merge : f
-    merge(collect(treereduce(delayed(g), xs)), v0)
+    merge(collect(get_context(), treereduce(delayed(g), xs)), v0)
 end
 
 function groupreduce(f, t::DDataset, by=pkeynames(t); kwargs...)
@@ -66,9 +66,10 @@ end
 
 function groupby(f, t::DDataset, by=pkeynames(t); select=t isa DNDSparse ? valuenames(t) : excludecols(t, by), kwargs...)
     if (by isa Tup) && isempty(by)
-        delayed(x -> groupby(f, x, by; select=select))(
+        collect(get_context(), delayed(x -> groupby(f, x, by; select=select))(
             treereduce(delayed(_merge), t.chunks)
-        ) |> collect
+            )
+       )
     elseif by != pkeynames(t) || has_overlaps(t.domains, closed=true)
         t = rechunk(t, by, select)
         if select isa Tuple
