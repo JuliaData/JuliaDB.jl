@@ -24,15 +24,11 @@ function Base.filter(f, t::DDataset; select=isa(f, Union{Tuple, Pair}) ? nothing
 end
 
 function selectkeys(x::DNDSparse, which; kwargs...)
-    delayedmap(x.chunks) do c
-        selectkeys(c, which; kwargs...)
-    end |> fromchunks
+    ndsparse(rows(keys(x), which), values(x); kwargs...)
 end
 
 function selectvalues(x::DNDSparse, which; kwargs...)
-    delayedmap(x.chunks) do c
-        selectvalues(x, which; kwargs...)
-    end |> fromchunks
+    ndsparse(keys(x), rows(values(x), which); kwargs...)
 end
 
 Base.@deprecate select(x::DNDSparse, conditions::Pair...) filter(conditions, x)
