@@ -2,7 +2,7 @@ import Base:collect, ==
 import IndexedTables: NextTable, table, colnames, reindex,
                       excludecols, showtable, ColDict,
                       AbstractIndexedTable, Dataset
-import Dagger: domainchunks, chunks
+import Dagger: domainchunks, chunks, free!
 
 # re-export the essentials
 export distribute, chunks, compute, free!
@@ -27,12 +27,27 @@ end
 """
 A distributed table
 """
-struct DNextTable{T,K} <: AbstractIndexedTable
+mutable struct DNextTable{T,K} <: AbstractIndexedTable
     # primary key columns
     pkey::Vector{Int}
     # extent of values in the pkeys
     domains::Vector{IndexSpace{K}}
     chunks::Vector
+    freed::Bool
+    function DNextTable{T,K}(pkey, domains, chunks) where {T, K}
+        t = new(pkey, domains, chunks, false)
+        Dagger.refcount_chunks(t.chunks)
+        finalizer(t, free!)
+        t
+    end
+end
+
+function free!(x::DNextTable)
+    if !x.freed
+        @schedule Dagger.free_chunks(x.chunks)
+        x.freed = true
+    end
+    nothing
 end
 
 function Dagger.domain(t::NextTable)

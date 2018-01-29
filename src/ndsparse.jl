@@ -1,3 +1,5 @@
+export AbstractNDSparse
+
 import Dagger: chunktype, domain, tochunk, distribute,
                chunks, Context, compute, gather, free!
 
@@ -11,9 +13,23 @@ A distributed NDSparse datastructure.
 Can be constructed using [loadfiles](@ref),
 [ingest](@ref) or [distribute](@ref)
 """
-struct DNDSparse{K,V}
+mutable struct DNDSparse{K,V} <: AbstractNDSparse
     domains::Vector{IndexSpace{K}}
     chunks::Vector
+    freed::Bool
+    function DNDSparse{K, V}(domains, chunks) where {K, V}
+        x = new(domains, chunks, false)
+        Dagger.refcount_chunks(x.chunks)
+        finalizer(x, free!)
+        x
+    end
+end
+function free!(x::DNDSparse)
+    if !x.freed
+        @schedule Dagger.free_chunks(x.chunks)
+        x.freed = true
+    end
+    nothing
 end
 
 const DDataset = Union{DNextTable, DNDSparse}
@@ -147,10 +163,6 @@ function compute(ctx, t::DNDSparse; allowoverlap=true, closed=false)
         foreach(Dagger.persist!, t.chunks)
         t
     end
-end
-
-function free!(t::DNDSparse)
-    foreach(c -> free!(c, force=true), t.chunks)
 end
 
 """
