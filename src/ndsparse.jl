@@ -65,8 +65,11 @@ function ndsparse(::Val{:distributed}, ks::Tup,
                 [vdarrays.chunks[i]])
         cs[i] = delayed(makechunk)(args...)
     end
-    fromchunks(cs, closed=closed, merge=(x,y)->merge(x,y, agg=agg),
-                allowoverlap=false)
+    if agg !== nothing
+        fromchunks(cs, closed=closed, merge=(x,y)->merge(x,y, agg=agg), allowoverlap=false)
+    else
+        fromchunks(cs, closed=closed, merge=(x,y)->merge(x,y, agg=agg), allowoverlap=true)
+    end
 end
 
 function ndsparse(x::Dagger.DArray{<:Tup}, y; kwargs...)
