@@ -46,7 +46,8 @@ Load a [table](@ref Table) from CSV files.
 - `datacols::Vector` -- non-indexed columns. (defaults to all columns but indexed columns). Specify this to only load a subset of columns. In place of the name of a column, you can specify a tuple of names -- this will treat any column with one of those names as the same column, but use the first name in the tuple. This is useful when the same column changes name between CSV files. (e.g. `vendor_id` and `VendorId`)
 - `distributed::Bool` -- should the output dataset be loaded as a distributed table? If true, this will use all available worker processes to load the data. (defaults to true if workers are available, false if not)
 - `chunks::Bool` -- number of chunks to create when loading distributed. (defaults to number of workers)
-- `delim::Char` -- the delimiter character. (defaults to `,`)
+- `delim::Char` -- the delimiter character. (defaults to `,`). Use `spacedelim=true` to split by spaces.
+- `spacedelim::Bool`: parse space-delimited files. `delim` has no effect if true.
 - `quotechar::Char` -- quote character. (defaults to `"`)
 - `escapechar::Char` -- escape character. (defaults to `\\`)
 - `header_exists::Bool` -- does header exist in the files? (defaults to true)
