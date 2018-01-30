@@ -6,7 +6,7 @@ using DataValues
 
 @testset "feature extraction" begin
     @testset "schema" begin
-        @test ML.schema([1:10;]).series == Series([1:10;], Mean(), Variance())
+        @test ML.schema([1:10;]).series == Series([1:10;], Variance())
         x = repeat([1,2], inner=5)
         @test ML.schema(x, ML.Categorical).series == Series(x, CountMap(Int)) == ML.schema(PooledArray(x)).series
         m = ML.schema(DataValueArray(x))
