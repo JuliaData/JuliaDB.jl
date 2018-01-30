@@ -27,5 +27,8 @@ using DataValues
 
         t = table(PooledArray([1,1,2,2]), [1,2,3,4], DataValueArray([1,2,3,4]), ["x", "y", "z", "a"], names=[:a,:b,:c,:d])
         @test ML.featuremat(t) == collect(ML.featuremat(distribute(t, 2)))
+
+        x = randn(100)
+        @test ML.featuremat(x) ≈ ((x .- mean(x)) ./ std(x))'
     end
 end
