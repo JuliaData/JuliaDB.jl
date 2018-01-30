@@ -10,7 +10,8 @@ function mapslices(f, x::DNDSparse, dims; name=nothing)
     # also bad for sortperm, but is required since DArrays aren't
     # parameterized by the container type Columns
     vals = isempty(dims) ?  values(x) : (keys(x, (dims...)), values(x))
-    tmp = ndsparse((keys(x, (iterdims...)),), vals)
+    tmp = ndsparse((keys(x, (iterdims...)),), vals,
+                   allowoverlap=false, closed=true)
 
     cs = delayedmap(tmp.chunks) do c
         ks = isempty(dims) ? columns(columns(keys(c))[1]) : IndexedTables.concat_cols(columns(keys(c))[1], columns(values(c))[1])

@@ -36,7 +36,9 @@ const DDataset = Union{DNextTable, DNDSparse}
 
 function ndsparse(::Val{:distributed}, ks::Tup,
                   vs::Union{Tup, AbstractArray};
-                  closed=true, chunks=nothing, agg=nothing, kwargs...)
+                  agg=nothing,
+                  allowoverlap=agg === nothing,
+                  closed=true, chunks=nothing, kwargs...)
 
     if chunks === nothing
         # this means the vectors are distributed.
@@ -81,11 +83,9 @@ function ndsparse(::Val{:distributed}, ks::Tup,
                 [vdarrays.chunks[i]])
         cs[i] = delayed(makechunk)(args...)
     end
-    if agg !== nothing
-        fromchunks(cs, closed=closed, merge=(x,y)->merge(x,y, agg=agg), allowoverlap=false)
-    else
-        fromchunks(cs, closed=closed, merge=(x,y)->merge(x,y, agg=agg), allowoverlap=true)
-    end
+    fromchunks(cs, closed=closed,
+               merge=(x,y)->merge(x,y, agg=agg),
+               allowoverlap=allowoverlap)
 end
 
 function ndsparse(x::Dagger.DArray{<:Tup}, y; kwargs...)
