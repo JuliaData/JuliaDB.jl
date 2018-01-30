@@ -19,7 +19,7 @@ using DataValues
     end
 
     @testset "featuremat" begin
-        @test ML.featuremat([1,2,3]) == [-1.5, 0, 1.5]'
+        @test ML.featuremat([1,3,5]) == [-1.0, 0, 1.0]'
         @test ML.featuremat(DataValueArray([1,2,3], Bool[0,0,1])) == [0 0 1; -2 2 0]
         @test ML.featuremat(DataValueArray([1,2,3], Bool[0,0,1])) == [0 0 1; -2 2 0]
         @test isempty(ML.featuremat(["x","y","x"]))
