@@ -6,7 +6,7 @@ using DataValues
 
 @testset "feature extraction" begin
     @testset "schema" begin
-        @test ML.schema([1:10;]).series == Series([1:10;], Mean(), Variance())
+        @test ML.schema([1:10;]).series == Series([1:10;], Variance())
         x = repeat([1,2], inner=5)
         @test ML.schema(x, ML.Categorical).series == Series(x, CountMap(Int)) == ML.schema(PooledArray(x)).series
         m = ML.schema(DataValueArray(x))
@@ -19,7 +19,7 @@ using DataValues
     end
 
     @testset "featuremat" begin
-        @test ML.featuremat([1,2,3]) == [-1.5, 0, 1.5]'
+        @test ML.featuremat([1,3,5]) == [-1.0, 0, 1.0]'
         @test ML.featuremat(DataValueArray([1,2,3], Bool[0,0,1])) == [0 0 1; -2 2 0]
         @test ML.featuremat(DataValueArray([1,2,3], Bool[0,0,1])) == [0 0 1; -2 2 0]
         @test isempty(ML.featuremat(["x","y","x"]))
@@ -27,5 +27,8 @@ using DataValues
 
         t = table(PooledArray([1,1,2,2]), [1,2,3,4], DataValueArray([1,2,3,4]), ["x", "y", "z", "a"], names=[:a,:b,:c,:d])
         @test ML.featuremat(t) == collect(ML.featuremat(distribute(t, 2)))
+
+        x = randn(100)
+        @test ML.featuremat(x) ≈ ((x .- mean(x)) ./ std(x))'
     end
 end
