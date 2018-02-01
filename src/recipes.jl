@@ -7,18 +7,24 @@ export partitionplot
     args
 end
 
-@recipe function f(o::PartitionPlot; nparts = 100, stat = nothing, by = nothing)
+getvalue(x) = x 
+getvalue(x::DataValues.DataValue) = get(x)
+
+@recipe function f(o::PartitionPlot; nparts = 100, stat = nothing, by = nothing, dropmissing = false)
     t = o.args[1]
     sel_x = o.args[2] 
     stat = (stat == nothing) ? Extrema() : stat
     if length(o.args) == 3
         sel_y = o.args[3]
         T = fieldtype(eltype(t), IndexedTables.colindex(t, sel_x))
+        s = dropmissing ? 
+            series(IndexedPartition(T, stat, nparts)) :
+            series(IndexedPartition(T, stat, nparts); filter = !isnull, transform = getvalue)
         if by == nothing 
             label --> OnlineStats.name(stat,false,false) * " of $sel_y"
-            reduce(IndexedPartition(T, stat, nparts), t; select = (sel_x, sel_y))
+            reduce(s, t; select = (sel_x, sel_y))
         else 
-            out = collect(groupreduce(IndexedPartition(T, stat, nparts), t, by; select = (sel_x, sel_y)))
+            out = collect(groupreduce(s, t, by; select = (sel_x, sel_y)))
             for i in 1:length(out)
                 @series begin 
                     label --> OnlineStats.name(stat,false,false) * " of $(out[i][1])"
@@ -27,11 +33,14 @@ end
             end
         end
     elseif length(o.args) == 2 
+        s = dropmissing ? 
+            series(Partition(stat, nparts)) : 
+            series(Partition(stat, nparts); filter = !isnull, transform = getvalue)
         if by == nothing
             label --> OnlineStats.name(stat,false,false) * " of $sel_x"
-            reduce(Partition(stat, nparts), t; select = sel_x)
+            reduce(s, t; select = sel_x)
         else 
-            out = groupreduce(Partition(stat, nparts), t, by; select = sel_x)
+            out = groupreduce(s, t, by; select = sel_x)
             for i in 1:length(out)
                 @series begin 
                     label --> OnlineStats.name(stat,false,false) * " of $(out[i][1])"
