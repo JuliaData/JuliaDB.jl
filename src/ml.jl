@@ -38,7 +38,7 @@ struct Continuous
 end
 
 function schema(xs, ::Type{Continuous})
-    Continuous(Series(xs, Mean(), Variance()))
+    Continuous(Series(xs, Variance()))
 end
 function schema(xs::AbstractArray{<:Real})
     schema(xs, Continuous)
@@ -47,8 +47,8 @@ width(::Continuous) = 1
 function merge(c1::Continuous, c2::Continuous)
     Continuous(merge(c1.series, c2.series))
 end
-Base.mean(c::Continuous)::Float64 = value(c.series)[1]
-Base.std(c::Continuous)::Float64 = c.series.stats[2].σ2
+Base.mean(c::Continuous)::Float64 = mean(c.series.stats[1])
+Base.std(c::Continuous)::Float64 = std(c.series.stats[1])
 function Base.show(io::IO, c::Continuous)
     write(io, "Continous(μ=$(mean(c)), σ=$(std(c)))")
 end
@@ -87,14 +87,14 @@ function schema(xs::PooledArray)
     schema(xs, Categorical)
 end
 
-dict(c::Categorical) = c.series.stats[1].d
-width(c::Categorical) = length(dict(c))
+Base.keys(c::Categorical) = keys(c.series.stats[1])
+width(c::Categorical) = length(keys(c))
 merge(c1::Categorical, c2::Categorical) = Categorical(merge(c1.series, c2.series))
 function Base.show(io::IO, c::Categorical)
-    write(io, "Categorical($(collect(keys(dict(c)))))")
+    write(io, "Categorical($(collect(keys(c))))")
 end
 Base.@propagate_inbounds function featuremat!(A, c::Categorical, xs, dropna=Val{false}())
-    ks = collect(keys(dict(c)))
+    ks = keys(c)
     labeldict = Dict{eltype(ks), Int}(zip(ks, 1:length(ks)))
     for i = 1:length(xs)
         if dropna isa Val{true} && isnull(xs[i])
