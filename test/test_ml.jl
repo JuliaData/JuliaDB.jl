@@ -1,4 +1,5 @@
 import JuliaDB.ML
+using JuliaDB
 using Base.Test
 using OnlineStats
 using PooledArrays
@@ -20,8 +21,8 @@ using DataValues
 
     @testset "featuremat" begin
         @test ML.featuremat([1,3,5]) == [-1.0, 0, 1.0]'
-        @test ML.featuremat(DataValueArray([1,2,3], Bool[0,0,1])) == [0 0 1; -2 2 0]
-        @test ML.featuremat(DataValueArray([1,2,3], Bool[0,0,1])) == [0 0 1; -2 2 0]
+        Δ = 0.5 / std([1,2])
+        @test ML.featuremat(DataValueArray([1,2,3], Bool[0,0,1])) ≈ [0 0 1; -Δ Δ 0]
         @test isempty(ML.featuremat(["x","y","x"]))
         @test ML.featuremat(PooledArray(["x","y","x"])) == [1  0  1; 0  1  0]
 
