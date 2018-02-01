@@ -18,7 +18,7 @@ getvalue(x::DataValues.DataValue) = get(x)
         sel_y = o.args[3]
         T = fieldtype(eltype(t), IndexedTables.colindex(t, sel_x))
         s = dropmissing ? 
-            series(IndexedPartition(T, stat, nparts); filter = x->any(!isnull, x), transform = x->map(getvalue,x)) :
+            series(IndexedPartition(T, stat, nparts); filter = x->all(!isnull, x), transform = x->map(getvalue,x)) :
             series(IndexedPartition(T, stat, nparts))
         if by == nothing 
             reduce(s, t; select = (sel_x, sel_y))
