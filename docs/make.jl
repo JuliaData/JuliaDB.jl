@@ -15,6 +15,7 @@ makedocs(
        "Aggregation" => "api/aggregation.md",
        "Joins" => "api/joins.md",
        "Loading and Saving" => "api/io.md",
+       "Plotting" => "api/plotting.md",
        "OnlineStats Integration" => "manual/onlinestats.md",
        "Out-of-core functionality" => "manual/out-of-core.md",
        "Feature Extraction" => "manual/ml.md",
