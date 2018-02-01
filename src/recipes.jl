@@ -52,8 +52,8 @@ getvalue(x::DataValues.DataValue) = get(x)
 end
 
 """
-    partitionplot(table, y;    stat=Extrema(), nparts=100, by=nothing)
-    partitionplot(table, x, y; stat=Extrema(), nparts=100, by=nothing)
+    partitionplot(table, y;    stat=Extrema(), nparts=100, by=nothing, dropmissing=false)
+    partitionplot(table, x, y; stat=Extrema(), nparts=100, by=nothing, dropmissing=false)
 
 Plot a summary of variable `y` against `x` (`1:length(y)` if not specified).  Using `nparts`
 approximately-equal sections along the x-axis, the data in `y` over each section is 
