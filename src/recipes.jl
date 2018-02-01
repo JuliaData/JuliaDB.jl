@@ -29,7 +29,7 @@ indextype(x::Type{DataValues.DataValue{T}}) where {T} = T
             out = collect(groupreduce(s, t, by; select = (sel_x, sel_y)))
             for i in 1:length(out)
                 @series begin 
-                    label --> OnlineStats.name(stat,false,false) * " of $(out[i][1])"
+                    label --> OnlineStats.name(stat,false,false) * " of $sel_x ($(out[i][1]))"
                     out[i][2]
                 end
             end
@@ -44,7 +44,7 @@ indextype(x::Type{DataValues.DataValue{T}}) where {T} = T
             out = groupreduce(s, t, by; select = sel_x)
             for i in 1:length(out)
                 @series begin 
-                    label --> OnlineStats.name(stat,false,false) * " of $(out[i][1])"
+                    label --> OnlineStats.name(stat,false,false) * " of $sel_x ($(out[i][1]))"
                     out[i][2]
                 end
             end
