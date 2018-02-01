@@ -18,10 +18,10 @@ getvalue(x::DataValues.DataValue) = get(x)
         sel_y = o.args[3]
         T = fieldtype(eltype(t), IndexedTables.colindex(t, sel_x))
         s = dropmissing ? 
-            series(IndexedPartition(T, stat, nparts)) :
-            series(IndexedPartition(T, stat, nparts); filter = !isnull, transform = getvalue)
+            series(IndexedPartition(T, stat, nparts); filter = x->any(!isnull, x), transform = x->map(getvalue,x)) :
+            series(IndexedPartition(T, stat, nparts))
         if by == nothing 
-            label --> OnlineStats.name(stat,false,false) * " of $sel_y"
+            # label --> OnlineStats.name(stat,false,false) * " of $sel_y"
             reduce(s, t; select = (sel_x, sel_y))
         else 
             out = collect(groupreduce(s, t, by; select = (sel_x, sel_y)))
@@ -34,8 +34,8 @@ getvalue(x::DataValues.DataValue) = get(x)
         end
     elseif length(o.args) == 2 
         s = dropmissing ? 
-            series(Partition(stat, nparts)) : 
-            series(Partition(stat, nparts); filter = !isnull, transform = getvalue)
+            series(Partition(stat, nparts); filter = !isnull, transform = getvalue) :
+            series(Partition(stat, nparts))
         if by == nothing
             label --> OnlineStats.name(stat,false,false) * " of $sel_x"
             reduce(s, t; select = sel_x)
