@@ -21,7 +21,6 @@ getvalue(x::DataValues.DataValue) = get(x)
             series(IndexedPartition(T, stat, nparts); filter = x->any(!isnull, x), transform = x->map(getvalue,x)) :
             series(IndexedPartition(T, stat, nparts))
         if by == nothing 
-            # label --> OnlineStats.name(stat,false,false) * " of $sel_y"
             reduce(s, t; select = (sel_x, sel_y))
         else 
             out = collect(groupreduce(s, t, by; select = (sel_x, sel_y)))
@@ -37,7 +36,6 @@ getvalue(x::DataValues.DataValue) = get(x)
             series(Partition(stat, nparts); filter = !isnull, transform = getvalue) :
             series(Partition(stat, nparts))
         if by == nothing
-            label --> OnlineStats.name(stat,false,false) * " of $sel_x"
             reduce(s, t; select = sel_x)
         else 
             out = groupreduce(s, t, by; select = sel_x)
