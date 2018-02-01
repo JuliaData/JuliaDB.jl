@@ -6,9 +6,9 @@ using Base.Test
 global dt
     t = NDSparse(Columns([1,1,1,2,2,2,3,3,3], [1,2,3,1,2,3,1,2,3]), [0.5,1,1.5,1,2,3,2,3,4])
     dt = distribute(t,[3,2,4])
-    @test Series(t, Mean()).stats[1].μ == 2.0
-    @test Series(t, Mean()).stats[1].μ == 2.0
-    @test Series(dt, Mean()).stats[1].μ == 2.0
+    @test value(reduce(Mean(), t))[1] ≈ 2
+    @test value(reduce(Mean(), dt))[1] ≈ 2
+
     means = groupreduce(Series(Mean()), dt, 1)
     @test collect(values(map(x->x.stats[1].μ, means))) == [1.0, 2.0, 3.0]
    # @test length(means.chunks) == 2
