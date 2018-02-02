@@ -212,3 +212,24 @@ function _makerelative!(t, dir::AbstractString)
         end
     end
 end
+
+struct ChunkIter
+    io::IO
+    dlm::Char
+    n::Int
+    buff::Array{String,1}
+end
+
+ChunkIter(fname::String, dlm::Char = ',', n::Int = 1000) =
+    ChunkIter(open(fname), dlm, n, Array{String,1}(n))
+
+start(i::ChunkIter) = 1
+
+function next(i::ChunkIter, s)
+    for j ∈ 1:i.n
+        i.buff[j] = readline(i.io)
+    end
+    i.buff, s + 1
+end
+
+done(i::ChunkIter, s) = eof(i.io)
