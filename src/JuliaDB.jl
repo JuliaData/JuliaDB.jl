@@ -39,6 +39,7 @@ include("iteration.jl")
 include("sort.jl")
 
 include("io.jl")
+include("block-io.jl")
 include("printing.jl")
 
 include("indexing.jl")
