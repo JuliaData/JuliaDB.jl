@@ -54,9 +54,10 @@ function _loadtable_serial(T, file::Union{IO, AbstractString, AbstractArray};
                       presorted=false,
                       copy=false,
                       csvread=TextParse.csvread,
+                      nblocks=nworkers(),
+                      drop_header=false,
                       kwargs...)
 
-    #println("LOADING ", file)
     count = Int[]
 
     samecols = nothing
@@ -79,12 +80,45 @@ function _loadtable_serial(T, file::Union{IO, AbstractString, AbstractArray};
         samecols = map(x->map(string, x), samecols)
     end
 
-    if isa(file, AbstractArray)
-        cols, header, count = csvread(file, delim;
-                                      samecols=samecols,
-                                      kwargs...)
+    if nblocks > 1
+        if !(file isa AbstractArray)
+            file = [file,]
+        end
+        cols = nothing
+        header = nothing
+        header_exists = get(kwargs, :header_exists, true) && !drop_header
+        skiplines_begin = get(kwargs, :skiplines_begin, 0) + Int(drop_header)
+        for f in file
+            bios = blocks(f, '\n', nblocks)
+            _count = 0
+            for (idx,b) in enumerate(bios)
+                _cols, _header = csvread(b, delim;
+                                         samecols=samecols,
+                                         kwargs...,
+                                         header_exists=(header_exists && idx==1),
+                                         skiplines_begin=skiplines_begin)
+                if header === nothing
+                    header = _header
+                    cols = _cols
+                else
+                    # Ignore trailing newline
+                    length(_cols) == 0 && continue
+                    @assert length(_cols) == length(cols)
+                    # TODO: Make this more efficient
+                    cols = vcat.(cols, _cols)
+                end
+                _count += length(_cols[1])
+            end
+            push!(count, _count)
+        end
     else
-        cols, header = csvread(file, delim; kwargs...)
+        if file isa AbstractArray
+            cols, header, count = csvread(file, delim;
+                                          samecols=samecols,
+                                          kwargs...)
+        else
+            cols, header = csvread(file, delim; kwargs...)
+        end
     end
 
     header = map(string, header)

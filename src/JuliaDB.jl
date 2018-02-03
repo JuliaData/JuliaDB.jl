@@ -66,6 +66,7 @@ Base.isequal(x::Dataset, y::DDataset) = isequal(x, collect(y))
 include("iteration.jl")
 include("sort.jl")
 
+include("block-io.jl")
 include("io.jl")
 include("printing.jl")
 

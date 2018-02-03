@@ -5,6 +5,7 @@ version = "0.13.0"
 [deps]
 Dagger = "d58978e5-989f-55fb-8d15-ea34adc7bf54"
 DataValues = "e7dc6d0d-1eca-5fa6-8ad6-5aecde8b7ea5"
+DelimitedFiles = "8bb1440f-4735-579b-a4ab-409b98df4dab"
 Distributed = "8ba89e20-285c-5b6f-9357-94700520ee1b"
 Glob = "c27321d9-0574-5035-807b-f59d2c89b15c"
 IndexedTables = "6deec6e2-d858-57c5-ab9b-e6ca5bd20e43"
