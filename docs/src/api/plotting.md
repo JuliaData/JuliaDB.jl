@@ -2,7 +2,9 @@
 
 ```@setup plot
 Pkg.add("StatPlots")
+Pkg.add("GR")
 using StatPlots
+gr()
 ```
 
 ## StatPlots
