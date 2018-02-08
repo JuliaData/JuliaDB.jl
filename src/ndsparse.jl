@@ -178,6 +178,12 @@ Gets distributed data in a DNDSparse `t` and merges it into
     This data can be loaded later using [`load`](@ref).
 """
 collect(t::DNDSparse) = collect(get_context(), t)
+function Base.copy(x::DNDSparse{K,V}) where {K, V}
+    fromchunks(NDSparse,
+               delayedmap(copy, x.chunks),
+               domains=x.domains,
+               KV=(K,V))
+end
 
 function collect(ctx::Context, dt::DNDSparse{T}) where T
     cs = dt.chunks

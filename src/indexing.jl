@@ -82,8 +82,9 @@ function insert_row!(x::DNDSparse{K,T}, idxs::Tuple, val) where {K,T}
     end
 
     ds[i] = update_domain(ds[i], idxs)
-    compute(get_context(), delayed(x->(x[idxs...] = val; x))(cs[i]))
+    cs[i] = delayed(x->(x[idxs...] = val; x))(cs[i])
 
+    x.chunks = cs
     x.domains[perm] = ds
 end
 
