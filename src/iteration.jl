@@ -21,8 +21,12 @@ struct PartIteratorState{T}
 end
 
 function start(p::PartitionIterator{<:DDataset})
-    c = collect(p.c.chunks[1])
-    p = PartIteratorState(1, c, 0)
+    if !isempty(p.c.chunks)
+        c = collect(p.c.chunks[1])
+        PartIteratorState(1, c, 0)
+    else
+        PartIteratorState(1, collect(p.c), 0)
+    end
 end
 
 function done(t::PartitionIterator{<:DDataset}, p::PartIteratorState)

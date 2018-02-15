@@ -228,7 +228,7 @@ function collect(ctx::Context, dt::DNextTable{T}) where T
     if length(cs) > 0
         collect(ctx, treereduce(delayed(_merge), cs))
     else
-        error("Empty table")
+        table(similar(IndexedTables.arrayof(T), 0), pkey=dt.pkey)
     end
 end
 

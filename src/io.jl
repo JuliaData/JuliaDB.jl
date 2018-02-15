@@ -173,9 +173,9 @@ using the `save` function.
 """
 function load(f::AbstractString)
     if isdir(f)
-        fromchunks(delayedmap(sort(filter(x->all(isnumber, x), readdir(f)))) do file
-            open(deserialize, joinpath(f, file))
-        end)
+        open(joinpath(f, JULIADB_INDEXFILE)) do io
+            deserialize(io)
+        end
     elseif isfile(f)
         MemPool.unwrap_payload(open(deserialize, f))
     else
@@ -189,7 +189,11 @@ end
 Saves a distributed dataset to disk. Saved data can be loaded with `load`.
 """
 function save(x::DDataset, output::AbstractString)
-    y = fromchunks(x.chunks, output=output)
+    if !isempty(x.chunks)
+        y = fromchunks(x.chunks, output=output)
+    else
+        y = x
+    end
     open(joinpath(output, JULIADB_INDEXFILE), "w") do io
         serialize(io, y)
     end

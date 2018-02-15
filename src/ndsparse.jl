@@ -185,12 +185,13 @@ function Base.copy(x::DNDSparse{K,V}) where {K, V}
                KV=(K,V))
 end
 
-function collect(ctx::Context, dt::DNDSparse{T}) where T
+function collect(ctx::Context, dt::DNDSparse{K,V}) where {K,V}
     cs = dt.chunks
     if length(cs) > 0
         collect(ctx, treereduce(delayed(_merge), cs))
     else
-        error("Empty table")
+        ndsparse(similar(IndexedTables.arrayof(K), 0),
+                 similar(IndexedTables.arrayof(V), 0))
     end
 end
 
