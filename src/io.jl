@@ -173,9 +173,11 @@ using the `save` function.
 """
 function load(f::AbstractString)
     if isdir(f)
-        open(joinpath(f, JULIADB_INDEXFILE)) do io
+        x = open(joinpath(f, JULIADB_INDEXFILE)) do io
             deserialize(io)
         end
+        _makerelative!(x, f)
+        x
     elseif isfile(f)
         MemPool.unwrap_payload(open(deserialize, f))
     else
