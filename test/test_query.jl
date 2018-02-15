@@ -19,8 +19,6 @@ end
 
         @test collect(d[1:1, 1:1]) == t[1:1, 1:1]
         @test collect(d[1:2, 2:3]) == t[1:2, 2:3]
-        # FIXME
-        @test_throws ErrorException collect(d[1:2, 4:3])
         @test collect(d[:, 3]) == t[:, 3]
     end
 end
