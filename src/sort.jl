@@ -12,7 +12,7 @@ function reindex(t::DDataset, by=pkeynames(t), select=excludecols(t, by); kwargs
 end
 
 """
-`rechunk(t::Union{DTable, DNDSparse}[, by[, select]]; <options>)`
+`rechunk(t::Union{DNDSparse, DNDSparse}[, by[, select]]; <options>)`
 
 Reindex and sort a distributed dataset by keys selected by `by`.
 
