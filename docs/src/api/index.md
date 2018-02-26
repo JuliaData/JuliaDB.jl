@@ -38,7 +38,7 @@ Derivatives of [`select`](@ref) that are convenient for modifying a table's colu
 - [`insertcolbefore`](@ref) - insert a column before another
 - [`renamecol`](@ref) - rename a column
 
-Special selector to select a subset of columns.
+Special selectors to select a subset of columns.
 
 - [`All`](@ref) - select all columns
 - [`Not`](@ref) - select complementary
