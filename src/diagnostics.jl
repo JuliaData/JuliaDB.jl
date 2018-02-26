@@ -84,6 +84,12 @@ function stop_tracking_time()
     compute_context[] = nothing
 end
 
+struct TrackTime
+    obj
+end
+
+Base.show(io::IO, ::MIME"text/plain", t::TrackTime) = show_timings(t.obj, maxdepth=5)
+
 """
 `tracktime(f)`
 
@@ -96,8 +102,7 @@ function tracktime(f; profile=false, maxdepth=5)
     ctx = compute_context[]
     stop_tracking_time()
     t = fetch_timings!(ctx, profile=profile)
-    show_timings(t, maxdepth=maxdepth)
-    t, res
+    TrackTime(t), res
 end
 
 function fetch_timings!(ctx=get_context(); profile=true)
