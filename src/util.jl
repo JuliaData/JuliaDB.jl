@@ -96,11 +96,17 @@ function _loadtable_serial(T, file::Union{IO, AbstractString, AbstractArray};
 
     if filenamecol !== nothing
         # mimick a file name column
-        if isa(file, AbstractArray)
-            namecol = reduce(vcat, fill.(prettify_filename.(file), count))
+        if filenamecol isa Pair
+            filenamecol, f = filenamecol
         else
-            namecol = fill(prettify_filename(file), length(cols[1]))
+            f = prettify_filename
         end
+        if isa(file, AbstractArray)
+            namecol = reduce(vcat, fill.(f.(file), count))
+        else
+            namecol = fill(f(file), length(cols[1]))
+        end
+
         cols = (namecol, cols...)
         if !isempty(header)
             unshift!(header, string(filenamecol))

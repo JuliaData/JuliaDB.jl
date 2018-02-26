@@ -49,7 +49,8 @@ Load a [table](@ref Table) from CSV files.
 - `delim::Char` -- the delimiter character. (defaults to `,`). Use `spacedelim=true` to split by spaces.
 - `spacedelim::Bool`: parse space-delimited files. `delim` has no effect if true.
 - `quotechar::Char` -- quote character. (defaults to `"`)
-- `escapechar::Char` -- escape character. (defaults to `\\`)
+- `escapechar::Char` -- escape character. (defaults to `"`)
+- `filenamecol::Union{Symbol, Pair}` -- create a column containing the file names from where each row came from. This argument gives a name to the column. By default, `basename(name)` of the name is kept, and ".csv" suffix will be stripped. To provide a custom function to apply on the names, use a `name => Function` pair. By default, no file name column will be created.
 - `header_exists::Bool` -- does header exist in the files? (defaults to true)
 - `colnames::Vector{String}` -- specify column names for the files, use this with (`header_exists=false`, otherwise first row is discarded). By default column names are assumed to be present in the file.
 - `samecols` -- a vector of tuples of strings where each tuple contains alternative names for the same column. For example, if some files have the name "vendor_id" and others have the name "VendorID", pass `samecols=[("VendorID", "vendor_id")]`.

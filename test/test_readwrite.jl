@@ -76,6 +76,7 @@ import Dagger: Chunk
     @test collect(loadtable(shuffle_files,chunks=2)) == table(spdata_unordered.data)
     # file name as a column:
     @test unique(keys(loadndsparse(path, indexcols=[:year, :date, :ticker],filenamecol=:year, usecache=false, chunks=2), :year)|> collect) == string.(2010:2015)
+    @test unique(keys(loadndsparse(path, indexcols=[:year, :date, :ticker],filenamecol=:year=>(x->x[3:4])∘basename, usecache=false, chunks=2), :year)|> collect) == string.(10:15)
     @test collect(spdata_dist) == spdata
     @test collect(spdata_dist_path) == spdata
     @test collect(spdata_ingest) == spdata
