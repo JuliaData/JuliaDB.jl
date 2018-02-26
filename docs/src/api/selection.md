@@ -88,7 +88,7 @@ renamecol
 
 ## Column special selection
 
-This section describes functions that can be used to simplify column selection. These functions can be used in combination with `select`, `rows` or `columns`.
+This section describes some special types that can be used to simplify column selection. These types can be used in combination with `select`, `rows` or `columns`, as well as any other function that requires a `by` or `select` argument.
 
 ```@docs
 All
