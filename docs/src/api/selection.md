@@ -85,3 +85,41 @@ insertcolbefore
 ```@docs
 renamecol
 ```
+
+## Column special selection
+
+This section describes some special types that can be used to simplify column selection. These types can be used in combination with `select`, `rows` or `columns`, as well as any other function that requires a `by` or `select` argument.
+
+```@docs
+All
+```
+
+```@docs
+Not
+```
+
+```@docs
+Keys
+```
+
+```@docs
+Between
+```
+
+Finally, to select columns whose name respects a given predicate, pass a function to `select` (or `rows`, or `columns`):
+
+```jldoctest specialselector
+julia> t = table([0.01, 0.05], [2,1], [2, 3], names=[:t, :x, :z])
+Table with 2 rows, 3 columns:
+t     x  z
+──────────
+0.01  2  2
+0.05  1  3
+
+julia> select(t, i -> i != :z)
+Table with 2 rows, 2 columns:
+t     x
+───────
+0.01  2
+0.05  1
+```
