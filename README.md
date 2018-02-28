@@ -18,11 +18,11 @@ We recognized the need for an all-Julia, end-to-end tool that can
 
 We built JuliaDB to fill this void.
 
-### JuliaDB is built on [Dagger](https://github.com/JuliaParallel/Dagger.jl) and [IndexedTables](https://github.com/JuliaComputing/IndexedTables.jl)
+**JuliaDB is built on [Dagger](https://github.com/JuliaParallel/Dagger.jl) and [IndexedTables](https://github.com/JuliaComputing/IndexedTables.jl)**
 
 - JuliaDB provides distributed array/table datastructures with convenient functions to load data from CSV. 
 - JuliaDB is Julia all the way down. This means queries can be efficiently composed with packages from the entire Julia ecosystem.
 
-### Get started
+**Get started**
 
 http://juliadb.org/latest/
