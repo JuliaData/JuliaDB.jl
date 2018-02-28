@@ -1,4 +1,5 @@
-addprocs(2)
+include("testenv.jl")
+addprocs_with_testenv(2)
 
 using JuliaDB
 using Base.Test
