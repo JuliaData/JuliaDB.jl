@@ -317,4 +317,3 @@ end
 function tuplesetindex(x::Union{NamedTuple, Tuple}, v::Tuple, i::Tuple)
     reduce((t, j)->tuplesetindex(t, v[j], i[j]), x, 1:length(i))
 end
-
