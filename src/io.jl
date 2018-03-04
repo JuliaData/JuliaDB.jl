@@ -1,4 +1,6 @@
 export loadfiles, ingest, ingest!, load, save, loadndsparse, loadtable
+import Base: serialize, deserialize
+import Dagger: refcount_chunks
 
 const JULIADB_DIR = ".juliadb"
 const JULIADB_FILECACHE = "csv_metadata"
@@ -219,3 +221,26 @@ function _makerelative!(t, dir::AbstractString)
         end
     end
 end
+
+function serialize(io::AbstractSerializer, A::Union{DNextTable,DNDSparse})
+    @async refcount_chunks(A)
+    invoke(serialize, Tuple{AbstractSerializer,Any}, io, A)
+end
+
+deserialize{K,V}(io::AbstractSerializer, DT::Type{DNDSparse{K,V}}) = _deser(io, DT)
+deserialize{T,K}(io::AbstractSerializer, DT::Type{DNextTable{T,K}}) = _deser(io, DT)
+function _deser(io::AbstractSerializer, t)
+    nf = nfields(t)
+    x = ccall(:jl_new_struct_uninit, Any, (Any,), t)
+    t.mutable && Base.Serializer.deserialize_cycle(io, x)
+    for i in 1:nf
+        tag = Int32(read(io.io, UInt8)::UInt8)
+        if tag != Base.Serializer.UNDEFREF_TAG
+            ccall(:jl_set_nth_field, Void, (Any, Csize_t, Any), x, i-1, Base.Serializer.handle_deserialize(io, tag))
+        end
+    end
+    finalizer(x, free!)
+    return x
+end
+
+refcount_chunks(A::Union{DNextTable,DNDSparse}) = refcount_chunks(A.chunks)

@@ -178,9 +178,10 @@ isarrayselect(x) = x isa AbstractArray || x isa Pair{<:Any, <:AbstractArray}
 
 function dist_selector(t, f, which::Tup)
     if any(isarrayselect, which)
+        refholder = []
         t1 = compute(t)
         w1 = map(which) do x
-            isarrayselect(x) ? distfor(t1, x) : x
+            isarrayselect(x) ? distfor(t1, x, refholder) : x
         end
         # this repeats the non-chunks to all other chunks,
         # then queries with the corresponding chunks
@@ -200,16 +201,18 @@ function dist_selector(t, f, which)
     extractarray(t, x->f(x,which))
 end
 
-function distfor(t, x::AbstractArray)
+function distfor(t, x::AbstractArray, refholder)
     y = rows(t)
     if length(y) != length(x)
         error("Input column is not the same length as the table")
     end
-    distribute(x, domainchunks(y)).chunks
+    d = distribute(x, domainchunks(y))
+    push!(refholder, d)
+    d.chunks
 end
 
-function distfor(t, x::Pair{<:Any, <:AbstractArray})
-    cs = distfor(t, x[2])
+function distfor(t, x::Pair{<:Any, <:AbstractArray}, refholder)
+    cs = distfor(t, x[2], refholder)
     [delayed(c->x[1]=>c)(c) for c in cs]
 end
 
