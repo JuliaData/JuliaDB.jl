@@ -249,11 +249,13 @@ function MemPool.mmwrite(io::AbstractSerializer, arr::TextParse.StringVector)
     Base.serialize_type(io, MemPool.MMSer{TextParse.StringVector})
     MemPool.mmwrite(io, arr.buffer)
     MemPool.mmwrite(io, arr.offsets)
+    MemPool.mmwrite(io, arr.lengths)
     return
 end
 
 function MemPool.mmread(::Type{TextParse.StringVector}, io, mmap)
     buffer  = deserialize(io)
     offsets = deserialize(io)
-    return TextParse.StringVector(buffer, offsets)
+    lengths  = deserialize(io)
+    return TextParse.StringVector(buffer, offsets, lengths)
 end
