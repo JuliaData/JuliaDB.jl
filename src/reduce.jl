@@ -65,14 +65,16 @@ function groupreduce(f, t::DDataset, by=pkeynames(t); kwargs...)
 end
 
 function groupby(f, t::DDataset, by=pkeynames(t);
-                 select=f isa Tup ? valuenames(t) : (t isa DNDSparse ? valuenames(t) : Not(by)),
+                 select=(t isa DNDSparse ? valuenames(t) : Not(by)),
                  kwargs...)
+    by = lowerselection(t, by)
+    select = lowerselection(t, select)
     if (by isa Tup) && isempty(by)
         collect(get_context(), delayed(x -> groupby(f, x, by; select=select, kwargs...))(
             treereduce(delayed(_merge), t.chunks)
             )
        )
-    elseif by != pkeynames(t) || has_overlaps(t.domains, closed=true)
+   elseif by != lowerselection(t, Keys()) || has_overlaps(t.domains, closed=true)
         t = rechunk(t, by, select)
         if select isa Tuple
             return groupby(f, t; kwargs...)

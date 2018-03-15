@@ -1,4 +1,4 @@
-import IndexedTables: selectkeys, selectvalues, select
+import IndexedTables: selectkeys, selectvalues, select, lowerselection
 import IndexedTables: convertdim
 import Base: mapslices
 
@@ -94,4 +94,3 @@ end
 
 keyindex(t::DNDSparse, i::Int) = i
 keyindex(t::DNDSparse{K}, i::Symbol) where {K} = findfirst(x->x===i, fieldnames(K))
-
