@@ -5,16 +5,13 @@ import Base: reducedim
 export reducedim_vec, aggregate, aggregate_vec
 
 _merger(f) = f
-_merger(f::OnlineStats.AbstractSeries) = merge
+_merger(f::OnlineStat) = merge
 _merger(f::Tup) = map(_merger, f)
 
 function reduce(f, t::DDataset; select=valuenames(t))
     xs = delayedmap(t.chunks) do x
         f = isa(f, OnlineStat) ? copy(f) : f # required for > 1 chunks on the same proc
         reduce(f, x; select=select)
-    end
-    if f isa OnlineStat
-        f = Series(f)
     end
     if f isa Tup
         g, _ = IndexedTables.init_funcs(f, false)
@@ -37,9 +34,6 @@ end
 function groupreduce(f, t::DDataset, by=pkeynames(t); kwargs...)
     function groupchunk(x)
         groupreduce(f, x, by; kwargs...)
-    end
-    if f isa OnlineStat
-        f = Series(f)
     end
     if f isa Tup || t isa DNextTable
         g, _ = IndexedTables.init_funcs(f, false)
@@ -118,6 +112,3 @@ end
 
 reducedim_vec(f, x::DNDSparse, dims::Symbol) = reducedim_vec(f, x, [dims])
 Base.@deprecate aggregate_stats(s, t; by=pkeynames(t), with=valuenames(t)) groupreduce(s, t, by; select=with)
-
-OnlineStats.Series(x::DDataset, stat; select=valuenames(x)) =
-    reduce(stat, x, select=select)
