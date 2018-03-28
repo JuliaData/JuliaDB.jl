@@ -21,8 +21,8 @@ indextype(x::Type{DataValues.DataValue{T}}) where {T} = T
         sel_y = o.args[3]
         T = indextype.(fieldtype(eltype(t), IndexedTables.colindex(t, sel_x)))
         s = dropmissing ? 
-            series(IndexedPartition(T, stat, nparts); filter = x->all(!isnull, x), transform = x->getvalue.(x)) :
-            series(IndexedPartition(T, stat, nparts))
+            FTSeries(IndexedPartition(T, stat, nparts); filter = x->all(!isnull, x), transform = x->getvalue.(x)) :
+            FTSeries(IndexedPartition(T, stat, nparts))
         if by == nothing 
             reduce(s, t; select = (sel_x, sel_y))
         else 
@@ -36,8 +36,8 @@ indextype(x::Type{DataValues.DataValue{T}}) where {T} = T
         end
     elseif length(o.args) == 2 
         s = dropmissing ? 
-            series(Partition(stat, nparts); filter = !isnull, transform = getvalue) :
-            series(Partition(stat, nparts))
+            FTSeries(Partition(stat, nparts); filter = !isnull, transform = getvalue) :
+            FTSeries(Partition(stat, nparts))
         if by == nothing
             reduce(s, t; select = sel_x)
         else 
