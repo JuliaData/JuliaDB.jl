@@ -156,6 +156,15 @@ import JuliaDB: pkeynames, pkeys, excludecols
     #@test groupby((mean, std, var), t, :y, select=:z) == table([1, 2], [3.5, 3.5], [2.38048, 0.707107], [5.66667, 0.5], names=Symbol[:y, :mean, :std, :var])
     @test groupby(@NT(q25 = (z->quantile(z, 0.25)), q50 = median, q75 = (z->quantile(z, 0.75))), t, :y, select=:z) == table([1, 2], [1.75, 3.25], [3.5, 3.5], [5.25, 3.75], names=Symbol[:y, :q25, :q50, :q75])
     #@test groupby(@NT(xmean = (:z => mean), ystd = ((:y => (-)) => std)), t, :x) == table([1, 2], [2.0, 5.0], [0.57735, 0.57735], names=Symbol[:x, :xmean, :ystd])
+    @test groupby(identity, t, :x, select = (:y, :z), flatten = true) == rechunk(t, :x)
+    @test groupby(@NT(xmean = (:z => mean)), t, :x) ==  table([1, 2], [2.0, 5.0], names=Symbol[:x, :xmean])
+    t = table(1:4, [1, 4, 9, 16], [1, 8, 27, 64], names = [:x, :xsquare, :xcube], pkey = :x, chunks = 2)
+    long = stack(t; variable = :var, value = :val)
+    @test long == table([1, 1, 2, 2, 3, 3, 4, 4],
+                        [:xsquare, :xcube, :xsquare, :xcube, :xsquare, :xcube, :xsquare, :xcube],
+                        [1, 1, 4, 8, 9, 27, 16, 64];
+                        names = [:x, :var, :val], pkey = :x)
+    @test unstack(long; variable = :var, value = :val) == t
     x = ndsparse(@NT(x = [1, 1, 1, 2, 2, 2], y = [1, 2, 2, 1, 2, 2], z = [1, 1, 2, 1, 1, 2]), [1, 2, 3, 4, 5, 6], chunks=2)
     @test reducedim(+, x, 1) == ndsparse(@NT(y = [1, 2, 2], z = [1, 1, 2]), [5, 7, 9])
     @test reducedim(+, x, (1, 3)) == ndsparse(@NT(y = [1, 2]), [5, 16])

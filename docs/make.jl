@@ -14,6 +14,7 @@ makedocs(
        "Selection" => "api/selection.md",
        "Aggregation" => "api/aggregation.md",
        "Joins" => "api/joins.md",
+       "Reshaping" => "api/reshaping.md",
        "Loading and Saving" => "api/io.md",
        "Plotting" => "api/plotting.md",
        "OnlineStats Integration" => "manual/onlinestats.md",
