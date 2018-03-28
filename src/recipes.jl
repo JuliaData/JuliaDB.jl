@@ -13,10 +13,9 @@ getvalue(x::DataValues.DataValue) = get(x)
 indextype(x::Type) = x 
 indextype(x::Type{DataValues.DataValue{T}}) where {T} = T
 
-@recipe function f(o::PartitionPlot; nparts = 100, stat = nothing, by = nothing, dropmissing = false)
+@recipe function f(o::PartitionPlot; nparts = 100, stat = Extrema(), by = nothing, dropmissing = false)
     t = o.args[1]
     sel_x = o.args[2] 
-    stat = (stat == nothing) ? Extrema() : stat
     if length(o.args) == 3
         sel_y = o.args[3]
         T = indextype.(fieldtype(eltype(t), IndexedTables.colindex(t, sel_x)))
