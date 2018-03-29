@@ -5,7 +5,7 @@ import Base: reducedim
 export reducedim_vec, aggregate, aggregate_vec
 
 _merger(f) = f
-_merger(f::OnlineStats.AbstractSeries) = merge
+_merger(f::OnlineStat) = merge
 _merger(f::Tup) = map(_merger, f)
 
 function reduce(f, t::DDataset; select=valuenames(t))
@@ -120,6 +120,3 @@ end
 
 reducedim_vec(f, x::DNDSparse, dims::Symbol) = reducedim_vec(f, x, [dims])
 Base.@deprecate aggregate_stats(s, t; by=pkeynames(t), with=valuenames(t)) groupreduce(s, t, by; select=with)
-
-OnlineStats.Series(x::DDataset, stat; select=valuenames(x)) =
-    reduce(stat, x, select=select)
