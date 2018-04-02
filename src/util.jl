@@ -72,12 +72,18 @@ function _loadtable_serial(T, file::Union{IO, AbstractString, AbstractArray};
 
     samecols = nothing
     if indexcols !== nothing
-        samecols = filter(x->isa(x, Union{Tuple, AbstractArray}),
-                          indexcols)
+        if indexcols isa Union{Int, Symbol}
+            indexcols = (indexcols,)
+        end
+        samecols = collect(Iterators.filter(x->isa(x, Union{Tuple, AbstractArray}),
+                                            indexcols))
     end
     if datacols !== nothing
-        append!(samecols, filter(x->isa(x, Union{Tuple, AbstractArray}),
-                                 datacols))
+        if datacols isa Union{Int, Symbol}
+            datacols = (datacols,)
+        end
+        append!(samecols, collect(Iterators.filter(x->isa(x, Union{Tuple, AbstractArray}),
+                                                   datacols)))
     end
 
     if samecols !== nothing
@@ -121,7 +127,7 @@ function _loadtable_serial(T, file::Union{IO, AbstractString, AbstractArray};
     implicitindex = false
 
     ## Construct Index
-    _indexcols = map(x->lookupbyheader(header, x), indexcols)
+    _indexcols = collect(map(x->lookupbyheader(header, x), indexcols))
 
     if isempty(_indexcols)
         implicitindex = true
