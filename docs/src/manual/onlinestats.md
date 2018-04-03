@@ -11,12 +11,9 @@ For the full OnlineStats documentation, see [http://joshday.github.io/OnlineStat
 
 ## Basics
 
-Each statistic/model is a subtype of `OnlineStat`.  `OnlineStat`s are grouped together in 
-a `Series`.  In JuliaDB, the functions [`reduce`](@ref) and [`groupreduce`](@ref) can accept:
-
-1. An `OnlineStat`
-1. A tuple of `OnlineStat`s
-1. A `Series`
+Each `OnlineStat` can be updated with more data and merged together with another of the 
+same type.  JuliaDB integrates with OnlineStats via the [`reduce`](@ref) and 
+[`groupreduce`](@ref) functions by accepting an `OnlineStat` or tuple of `OnlineStats`.
 
 
 ### Example Table
@@ -37,26 +34,30 @@ t = table(@NT(x = randn(100), y = randn(100), z = rand(1:5, 100)))
 reduce(Mean(), t; select = :x)
 ```
 
+Several `OnlineStat`s can be calculated on the same column by joining them via `Series`.
+
+```@repl ex1 
+reduce(Series(Mean(), Variance()), t; select = :x)
+```
+
 ### `reduce` via Tuple of `OnlineStat`s
 
 ```@repl ex1
 reduce((Mean(), Variance()), t; select = :x)
 ```
 
-### `reduce` via `Series`
-```@repl ex1 
-s = Series(Mean(), Variance(), Sum());
-reduce(s, t; select = :x)
-```
-
 ---
 
 ## Usage on multiple columns
 
-### Same `OnlineStat` on each column
+To calculate different statistics on each column, OnlineStats offers the `Group` type.  
+There are several methods for creating a `Group`.  
 
-If we want the same statistic calculated for each column in the selection, we need to specify
-the number of columns. 
+```
+2Mean() == Group(Mean(), Mean())
+[Mean() CountMap(Int)] == Group(Mean(), CountMap(Int))
+```
+
 
 ```@repl ex1
 reduce(2Mean(), t; select = (:x, :y))
@@ -68,7 +69,5 @@ To calculate different statistics on different columns, we need to make a `Group
 be created via `hcat`.
 
 ```@repl ex1 
-s = reduce([Mean() CountMap(Int)], t; select = (:x, :z))
-
-value(stats(s)[1])
+g = reduce([Mean() CountMap(Int)], t; select = (:x, :z))
 ```
