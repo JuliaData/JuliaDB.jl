@@ -38,7 +38,7 @@ struct Continuous
 end
 
 function schema(xs, ::Type{Continuous})
-    Continuous(Series(xs, Variance()))
+  Continuous(fit!(Series(Variance()),xs))
 end
 function schema(xs::AbstractArray{<:Real})
     schema(xs, Continuous)
@@ -80,7 +80,7 @@ function Categorical(xs::AbstractArray)
 end
 
 function schema(xs::AbstractArray, ::Type{Categorical})
-    Categorical(Series(xs, CountMap(eltype(xs))))
+  Categorical(fit!(Series(CountMap(eltype(xs))),xs))
 end
 
 function schema(xs::PooledArray)

@@ -7,9 +7,9 @@ using DataValues
 
 @testset "feature extraction" begin
     @testset "schema" begin
-        @test ML.schema([1:10;]).series == Series([1:10;], Variance())
+        @test ML.schema([1:10;]).series == fit!(Series(Variance()), [1:10;])
         x = repeat([1,2], inner=5)
-        @test ML.schema(x, ML.Categorical).series == Series(x, CountMap(Int)) == ML.schema(PooledArray(x)).series
+        @test ML.schema(x, ML.Categorical).series == fit!(Series(CountMap(Int)), x) == ML.schema(PooledArray(x)).series
         m = ML.schema(DataValueArray(x))
         @test m isa ML.Maybe
         @test m.feature.series == ML.schema(x).series

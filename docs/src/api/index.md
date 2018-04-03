@@ -64,6 +64,13 @@ Combine two or more tables in various join and merge operations.
 - [`merge`](@ref) - merge two datasets
 - [`asofjoin`](@ref) - time series asof-join
 
+## [Reshaping](@ref)
+
+Reshape a table.
+
+- [`stack`](@ref) - reshape a table from the wide to the long format
+- [`unstack`](@ref) - Reshape a table from the long to the wide format
+
 ## [Loading and saving](@ref)
 
 - [`loadtable`](@ref) - load a Table from CSV or binary data

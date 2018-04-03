@@ -22,6 +22,7 @@ include("serialize.jl")
 include("interval.jl")
 include("table.jl")
 include("ndsparse.jl")
+include("reshape.jl")
 
 # equality
 
