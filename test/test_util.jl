@@ -1,5 +1,5 @@
 import JuliaDB: tuplesetindex
-using DataValues, PooledArray
+using DataValues, PooledArrays
 
 @testset "Utilities" begin
     @testset "tuplesetindex" begin
