@@ -1,4 +1,5 @@
 import JuliaDB: tuplesetindex
+using DataValues, PooledArray
 
 @testset "Utilities" begin
     @testset "tuplesetindex" begin
@@ -28,4 +29,12 @@ import JuliaDB: Interval, hasoverlap
         @test !(-1 in Interval(0, 2))
     end
 
+end
+
+@testset "vcat PooledArray DataValueArray" begin
+    a = PooledArray(["x"])
+    b = DataValueArray(["y"])
+    c = vcat(a, b)
+    @test c isa DataValueArray
+    @test c == ["x", "y"]
 end
