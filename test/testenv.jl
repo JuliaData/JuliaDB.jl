@@ -22,6 +22,8 @@ if !isdefined(:testenv_defined)
 
     if haskey(ENV, "JULIA_TEST_EXENAME")
         const test_exename = `$(Base.shell_split(ENV["JULIA_TEST_EXENAME"]))`
+    elseif haskey(ENV, "JRUN_NAME")
+        const test_exename = "/opt/julia-0.6/bin/julia"
     else
         const test_exename = `$(Base.julia_exename())`
     end
