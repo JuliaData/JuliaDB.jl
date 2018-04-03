@@ -232,7 +232,11 @@ end
 using PooledArrays
 
 function approx_size(pa::PooledArray)
-    approx_size(pa.refs) + approx_size(pa.pool)
+    approx_size(pa.refs) + approx_size(pa.pool) * 2
+end
+
+function approx_size(t::NextTable)
+    approx_size(rows(t))
 end
 
 # smarter merges on DataValueArray + other arrays
