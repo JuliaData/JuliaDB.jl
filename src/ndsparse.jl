@@ -240,11 +240,11 @@ function Dagger.domain(nd::NDSparse)
     wrap = T<:NamedTuple ? T : tuple
 
     interval = Interval(wrap(first(nd.index)...), wrap(last(nd.index)...))
-    cs = astuple(nd.index.columns)
-    extr = map(extrema, cs[2:end]) # we use first and last value of first column
-    boundingrect = Interval(wrap(first(cs[1]), map(first, extr)...),
-                            wrap(last(cs[1]), map(last, extr)...))
-    return IndexSpace(interval, boundingrect, Nullable{Int}(length(nd)))
+ #  cs = astuple(nd.index.columns)
+ #  extr = map(extrema, cs[2:end]) # we use first and last value of first column
+ #  boundingrect = Interval(wrap(first(cs[1]), map(first, extr)...),
+ #                          wrap(last(cs[1]), map(last, extr)...))
+    return IndexSpace(interval, interval, Nullable{Int}(length(nd)))
 end
 
 function subindexspace(t::Union{NDSparse, NextTable}, r)

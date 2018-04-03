@@ -26,6 +26,7 @@ function subtable(t::NextTable, r)
 end
 
 function extrema_range(x::AbstractArray{T}, r::UnitRange) where T
+    return first(x), last(x)
     if !(1 <= first(r) && last(r) <= length(x))
         throw(BoundsError(x, r))
     end
