@@ -1,5 +1,6 @@
 import IndexedTables: aggregate, aggregate_vec, reducedim_vec, _convert
 import IndexedTables: groupreduce, groupby
+using OnlineStatsBase
 import Base: reducedim
 
 export reducedim_vec, aggregate, aggregate_vec
@@ -12,9 +13,6 @@ function reduce(f, t::DDataset; select=valuenames(t))
     xs = delayedmap(t.chunks) do x
         f = isa(f, OnlineStat) ? copy(f) : f # required for > 1 chunks on the same proc
         reduce(f, x; select=select)
-    end
-    if f isa OnlineStat
-        f = Series(f)
     end
     if f isa Tup
         g, _ = IndexedTables.init_funcs(f, false)
@@ -37,9 +35,6 @@ end
 function groupreduce(f, t::DDataset, by=pkeynames(t); kwargs...)
     function groupchunk(x)
         groupreduce(f, x, by; kwargs...)
-    end
-    if f isa OnlineStat
-        f = Series(f)
     end
     if f isa Tup || t isa DNextTable
         g, _ = IndexedTables.init_funcs(f, false)

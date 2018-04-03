@@ -134,14 +134,14 @@ import JuliaDB: pkeynames, pkeys, excludecols
     @test reduce(+, t, select=:t) == 1.35
     @test reduce(((a, b)->@NT(t = a.t + b.t, x = a.x + b.x)), t) == @NT(t = 1.35, x = 3)
     @test using OnlineStats == nothing
-    @test value(reduce(Mean(), t, select=:t)) == (0.45,)
+    @test value(reduce(Mean(), t, select=:t)) == 0.45
     y = reduce((min, max), t, select=:x)
     @test y.max == 2
     @test y.min == 0
     y = reduce(@NT(sum = (+), prod = (*)), t, select=:x)
     y = reduce((Mean(), Variance()), t, select=:t)
-    @test value(y.Mean) == (0.45,)
-    @test value(y.Variance) == (0.10749999999999998,)
+    @test value(y.Mean) == 0.45
+    @test value(y.Variance) == 0.10749999999999998
     @test reduce(@NT(xsum = (:x => (+)), negtsum = ((:t => (-)) => (+))), t) == @NT(xsum = 3, negtsum = -1.35)
     t = table([1, 1, 1, 2, 2, 2], [1, 1, 2, 2, 1, 1], [1, 2, 3, 4, 5, 6], names=[:x, :y, :z], chunks=2)
     @test groupreduce(+, t, :x, select=:z) == table([1, 2], [6, 15], names=Symbol[:x, :+])
