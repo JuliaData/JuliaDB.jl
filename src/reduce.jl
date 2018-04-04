@@ -1,6 +1,6 @@
 import IndexedTables: aggregate, aggregate_vec, reducedim_vec, _convert
-import IndexedTables: groupreduce, groupby
 using OnlineStatsBase
+import IndexedTables: groupreduce, groupby, ApplyColwise
 import Base: reducedim
 
 export reducedim_vec, aggregate, aggregate_vec
@@ -42,7 +42,7 @@ function groupreduce(f, t::DDataset, by=pkeynames(t); kwargs...)
         g = f
     end
     h = _merger(g)
-    if (f isa IndexedTables.ApplyColwise) && f.functions isa Union{Function, Type}
+    if (f isa ApplyColwise) && f.functions isa Union{Function, Type}
         mergef = (x,y) -> map(f.functions, x,y)
     else
         mergef = (x,y) -> IndexedTables._apply(h, x,y)
@@ -90,12 +90,12 @@ function groupby(f, t::DDataset, by=pkeynames(t);
     end
 end
 
-function reducedim(f, x::DNDSparse, dims)
+function reducedim(f, x::DNDSparse, dims; cache=false)
     keep = setdiff([1:ndims(x);], dims) # TODO: Allow symbols
     if isempty(keep)
         throw(ArgumentError("to remove all dimensions, use `reduce(f, A)`"))
     end
-    groupreduce(f, x, (keep...), select=valuenames(x))
+    groupreduce(f, x, (keep...), select=valuenames(x), cache=cache)
 end
 
 reducedim(f, x::DNDSparse, dims::Symbol) = reducedim(f, x, [dims])
