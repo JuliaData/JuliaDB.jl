@@ -19,17 +19,6 @@ merge(::Void, ::Void) = nothing
 width(::Void) = 0
 featuremat!(A, ::Void, xs) = A
 
-# distributed schema calculation
-function schema(xs::DArray)
-    collect(treereduce(delayed(merge),
-                       delayedmap(x -> schema(x), xs.chunks)))
-end
-
-function schema(xs::DArray, T)
-    collect(treereduce(delayed(merge),
-                       delayedmap(x -> schema(x, T), xs.chunks)))
-end
-
 schema(xs::ArrayOp) = schema(compute(xs))
 schema(xs::ArrayOp, T) = schema(compute(xs), T)
 
@@ -103,6 +92,19 @@ Base.@propagate_inbounds function featuremat!(A, c::Categorical, xs, dropna=Val{
         A[i, labeldict[xs[i]]] = one(eltype(A))
     end
     A
+end
+
+# distributed schema calculation
+function schema(xs::DArray)
+    collect(treereduce(delayed(merge),
+                       delayedmap(x -> schema(x), xs.chunks)))
+end
+
+for S in (Continuous, Categorical)
+    @eval function schema(xs::DArray, T::Type{$S})
+        collect(treereduce(delayed(merge),
+                           delayedmap(x -> schema(x, T), xs.chunks)))
+    end
 end
 
 struct Maybe{T}
