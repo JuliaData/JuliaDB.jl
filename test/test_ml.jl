@@ -32,4 +32,26 @@ using DataValues
         x = randn(100)
         @test ML.featuremat(x) ≈ ((x .- mean(x)) ./ std(x))'
     end
+
+    @testset "Issue 149" begin
+        x = rand(10), rand(1:4, 10), rand(1:4, 10)
+        t  = table(x..., names = [:x1, :x2, :x3])
+        td = table(x..., names = [:x1, :x2, :x3], chunks = 2)
+        sch = ML.schema(t, hints=Dict(
+            :x1 => ML.Continuous,
+            :x2 => ML.Categorical,
+            :x3 => ML.Categorical,
+            )
+        )
+        schd = ML.schema(td, hints=Dict(
+            :x1 => ML.Continuous,
+            :x2 => ML.Categorical,
+            :x3 => ML.Categorical,
+            )
+        )
+
+        @test schd[:x1].series.stats[1].σ2 ≈ sch[:x1].series.stats[1].σ2
+        @test schd[:x2].series == sch[:x2].series
+        @test schd[:x3].series == sch[:x3].series
+    end
 end
