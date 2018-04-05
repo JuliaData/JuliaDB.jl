@@ -42,7 +42,11 @@ function groupreduce(f, t::DDataset, by=pkeynames(t); kwargs...)
         g = f
     end
     h = _merger(g)
-    mergef = (x,y) -> IndexedTables._apply(h, x,y)
+    if (f isa IndexedTables.ApplyColwise) && f.functions isa Union{Function, Type}
+        mergef = (x,y) -> map(f.functions, x,y)
+    else
+        mergef = (x,y) -> IndexedTables._apply(h, x,y)
+    end
     function mergechunk(x, y)
         # use NDSparse's merge
         if x isa NextTable
