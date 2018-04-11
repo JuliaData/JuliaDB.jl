@@ -33,7 +33,7 @@ function reduce(f, t::DDataset, v0; select=nothing)
 end
 
 function groupreduce(f, t::DDataset, by=pkeynames(t); kwargs...)
-    function groupchunk(x)
+    @noinline function groupchunk(x)
         groupreduce(f, x, by; kwargs...)
     end
     if f isa Tup || t isa DNextTable
@@ -47,7 +47,7 @@ function groupreduce(f, t::DDataset, by=pkeynames(t); kwargs...)
     else
         mergef = (x,y) -> IndexedTables._apply(h, x,y)
     end
-    function mergechunk(x, y)
+    @noinline function mergechunk(x, y)
         # use NDSparse's merge
         if x isa NextTable
             z = merge(_convert(NDSparse, x), _convert(NDSparse, y), agg=mergef)
@@ -69,7 +69,10 @@ function groupby(f, t::DDataset, by=pkeynames(t);
     by = lowerselection(t, by)
     select = lowerselection(t, select)
     if (by isa Tup) && isempty(by)
-        collect(get_context(), delayed(x -> groupby(f, x, by; select=select, kwargs...))(
+        @noinline function _groupby(x)
+            groupby(f, x, by;  select=select, kwargs...)
+        end
+        collect(get_context(), delayed(_groupby)(
             treereduce(delayed(_merge), t.chunks)
             )
        )
@@ -82,7 +85,7 @@ function groupby(f, t::DDataset, by=pkeynames(t);
             return groupby(f, t; select=sel, kwargs...)
         end
     else
-        function groupchunk(x)
+        @noinline function groupchunk(x)
             groupby(f, x, by; select=select, kwargs...)
         end
 

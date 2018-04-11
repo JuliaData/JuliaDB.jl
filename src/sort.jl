@@ -6,9 +6,10 @@ export reindex, rechunk
 using StatsBase
 
 function reindex(t::DDataset, by=pkeynames(t), select=excludecols(t, by); kwargs...)
-    delayedmap(t.chunks) do c
+    @noinline function _rechunk(c)
         reindex(c, by, select; kwargs...)
-    end |> fromchunks
+    end
+    fromchunks(delayedmap(_rechunk, t.chunks))
 end
 
 """
