@@ -18,9 +18,8 @@ function DataValues.dropna(t::DDataset, select=(colnames(t)...))
 end
 
 function Base.filter(f, t::DDataset; select=isa(f, Union{Tuple, Pair}) ? nothing : valuenames(t))
-    mapchunks(t, keeplengths=false) do x
-        filter(f, x; select=select)
-    end |> cache_thunks
+    g = delayed(x -> filter(f, x; select=select))
+    cache_thunks(fromchunks(map(g, t.chunks)))
 end
 
 function selectkeys(x::DNDSparse, which; kwargs...)
