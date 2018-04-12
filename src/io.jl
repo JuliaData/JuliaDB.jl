@@ -245,17 +245,21 @@ end
 
 refcount_chunks(A::Union{DNextTable,DNDSparse}) = refcount_chunks(A.chunks)
 
-function MemPool.mmwrite(io::AbstractSerializer, arr::TextParse.StringVector)
-    Base.serialize_type(io, MemPool.MMSer{TextParse.StringVector})
+using WeakRefStrings
+
+function MemPool.mmwrite(io::AbstractSerializer, arr::StringArray)
+    Base.serialize_type(io, MemPool.MMSer{StringArray})
+    serialize(io, eltype(arr))
     MemPool.mmwrite(io, arr.buffer)
     MemPool.mmwrite(io, arr.offsets)
     MemPool.mmwrite(io, arr.lengths)
     return
 end
 
-function MemPool.mmread(::Type{TextParse.StringVector}, io, mmap)
+function MemPool.mmread(::Type{StringArray}, io, mmap)
+    T = deserialize(io)
     buffer  = deserialize(io)
     offsets = deserialize(io)
     lengths  = deserialize(io)
-    return TextParse.StringVector(buffer, offsets, lengths)
+    return StringArray{T, ndims(offsets)}(buffer, offsets, lengths)
 end
