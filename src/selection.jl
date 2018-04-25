@@ -34,17 +34,6 @@ end
 Base.@deprecate select(x::DNDSparse, conditions::Pair...) filter(conditions, x)
 Base.@deprecate select(x::DNDSparse, which::DimName...; kwargs...) selectkeys(x, which; kwargs...)
 
-# Filter on data field
-"""
-    filter(f, t::DNDSparse)
-
-Filters `t` removing rows for which `f` is false. `f` is passed only the data
-and not the index.
-"""
-function Base.filter(f, t::DNDSparse)
-    cache_thunks(mapchunks(x -> filter(f, x), t, keeplengths=false))
-end
-
 """
     convertdim(x::DNDSparse, d::DimName, xlate; agg::Function, name)
 
