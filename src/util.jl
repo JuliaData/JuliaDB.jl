@@ -3,6 +3,7 @@ using NamedTuples
 
 using PooledArrays
 using DataValues
+using WeakRefStrings
 
 
 # re-export
@@ -238,6 +239,10 @@ end
 
 function approx_size(t::NextTable)
     approx_size(rows(t))
+end
+
+function approx_size(x::StringArray)
+    approx_size(x.buffer) + approx_size(x.offsets) + approx_size(x.lengths)
 end
 
 # smarter merges on DataValueArray + other arrays
