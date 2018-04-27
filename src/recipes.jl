@@ -24,7 +24,6 @@ indextype(x::Type{DataValues.DataValue{T}}) where {T} = T
             FTSeries(IndexedPartition(T, stat, nparts); filter = x->all(!isnull, x), transform = x->getvalue.(x)) :
             IndexedPartition(T, stat, nparts)
         if by == nothing 
-            columns(t, (sel_x, sel_y))
             reduce(s, t; select = (sel_x, sel_y))
         else 
             out = collect(groupreduce(s, t, by; select = (sel_x, sel_y)))
