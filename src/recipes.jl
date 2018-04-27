@@ -22,8 +22,9 @@ indextype(x::Type{DataValues.DataValue{T}}) where {T} = T
         T = eltype.(columns(t))[sel_x]
         s = dropmissing ? 
             FTSeries(IndexedPartition(T, stat, nparts); filter = x->all(!isnull, x), transform = x->getvalue.(x)) :
-            FTSeries(IndexedPartition(T, stat, nparts))
+            IndexedPartition(T, stat, nparts)
         if by == nothing 
+            columns(t, (sel_x, sel_y))
             reduce(s, t; select = (sel_x, sel_y))
         else 
             out = collect(groupreduce(s, t, by; select = (sel_x, sel_y)))
@@ -37,7 +38,7 @@ indextype(x::Type{DataValues.DataValue{T}}) where {T} = T
     elseif length(o.args) == 2 
         s = dropmissing ? 
             FTSeries(Partition(stat, nparts); filter = !isnull, transform = getvalue) :
-            FTSeries(Partition(stat, nparts))
+            Partition(stat, nparts)
         if by == nothing
             reduce(s, t; select = sel_x)
         else 
