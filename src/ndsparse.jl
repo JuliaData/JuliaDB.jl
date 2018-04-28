@@ -17,7 +17,7 @@ A distributed [NDSparse](@ref) datastructure. Can be constructed by:
 - [`distribute`](@ref) from an [`NDSparse`](@ref) object
 """
 mutable struct DNDSparse{K,V} <: AbstractNDSparse
-    domains::Vector{IndexSpace{K}} # 
+    domains::Vector{IndexSpace{K}}
     chunks::Vector
     freed::Bool
     function DNDSparse{K, V}(domains, chunks) where {K, V}
