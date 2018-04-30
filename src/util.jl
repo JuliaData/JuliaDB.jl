@@ -190,9 +190,9 @@ function _loadtable_serial(T, file::Union{IO, AbstractString, AbstractArray};
     data = Columns(datavecs...; names=datacolnames)
 
     if T<:NextTable && implicitindex
-        table(data, copy = false), true
+        table(data, copy = copy), true
     else
-        convert(T, index, data, copy = false), implicitindex
+        convert(T, index, data, copy = copy), implicitindex
     end
 end
 
