@@ -58,7 +58,7 @@ function Dagger.domain(t::NextTable)
         return t.pkey => EmptySpace{T}()
     end
 
-    wrap = T<:NamedTuple ? T : tuple
+    wrap(args...) = T<:NamedTuple ? T(args) : args
 
     interval = Interval(wrap(first(ks)...), wrap(last(ks)...))
     cs = astuple(columns(ks))
