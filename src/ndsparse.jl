@@ -9,9 +9,12 @@ boundingrect(x::IndexSpace) = x.boundingrect
 interval(x::IndexSpace) = x.interval
 
 """
-A distributed NDSparse datastructure.
-Can be constructed using [loadfiles](@ref),
-[ingest](@ref) or [distribute](@ref)
+    DNDSparse{K,V} <: AbstractNDSparse
+
+A distributed [NDSparse](@ref) datastructure. Can be constructed by:
+- [`ndsparse`](@ref) from Julia objects
+- [`loadndsparse`](@ref) from data on disk
+- [`distribute`](@ref) from an [`NDSparse`](@ref) object
 """
 mutable struct DNDSparse{K,V} <: AbstractNDSparse
     domains::Vector{IndexSpace{K}}
