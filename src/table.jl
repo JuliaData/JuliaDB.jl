@@ -31,7 +31,7 @@ mutable struct DNextTable{T,K} <: AbstractIndexedTable
     # primary key columns
     pkey::Vector{Int}
     # extent of values in the pkeys
-    domains::Vector{IndexSpace{K}}
+    domains::Vector{IndexSpace}
     chunks::Vector
     freed::Bool
     function DNextTable{T,K}(pkey, domains, chunks) where {T, K}
@@ -50,6 +50,8 @@ function free!(x::DNextTable)
     nothing
 end
 
+noweakref(w::WeakRefString) = string(w)
+noweakref(x) = x
 function Dagger.domain(t::NextTable)
     ks = pkeys(t)
     T = eltype(ks)
@@ -58,14 +60,14 @@ function Dagger.domain(t::NextTable)
         return t.pkey => EmptySpace{T}()
     end
 
-    wrap = T<:NamedTuple ? T : tuple
+    wrap = T<:NamedTuple ? IndexedTables.namedtuple(fieldnames(T)...) : tuple
 
-    interval = Interval(wrap(first(ks)...), wrap(last(ks)...))
+    interval = Interval(wrap(noweakref.(first(ks))...), wrap(noweakref.(last(ks))...))
     cs = astuple(columns(ks))
     extr = map(extrema, cs[2:end]) # we use first and last value of first column
-    boundingrect = Interval(wrap(first(cs[1]), map(first, extr)...),
-                            wrap(last(cs[1]), map(last, extr)...))
-    return t.pkey => IndexSpace{T}(interval, boundingrect, Nullable{Int}(length(t)))
+    boundingrect = Interval(wrap(noweakref(first(cs[1])), noweakref.(map(first, extr))...),
+                            wrap(noweakref(last(cs[1])), noweakref.(map(last, extr))...))
+    return t.pkey => IndexSpace(interval, boundingrect, Nullable{Int}(length(t)))
 end
 
 # if one of the input vectors is a Dagger operation / array
