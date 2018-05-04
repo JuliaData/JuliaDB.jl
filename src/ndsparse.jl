@@ -240,7 +240,7 @@ function Dagger.domain(nd::NDSparse)
         return EmptySpace{T}()
     end
 
-    wrap = T<:NamedTuple ? T : tuple
+    wrap(args...) = T<:NamedTuple ? T(args) : args
 
     interval = Interval(wrap(first(nd.index)...), wrap(last(nd.index)...))
  #  cs = astuple(nd.index.columns)
@@ -253,7 +253,7 @@ end
 function subindexspace(t::Union{NDSparse, NextTable}, r)
     ks = pkeys(t)
     T = eltype(typeof(ks))
-    wrap = T<:NamedTuple ? T : tuple
+    wrap(args...) = T<:NamedTuple ? T(args) : args
 
     if isempty(r)
         return EmptySpace{T}()

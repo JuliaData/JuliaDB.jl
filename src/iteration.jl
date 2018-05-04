@@ -158,7 +158,7 @@ function columns(t::Union{DDataset, DArray})
             names = fieldnames(eltype(t))
         end
         if all(x -> x isa Symbol, names)
-            IndexedTables.namedtuple(names...)(arrays...)
+            IndexedTables.namedtuple(names...)(arrays)
         else
             arrays
         end

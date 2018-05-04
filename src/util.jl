@@ -318,7 +318,7 @@ end
 
 @generated function tuplesetindex(x::NamedTuple, v, i::Symbol)
     fields = fieldnames(x)
-    :(@NT($(fields...))(tuplesetindex(x, v, findfirst($fields, i))...))
+    :(@NT($(fields...))(tuple(tuplesetindex(x, v, findfirst($fields, i))...)))
 end
 
 @generated function tuplesetindex(x::NamedTuple, v, i::Int)
@@ -326,7 +326,7 @@ end
     N = length(fields)
     quote
         tup = Base.@ntuple $N j -> i == j ? v : x[j]
-        @NT($(fields...))(tuplesetindex(tup, v, i)...)
+        @NT($(fields...))(tuple(tuplesetindex(tup, v, i)...))
     end
 end
 
