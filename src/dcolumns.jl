@@ -68,7 +68,7 @@ function extractarray(t::Union{DNDSparse,DColumns}, accessor)
         cs = [cs_tup...]
         lengths = length.(domain.(cs))
         dmnchunks = DomainBlocks((1,), (cumsum(lengths),))
-        T = reduce(_promote_type, eltype(chunktype(cs[1])), eltype.(chunktype.(cs)))
+        T = promote_eltype_chunktypes(cs)
         DArray(T, ArrayDomain(1:sum(lengths)), dmnchunks, [cs...], (i, x...)->vcat(x...))
     end
 

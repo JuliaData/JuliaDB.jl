@@ -176,8 +176,7 @@ function fromchunks(::Type{<:AbstractVector},
                     cs::AbstractArray, args...; kwargs...)
     lengths = length.(domain.(cs))
     dmnchunks = DomainBlocks((1,), (cumsum(lengths),))
-    T = reduce(_promote_type, eltype(chunktype(cs[1])),
-               eltype.(chunktype.(cs))[2:end])
+    T = promote_eltype_chunktypes(cs)
     DArray(T, ArrayDomain(1:sum(lengths)),
            dmnchunks, cs, (i, x...)->vcat(x...))
 end
@@ -185,8 +184,8 @@ end
 function fromchunks(::Type{<:NextTable}, chunks::AbstractArray;
                     domains::AbstractArray = last.(domain.(chunks)),
                     pkey=first(domain(first(chunks))),
-                    K = promote_eltypes(eltype.(domains)),
-                    T = promote_eltypes(eltype.(chunktype.(chunks))))
+                    K = promote_eltypes(domains),
+                    T = promote_eltype_chunktypes(chunks))
 
     nzidxs = find(!isempty, domains)
     domains = domains[nzidxs]
@@ -197,7 +196,19 @@ end
 import Base.reduce
 
 function promote_eltypes(ts::AbstractArray)
-    reduce(_promote_type, ts)
+    t = eltype(ts[1])
+    for i = 2:length(ts)
+        t = _promote_type(t, eltype(ts[i]))
+    end
+    return t
+end
+
+function promote_eltype_chunktypes(ts::AbstractArray)
+    t = eltype(chunktype(ts[1]))
+    for i = 2:length(ts)
+        t = _promote_type(t, eltype(chunktype(ts[i])))
+    end
+    return t
 end
 
 """
