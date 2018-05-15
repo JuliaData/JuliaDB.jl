@@ -77,13 +77,18 @@ function groupby(f, t::DDataset, by=pkeynames(t);
             )
        )
    elseif by != lowerselection(t, Keys()) || has_overlaps(t.domains, closed=true)
-        t = rechunk(t, by, select)
-        if select isa Tuple
-            return groupby(f, t; kwargs...)
-        else
-            sel = t isa DNDSparse ? valuenames(t) : nfields(eltype(t))
-            return groupby(f, t; select=sel, kwargs...)
-        end
+       subsel = Tuple(setdiff(select, by))
+       # translate the new selection
+       t = rechunk(t, by, subsel)
+       newselect = map(select) do x
+           if x in by
+               x
+           else
+               x1 = findin(subsel, x)
+               x1[1] + length(by)
+           end
+       end
+       return groupby(f, t; select=newselect, kwargs...)
     else
         @noinline function groupchunk(x)
             groupby(f, x, by; select=select, kwargs...)
