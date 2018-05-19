@@ -20,6 +20,7 @@ makedocs(
        "OnlineStats Integration" => "manual/onlinestats.md",
        "Out-of-core functionality" => "manual/out-of-core.md",
        "Feature Extraction" => "manual/ml.md",
+       "Tutorial" => "manual/tutorial.md",
    ],
    assets = ["assets/custom.css", "assets/custom.js"]
 )

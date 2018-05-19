@@ -106,10 +106,10 @@ Keys
 Between
 ```
 
-Finally, to select columns whose name respects a given predicate, pass a function to `select` (or `rows`, or `columns`):
+To select columns whose name respects a given predicate, pass a function to `select` (or `rows`, or `columns`):
 
 ```jldoctest specialselector
-julia> t = table([0.01, 0.05], [2,1], [2, 3], names=[:t, :x, :z])
+julia> t = table([0.01, 0.05], [2, 1], [2, 3], names=[:t, :x, :z])
 Table with 2 rows, 3 columns:
 t     x  z
 ──────────
@@ -122,4 +122,23 @@ t     x
 ───────
 0.01  2
 0.05  1
+```
+
+To filter columns whose name matches a regular expression, pass the `Regex` directly:
+
+```jldoctest specialselector
+julia> t = table([0.01, 0.05], [2.3, 1.2], ["setosa", "virginica"],
+    names=[:PetalLength, :PetalWidth, :Species])
+Table with 2 rows, 3 columns:
+PetalLength  PetalWidth  Species
+────────────────────────────────────
+0.01         2.3         "setosa"
+0.05         1.2         "virginica"
+
+julia> select(t, r"^Petal")
+Table with 2 rows, 2 columns:
+PetalLength  PetalWidth
+───────────────────────
+0.01         2.3
+0.05         1.2
 ```
