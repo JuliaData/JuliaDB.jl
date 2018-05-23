@@ -23,7 +23,7 @@ function rechunk_together(left, right, lkey, rkey,
     r = rechunk(r, rkey, rselect,
                 splitters=splitters[1:end-1],
                 chunks_presorted=true,
-                affinities=map(x->first(Dagger.affinity(x))[1].pid, l.chunks),
+                #affinities=map(x->first(Dagger.affinity(x))[1].pid, l.chunks),
                )
     l, r
 end
@@ -51,10 +51,13 @@ function Base.join(f, left::DDataset, right::DDataset;
         else
             right_ser = collect(cr)
         end
-        ps = map(x->first(Dagger.affinity(x))[1], cl.chunks)
+        ps = map(cl.chunks) do c
+            a = Dagger.affinity(c)
+            first.(a[1:min(length(a), 1)])
+        end
         tasks = [delayed(identity)(right_ser) for p in ps]
         for (t, p) in zip(tasks, ps)
-            t.affinity = Nullable([p=>1])
+            t.affinity = Nullable(Pair.(p, 1))
         end
         r = fromchunks(tasks)
         l = cl
