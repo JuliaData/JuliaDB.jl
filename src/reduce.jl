@@ -82,7 +82,7 @@ function groupby(f, t::DDataset, by=pkeynames(t);
        t = rechunk(t, by, subsel)
        newselect = map(select) do x
            if x in by
-               x
+               findin(by, x)[1]
            else
                x1 = findin(subsel, x)
                x1[1] + length(by)
