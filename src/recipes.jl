@@ -10,21 +10,19 @@ function get_args(o)
     t = o.args[1]
     selx = length(o.args) == 3 ? o.args[2] : nothing
     sely = length(o.args) == 3 ? o.args[3] : o.args[2]
-
+    # if sel is a pair, apply the function sel[2] to sel[1]
     example_x = selx isa Pair ? 
-        selx[2](collect(rows(t, selx[1]))) :
+        selx[2].(collect(rows(t, selx[1]))) :
         (selx == nothing ? [1] : collect(rows(t, selx)[1]))
-
     example_y = sely isa Pair ? 
-        sely[2](collect(rows(t, sely[1]))) :
+        sely[2].(collect(rows(t, sely[1]))) :
         collect(rows(t, sely)[1])
-
-    TX = eltype(example_x)
-    TY = eltype(example_y)
-    
+    # use eltype to support both Dataset and DDataset (since collect is used above)
+    TX = eltype(example_x)  # type of X that OnlineStats will see
+    TY = eltype(example_y)  # type of Y that OnlineStats will see
+    # default stat is Extrema
     stat = Extrema(TY)
     t, selx, sely, stat, TX, TY
-
 end
 
 @recipe function f(o::PartitionPlot; nparts=100, stat=nothing, by=nothing, filter=x->true)
