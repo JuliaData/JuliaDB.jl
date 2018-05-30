@@ -46,6 +46,7 @@ end
             out = collect(rows(groupreduce(ft, t, by, select=y)))
             for i in 1:length(out)
                 layout --> length(out)
+                link --> :all
                 @series begin 
                     subplot --> i
                     title --> "Group: $(out[i][1])"
@@ -63,6 +64,7 @@ end
             out = collect(rows(groupreduce(ft, t, by, select=(x,y))))
             for i in 1:length(out)
                 layout --> length(out)
+                link --> :all
                 @series begin 
                     subplot --> i
                     title --> "Group: $(out[i][1])"
