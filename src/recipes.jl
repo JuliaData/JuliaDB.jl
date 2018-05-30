@@ -9,17 +9,22 @@ selection_type(t, sel) = error("Not sure how to infer type of selection")
 selection_type(t, sel::Void) = Int
 
 # NextTable/NDSparse
-selection_type(t::Dataset, sel::Pair) = typeof(sel[2].(rows(t, sel[1])[1]))
+selection_type(t::Dataset, sel::Pair) = typeof(sel[2](rows(t, sel[1])[1]))
 selection_type(t::Dataset, sel::Union{Symbol,Int}) = typeof(rows(t, sel)[1])
 
 # DNextTable/DNDSparse
 function selection_type(t::DDataset, sel::Pair)
-    typeof(sel[2].(collect(rows(t, sel[1])[1])))
+    typeof(sel[2](collect(rows(t, sel[1])[1])))
 end
 function selection_type(t::DDataset, sel::Union{Symbol, Int})
     typeof(collect(rows(t, sel[1])[1]))
 end
 
+unwrap(t) = t 
+unwrap(t::Type{DataValue{T}}) where {T} = T
+
+getval(t) = t 
+getval(t::DataValue) = get(t)
  
 function get_args(o)
     t = o.args[1]
@@ -30,31 +35,37 @@ function get_args(o)
     t, selx, sely, TX, TY
 end
 
-@recipe function f(o::PartitionPlot; nparts=100, stat=nothing, by=nothing, filter=x->true)
+@recipe function f(o::PartitionPlot; nparts=100, stat=nothing, by=nothing)
     t, x, y, TX, TY = get_args(o)
-    st = stat == nothing ? Extrema(TY) : stat
+    st = stat == nothing ? Extrema(unwrap(TY)) : stat
     if x == nothing 
-        ft = FTSeries(Partition(st, nparts), filter=filter)
+        ft = FTSeries(TY, Partition(st, nparts), filter=!isnull, transform=getval)
         if by == nothing 
             reduce(ft, t, select=y)
         else 
             out = collect(rows(groupreduce(ft, t, by, select=y)))
             for i in 1:length(out)
+                layout --> length(out)
                 @series begin 
-                    label --> "Group: $(out[i][1])"
+                    subplot --> i
+                    title --> "Group: $(out[i][1])"
                     out[i][2]
                 end
             end
         end
     else 
-        ft = FTSeries(IndexedPartition(TX, st, nparts), filter=filter)
+        ft = FTSeries(IndexedPartition(unwrap(TX), st, nparts), 
+            filter = x -> all(!isnull, x), 
+            transform = x -> map(getval, x))
         if by == nothing 
             reduce(ft, t, select = (x,y))
         else
             out = collect(rows(groupreduce(ft, t, by, select=(x,y))))
             for i in 1:length(out)
+                layout --> length(out)
                 @series begin 
-                    label --> "Group: $(out[i][1])"
+                    subplot --> i
+                    title --> "Group: $(out[i][1])"
                     out[i][2]
                 end
             end
