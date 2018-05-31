@@ -227,8 +227,8 @@ function serialize(io::AbstractSerializer, A::Union{DNextTable,DNDSparse})
     invoke(serialize, Tuple{AbstractSerializer,Any}, io, A)
 end
 
-deserialize{K,V}(io::AbstractSerializer, DT::Type{DNDSparse{K,V}}) = _deser(io, DT)
-deserialize{T,K}(io::AbstractSerializer, DT::Type{DNextTable{T,K}}) = _deser(io, DT)
+deserialize(io::AbstractSerializer, DT::Type{DNDSparse{K,V}}) where {K,V} = _deser(io, DT)
+deserialize(io::AbstractSerializer, DT::Type{DNextTable{T,K}}) where {T,K} = _deser(io, DT)
 function _deser(io::AbstractSerializer, t)
     nf = nfields(t)
     x = ccall(:jl_new_struct_uninit, Any, (Any,), t)
