@@ -117,7 +117,7 @@ function table(t::Union{NextTable, DNextTable};
 end
 
 Base.eltype(dt::DNextTable{T}) where {T} = T
-function colnames{T}(t::DNextTable{T})
+function colnames(t::DNextTable{T}) where T
     fieldnames(T)
 end
 

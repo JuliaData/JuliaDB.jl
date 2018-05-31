@@ -270,8 +270,8 @@ end
 _map_params(f, T::Type{Tuple{}},S::Type{Tuple{}}) = ()
 
 map_params(f, ::Type{T}, ::Type{S}) where {T,S} = f(T,S)
-@inline _tuple_type_head{T<:Tuple}(::Type{T}) = Base.tuple_type_head(T)
-@inline _tuple_type_tail{T<:Tuple}(::Type{T}) = Base.tuple_type_tail(T)
+@inline _tuple_type_head(::Type{T}) where {T<:Tuple} = Base.tuple_type_head(T)
+@inline _tuple_type_tail(::Type{T}) where {T<:Tuple} = Base.tuple_type_tail(T)
 
 #function map_params{N}(f, T::Type{T} where T<:Tuple{Vararg{Any,N}}, S::Type{S} where S<: Tuple{Vararg{Any,N}})
 Base.@pure function map_params(f, ::Type{T}, ::Type{S}) where {T<:Tuple,S<:Tuple}

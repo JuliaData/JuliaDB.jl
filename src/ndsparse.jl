@@ -105,7 +105,7 @@ Base.ndims(dt::DNDSparse{K}) where {K} = nfields(K)
 keytype(dt::DNDSparse{K}) where {K} = astuple(K)
 
 # TableLike API
-Base.@pure function IndexedTables.colnames{K,V}(t::DNDSparse{K,V})
+Base.@pure function IndexedTables.colnames(t::DNDSparse{K,V}) where {K,V}
     dnames = V<:Tup ? fieldnames(V) : [1]
     if all(x->isa(x, Integer), dnames)
         dnames = map(x->x+nfields(K), dnames)
@@ -114,7 +114,7 @@ Base.@pure function IndexedTables.colnames{K,V}(t::DNDSparse{K,V})
 end
 
 Base.@pure pkeynames(t::DNDSparse{K,V}) where {K, V} = (fieldnames(K)...)
-function IndexedTables.valuenames{K,V}(t::DNDSparse{K,V})
+function IndexedTables.valuenames(t::DNDSparse{K,V}) where {K,V}
     if V <: Tup
         if V<:NamedTuple
             (fieldnames(V)...)
@@ -268,8 +268,8 @@ function subindexspace(t::Union{NDSparse, NextTable}, r)
     return IndexSpace(interval, boundingrect, Nullable{Int}(length(r)))
 end
 
-Base.eltype{T}(::IndexSpace{T}) = T
-Base.eltype{T}(::EmptySpace{T}) = T
+Base.eltype(::IndexSpace{T}) where {T} = T
+Base.eltype(::EmptySpace{T}) where {T} = T
 
 Base.isempty(::EmptySpace) = true
 Base.isempty(::IndexSpace) = false
@@ -277,8 +277,8 @@ Base.isempty(::IndexSpace) = false
 nrows(td::IndexSpace) = td.nrows
 nrows(td::EmptySpace) = Nullable(0)
 
-Base.ndims{T}(::IndexSpace{T})  = nfields(T)
-Base.ndims{T}(::EmptySpace{T})  = nfields(T)
+Base.ndims(::IndexSpace{T}) where {T}  = nfields(T)
+Base.ndims(::EmptySpace{T}) where {T}  = nfields(T)
 
 Base.first(td::IndexSpace) = first(td.interval)
 Base.last(td::IndexSpace) = last(td.interval)
@@ -420,7 +420,7 @@ function cache_thunks(t)
     t
 end
 
-function getkvtypes{N<:NDSparse}(::Type{N})
+function getkvtypes(::Type{N}) where N<:NDSparse
     eltype(N.parameters[3]), N.parameters[1]
 end
 
@@ -508,7 +508,7 @@ function null_length(x::IndexSpace)
     IndexSpace(x.interval, x.boundingrect, Nullable{Int}())
 end
 
-function subtable{K, V}(t::DNDSparse{K,V}, idx)
+function subtable(t::DNDSparse{K,V}, idx) where {K, V}
     if isnull(trylength(t))
         t = compute(t)
     end
