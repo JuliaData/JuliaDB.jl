@@ -11,10 +11,10 @@ import Dagger: compute, distribute, free!, gather, load, save
 using DataValues
 
 # re-export
-export IndexedTable, NDSparse, NextTable, Columns, colnames,
+export IndexedTable, AbstractNDSparse, NDSparse, NextTable, Columns, colnames,
        table, ndsparse, compute, groupby, summarize, groupreduce, groupjoin,
        ColDict, insertafter!, insertbefore!, @cols, setcol, pushcol,
-       popcol, insertcol, insertcolafter, insertcolbefore, permutecols,
+       popcol, insertcol, insertcolafter, insertcolbefore,
        renamecol, NA, dropna, flatten, ML, All, Not, Between, Keys
 
 include("util.jl")
