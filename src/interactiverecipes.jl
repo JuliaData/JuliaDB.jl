@@ -5,7 +5,7 @@
     :nparts_throttle = Observables.throttle(throttle, :nparts)
     :dropmissing = @nodeps toggle(false, label = "dropmissing")
     :by = @nodeps dropdown(colnames(t), multiple = true)
-    wdg[:split] = @nodeps togglecontent(div("by", wdg[:by]), value = false, label = "spit data")
+    wdg[:split] = @nodeps togglecontent(Widgets.div("by", wdg[:by]), value = false, label = "spit data")
     :plot = @nodeps button("plot")
      @output! wdg begin
         $(:plot)
@@ -14,7 +14,7 @@
         partitionplot(t, :x[], y..., by = by, nparts = $(:nparts_throttle), dropmissing = :dropmissing[])
      end
     @layout! wdg begin
-        controls = div(:x, :y,  :split, :dropmissing, :plot)
-        div(controls, div(_.output, :nparts), style = Dict("display" => "flex", "flex-direction"=>"row"))
+        controls = Widgets.div(:x, :y,  :split, :dropmissing, :plot)
+        Widgets.div(controls, Widgets.div(_.output, :nparts), style = Dict("display" => "flex", "flex-direction"=>"row"))
     end
 end

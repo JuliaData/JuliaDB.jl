@@ -24,7 +24,7 @@ using IndexedTables, Dagger, OnlineStats, Distributed, Serialization, Nullables,
 
 
 import Observables, Widgets
-using Widgets: @nodeps, @widget, @layout!, @output!, div
+using Widgets: @nodeps, @widget, @layout!, @output!
 
 #-----------------------------------------------------------------------# exports
 export @cols, @dateformat_str, AbstractNDSparse, All, Between, ColDict, Columns, DColumns, 
