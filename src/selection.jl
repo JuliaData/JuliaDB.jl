@@ -11,7 +11,7 @@ function Base.map(f, t::DDataset; select=nothing)
     end |> fromchunks
 end
 
-function DataValues.dropna(t::DDataset, select=(colnames(t)...))
+function DataValues.dropna(t::DDataset, select=(colnames(t)...,))
     delayedmap(t.chunks) do x
         dropna(x, select)
     end |> fromchunks
@@ -41,7 +41,7 @@ If the mapping is many-to-one, `agg` is used to aggregate the results.
 `name` optionally specifies a name for the new dimension. `xlate` must be a
 monotonically increasing function.
 
-See also [`reducedim`](@ref) and [`aggregate`](@ref)
+See also [`reduce`](@ref) and [`aggregate`](@ref)
 """
 function convertdim(t::DNDSparse{K,V}, d::DimName, xlat;
                     agg=nothing, vecagg=nothing, name=nothing) where {K,V}

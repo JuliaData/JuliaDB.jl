@@ -1,6 +1,6 @@
 using JuliaDB
 using OnlineStats
-using Base.Test
+using Test
 
 @testset "online stats" begin
 global dt

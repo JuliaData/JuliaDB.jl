@@ -4,8 +4,8 @@ using DataValues, PooledArrays
 @testset "Utilities" begin
     @testset "tuplesetindex" begin
         @test tuplesetindex((1,2,3), 4, 2) == (1,4,3)
-        @test tuplesetindex(@NT(x=1,y=2,z=3), 4, 2) == @NT(x=1,y=4,z=3)
-        @test tuplesetindex(@NT(x=1,y=2,z=3), 4, :y) == @NT(x=1,y=4,z=3)
+        @test tuplesetindex((x=1,y=2,z=3), 4, 2) == (x=1,y=4,z=3)
+        @test tuplesetindex((x=1,y=2,z=3), 4, :y) == (x=1,y=4,z=3)
     end
 end
 

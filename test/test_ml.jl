@@ -1,6 +1,6 @@
 import JuliaDB.ML
 using JuliaDB
-using Base.Test
+using Test
 using OnlineStats
 using PooledArrays
 using DataValues

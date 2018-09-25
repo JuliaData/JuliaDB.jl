@@ -5,6 +5,7 @@ using Dagger
 using OnlineStats
 using PooledArrays
 using DataValues
+using Statistics
 
 import Dagger: ArrayOp, DArray, treereduce
 import JuliaDB: Dataset, DDataset, nrows
@@ -14,10 +15,10 @@ import Base: merge
 # Core schema types
 
 schema(xs::AbstractArray) = nothing # catch-all
-schema(xs::AbstractArray, ::Void) = nothing # catch-all
-merge(::Void, ::Void) = nothing
-width(::Void) = 0
-featuremat!(A, ::Void, xs) = A
+schema(xs::AbstractArray, ::Nothing) = nothing # catch-all
+merge(::Nothing, ::Nothing) = nothing
+width(::Nothing) = 0
+featuremat!(A, ::Nothing, xs) = A
 
 schema(xs::ArrayOp) = schema(compute(xs))
 schema(xs::ArrayOp, T) = schema(compute(xs), T)
@@ -36,19 +37,19 @@ width(::Continuous) = 1
 function merge(c1::Continuous, c2::Continuous)
     Continuous(merge(c1.series, c2.series))
 end
-Base.mean(c::Continuous)::Float64 = mean(c.series.stats[1])
-Base.std(c::Continuous)::Float64 = std(c.series.stats[1])
+Statistics.mean(c::Continuous)::Float64 = mean(c.series.stats[1])
+Statistics.std(c::Continuous)::Float64 = std(c.series.stats[1])
 function Base.show(io::IO, c::Continuous)
     write(io, "Continous(μ=$(mean(c)), σ=$(std(c)))")
 end
 Base.@propagate_inbounds function featuremat!(A, c::Continuous, xs,
-                                         dropna=Val{false}())
+                                         dropna=Val(false))
     m = mean(c)
     s = std(c)
     for i in 1:length(xs)
         x =  xs[i]
         if dropna isa Val{true}
-            if isnull(x)
+            if isna(x)
                 continue
             else
                 A[i, 1] = (get(x) - m) / s
@@ -82,11 +83,11 @@ merge(c1::Categorical, c2::Categorical) = Categorical(merge(c1.series, c2.series
 function Base.show(io::IO, c::Categorical)
     write(io, "Categorical($(collect(keys(c))))")
 end
-Base.@propagate_inbounds function featuremat!(A, c::Categorical, xs, dropna=Val{false}())
+Base.@propagate_inbounds function featuremat!(A, c::Categorical, xs, dropna=Val(false))
     ks = keys(c)
     labeldict = Dict{eltype(ks), Int}(zip(ks, 1:length(ks)))
     for i = 1:length(xs)
-        if dropna isa Val{true} && isnull(xs[i])
+        if dropna isa Val{true} && isna(xs[i])
             continue
         end
         A[i, labeldict[xs[i]]] = one(eltype(A))
@@ -116,11 +117,11 @@ end
 schema(xs::DataValueArray) = Maybe(schema(dropna(xs)))
 width(c::Maybe) = width(c.feature) + 1
 merge(m1::Maybe, m2::Maybe) = Maybe(merge(m1.feature, m2.feature))
-nulls(xs) = Base.Generator(isnull, xs)
-nulls(xs::DataValueArray) = xs.isnull
-Base.@propagate_inbounds function featuremat!(A, c::Maybe, xs, dropna=Val{true}())
+nulls(xs) = Base.Generator(isna, xs)
+nulls(xs::DataValueArray) = xs.isna
+Base.@propagate_inbounds function featuremat!(A, c::Maybe, xs, dropna=Val(true))
     copy!(A, CartesianRange((1:length(xs), 1:1)), reshape(nulls(xs), (length(xs), 1)), CartesianRange((1:length(xs), 1:1)))
-    featuremat!(view(A, 1:length(xs), 2:size(A, 2)), c.feature, xs, Val{true}())
+    featuremat!(view(A, 1:length(xs), 2:size(A, 2)), c.feature, xs, Val(true))
     A
 end
 

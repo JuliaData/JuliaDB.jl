@@ -1,7 +1,7 @@
 import IndexedTables: aggregate, aggregate_vec, reducedim_vec, _convert
 using OnlineStatsBase
 import IndexedTables: groupreduce, groupby, ApplyColwise
-import Base: reducedim
+import Base: reduce
 
 export reducedim_vec, aggregate, aggregate_vec
 
@@ -9,7 +9,20 @@ _merger(f) = f
 _merger(f::OnlineStat) = merge
 _merger(f::Tup) = map(_merger, f)
 
-function reduce(f, t::DDataset; select=valuenames(t))
+function reduce(f, t::DDataset; dims = nothing, cache = false, kw...)
+    if dims !== nothing
+        if !isa(t, DNDSparse)
+            error("`dims` only supported for NDSparse")
+        end
+        if !isempty(kw)
+            error("unsupported keyword arguments $kw")
+        end
+        return _reducedim(f, t, dims, cache)
+    end
+    if haskey(kw, :init)
+        return reduce_inited(f, t, kw.init, get(kw, :select, nothing))
+    end
+    select = get(kw, :select, valuenames(t))
     xs = delayedmap(t.chunks) do x
         f = isa(f, OnlineStat) ? copy(f) : f # required for > 1 chunks on the same proc
         reduce(f, x; select=select)
@@ -23,7 +36,7 @@ function reduce(f, t::DDataset; select=valuenames(t))
     collect(get_context(), treereduce(delayed(h), xs))
 end
 
-function reduce(f, t::DDataset, v0; select=nothing)
+function reduce_inited(f, t::DDataset, v0, select)
     xs = delayedmap(t.chunks) do x
         f = isa(f, OnlineStat) ? copy(f) : f
         reduce(f, x; select=select === nothing ? rows(x) : select)
@@ -82,9 +95,9 @@ function groupby(f, t::DDataset, by=pkeynames(t);
        t = rechunk(t, by, subsel)
        newselect = map(select) do x
            if x in by
-               findin(by, x)[1]
+               findall(in(x), by)[1]
            else
-               x1 = findin(subsel, x)
+               x1 = findall(in(x), subsel)
                x1[1] + length(by)
            end
        end
@@ -98,15 +111,15 @@ function groupby(f, t::DDataset, by=pkeynames(t);
     end
 end
 
-function reducedim(f, x::DNDSparse, dims; cache=false)
+function _reducedim(f, x::DNDSparse, dims, cache)
     keep = setdiff([1:ndims(x);], dims) # TODO: Allow symbols
     if isempty(keep)
         throw(ArgumentError("to remove all dimensions, use `reduce(f, A)`"))
     end
-    groupreduce(f, x, (keep...), select=valuenames(x), cache=cache)
+    groupreduce(f, x, (keep...,), select=valuenames(x), cache=cache)
 end
 
-reducedim(f, x::DNDSparse, dims::Symbol) = reducedim(f, x, [dims])
+_reducedim(f, x::DNDSparse, dims::Symbol, cache) = _reducedim(f, x, [dims], cache)
 
 """
     reducedim_vec(f::Function, t::DNDSparse, dims)
@@ -121,7 +134,7 @@ function reducedim_vec(f, x::DNDSparse, dims)
         throw(ArgumentError("to remove all dimensions, use `reduce(f, A)`"))
     end
 
-    t = selectkeys(x, (keep...); agg=nothing)
+    t = selectkeys(x, (keep...,); agg=nothing)
     cache_thunks(groupby(f, t))
 end
 

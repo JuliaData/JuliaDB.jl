@@ -1,5 +1,3 @@
-using Base.Test
-
 """
 An interval type tailored specifically to store intervals of
 indices of an NDSparse object. Some of the operations on this
@@ -17,7 +15,7 @@ Base.last(int::Interval) = int.last
 Base.isempty(int::Interval) = first(int) > last(int)
 Base.isless(x::Interval, y::Interval) = x.last < y.first
 Base.in(x, int::Interval) = first(int) <= x <= last(int)
-Base.in(x::Range, int::Interval) = hasoverlap(Interval(first(x),last(x)), int)
+Base.in(x::AbstractRange, int::Interval) = hasoverlap(Interval(first(x),last(x)), int)
 Base.in(x::AbstractArray, int::Interval) = any(a in int for a in x)
 Base.in(x::Colon, int::Interval) = true
 Base.in(int::Interval, x::Union{AbstractArray, Colon}) = x in int

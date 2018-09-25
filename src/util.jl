@@ -1,13 +1,8 @@
 import IndexedTables: astuple
-using NamedTuples
 
 using PooledArrays
 using DataValues
 using WeakRefStrings
-
-
-# re-export
-export @NT
 
 function treereduce(f, xs, v0=xs[1])
     length(xs) == 0 && return v0
@@ -17,6 +12,7 @@ function treereduce(f, xs, v0=xs[1])
     f(treereduce(f, xs[1:m]), treereduce(f, xs[m+1:end]))
 end
 
+dvcat(x...; dims) = vcat(x...)
 
 function subtable(nds::NDSparse, r)
     NDSparse(keys(nds)[r], values(nds)[r], presorted=true, copy=false)
@@ -145,7 +141,7 @@ function _loadtable_serial(T, file::Union{IO, AbstractString, AbstractArray};
 
         indexvecs = cols[_indexcols]
 
-        nullableidx = find(x->eltype(x) <: Union{DataValue,Nullable}, indexvecs)
+        nullableidx = findall(x->eltype(x) <: Union{DataValue,Nullable}, indexvecs)
         if !isempty(nullableidx)
             badcol_names = header[_indexcols[nullableidx]]
             warn("Indexed columns may contain Nullables or NAs. Column(s) with nullables: $(join(badcol_names, ", ", " and ")). This will result in wrong sorting.")
@@ -275,7 +271,7 @@ map_params(f, ::Type{T}, ::Type{S}) where {T,S} = f(T,S)
 
 #function map_params{N}(f, T::Type{T} where T<:Tuple{Vararg{Any,N}}, S::Type{S} where S<: Tuple{Vararg{Any,N}})
 Base.@pure function map_params(f, ::Type{T}, ::Type{S}) where {T<:Tuple,S<:Tuple}
-    if nfields(T) != nfields(S)
+    if fieldcount(T) != fieldcount(S)
         MethodError(map_params, (typeof(f), T,S))
     end
     Tuple{_map_params(f, T,S)...}
@@ -283,19 +279,18 @@ end
 
 _tuple_type_head(T::Type{NT}) where {NT<: NamedTuple} = fieldtype(NT, 1)
 
-Base.@pure function _tuple_type_tail(T::Type{NT}) where NT<: NamedTuple
-    Tuple{Base.argtail(NT.parameters...)...}
+Base.@pure function _tuple_type_tail(T::Type{NamedTuple{n,ts}}) where {n,ts}
+    _tuple_type_tail(ts)
 end
 
 Base.@pure @generated function map_params(f, ::Type{T}, ::Type{S}) where {T<:NamedTuple,S<:NamedTuple}
     if fieldnames(T) != fieldnames(S)
         MethodError(map_params, (T,S))
     end
-    NT = Expr(:macrocall, :(NamedTuples.$(Symbol("@NT"))), fieldnames(T)...)
-    :($NT{_map_params(f, T, S)...})
+    :(NamedTuple{$(fieldnames(T)), Tuple{_map_params(f, T, S)...}})
 end
 
-function randomsample(n, r::Range)
+function randomsample(n, r::AbstractRange)
     k = 0
     taken = Set{eltype(r)}()
     output = eltype(r)[]
@@ -311,27 +306,19 @@ function randomsample(n, r::Range)
 end
 
 function tuplesetindex(x::Tuple{Vararg{Any,N}}, v, i) where N
-    ntuple(Val{N}) do j
+    ntuple(Val(N)) do j
         i == j ? v : x[j]
     end
 end
 
-@generated function tuplesetindex(x::NamedTuple, v, i::Symbol)
-    fields = fieldnames(x)
-    :(@NT($(fields...))(tuplesetindex(x, v, findfirst($fields, i))...))
-end
+@inline tuplesetindex(x::NamedTuple, v, i::Symbol) = (; x..., i => v)
 
-@generated function tuplesetindex(x::NamedTuple, v, i::Int)
-    fields = fieldnames(x)
-    N = length(fields)
-    quote
-        tup = Base.@ntuple $N j -> i == j ? v : x[j]
-        @NT($(fields...))(tuplesetindex(tup, v, i)...)
-    end
+@inline function tuplesetindex(x::NamedTuple{N}, v, i::Int) where N
+    tuplesetindex(x, v, getfield(N, i))
 end
 
 function tuplesetindex(x::Union{NamedTuple, Tuple}, v::Tuple, i::Tuple)
-    reduce((t, j)->tuplesetindex(t, v[j], i[j]), x, 1:length(i))
+    reduce((t, j)->tuplesetindex(t, v[j], i[j]), 1:length(i), init=x)
 end
 
 

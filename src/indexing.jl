@@ -47,7 +47,7 @@ end
 
 # update a given domain to include a new key
 function update_domain(d::IndexSpace{<:NamedTuple}, key::Tuple)
-    knt = namedtuple(fieldnames(first(d))...)(key...)
+    knt = namedtuple(keys(first(d))...)(key)
     IndexSpace(Interval(min(first(d.interval), knt),
                         max(last(d.interval), knt)),
                Interval(map(min, first(d.interval), knt),

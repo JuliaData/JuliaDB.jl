@@ -9,8 +9,8 @@ function mapslices(f, x::DNDSparse, dims; name=nothing)
     # Note: the key doesn't need to be put in a tuple, this is
     # also bad for sortperm, but is required since DArrays aren't
     # parameterized by the container type Columns
-    vals = isempty(dims) ?  values(x) : (keys(x, (dims...)), values(x))
-    tmp = ndsparse((keys(x, (iterdims...)),), vals,
+    vals = isempty(dims) ?  values(x) : (keys(x, (dims...,)), values(x))
+    tmp = ndsparse((keys(x, (iterdims...,)),), vals,
                    allowoverlap=false, closed=true)
 
     cs = delayedmap(tmp.chunks) do c

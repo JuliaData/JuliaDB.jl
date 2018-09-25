@@ -1,12 +1,14 @@
-julia 0.6 0.7-
-IndexedTables 0.7.3
-NamedTuples 4.0.0
-TextParse 0.3.0
-MemPool 0.0.6
-Dagger 0.5.2
-Glob 1.1.1
+julia 0.7-
+IndexedTables 0.8.0
+TextParse 0.6.0
+MemPool 0.1.0
+Dagger 0.7.0
+Glob 1.2.0
 OnlineStats 0.17.0
-PooledArrays 0.2.1
+OnlineStatsBase
+PooledArrays 0.4.1
 WeakRefStrings
 StatsBase
 DataValues
+Nullables
+RecipesBase

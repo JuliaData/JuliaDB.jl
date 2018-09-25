@@ -1,5 +1,5 @@
 using JuliaDB
-using Base.Test
+using Test
 
 @testset "map & reduce" begin
     t = NDSparse(Columns([1,1,2,2], [1,2,1,2]), [1,2,3,4])
@@ -56,17 +56,17 @@ end
     end
 end
 
-@testset "reducedim" begin
+@testset "reduce" begin
     t1 = NDSparse(Columns([1,1,2,2], [1,2,1,2]), [1,2,3,4])
-    rd1 = reducedim(+, t1, 1)
-    rd2 = reducedim(+, t1, 2)
+    rd1 = reduce(+, t1, dims=1)
+    rd2 = reduce(+, t1, dims=2)
     rdv1 = reducedim_vec(length, t1, 1)
     rdv2 = reducedim_vec(length, t1, 2)
 
     for n=1:5
         d1 = distribute(t1, n, allowoverlap=true)
-        @test collect(reducedim(+, d1, 1)) == rd1
-        @test collect(reducedim(+, d1, 2)) == rd2
+        @test collect(reduce(+, d1, dims=1)) == rd1
+        @test collect(reduce(+, d1, dims=2)) == rd2
 
         @test collect(reducedim_vec(length, d1, 1)) == rdv1
         @test collect(reducedim_vec(length, d1, 2)) == rdv2
