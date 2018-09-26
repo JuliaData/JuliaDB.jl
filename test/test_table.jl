@@ -1,6 +1,7 @@
 using Test, Dates
 using JuliaDB, Dagger
-using Statistics, OnlineStats
+@everywhere using Statistics
+using OnlineStats
 using DataValues
 import DataValues: NA
 

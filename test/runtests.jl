@@ -7,8 +7,8 @@ using TextParse
 using IndexedTables
 using PooledArrays
 
-#include("test_iteration.jl")
-#include("test_util.jl")
+include("test_iteration.jl")
+include("test_util.jl")
 include("test_table.jl")
 include("test_query.jl")
 include("test_join.jl")

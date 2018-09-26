@@ -209,7 +209,7 @@ function lookupbyheader(header, key)
 end
 
 canonical_name(n::Symbol) = n
-canonical_name(n::String) = Symbol(replace(n, r"\s", "_"))
+canonical_name(n::String) = Symbol(replace(n, r"\s" => "_"))
 canonical_name(n::Union{Tuple, Vector}) = canonical_name(first(n))
 
 function _repeated(x, n)
