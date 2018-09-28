@@ -22,7 +22,7 @@ end
 
 function offset_index!(x, o)
     l = length(x)
-    copy!(columns(x.index)[1], o:o+l-1)
+    copyto!(columns(x.index)[1], o:o+l-1)
     x
 end
 

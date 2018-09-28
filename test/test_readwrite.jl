@@ -3,9 +3,12 @@ using JuliaDB
 using PooledArrays
 using DataValues
 using MemPool
+using Random
+using Serialization
+using Dagger
 
 function roundtrip(x, eq=(==), io=IOBuffer())
-    mmwrite(SerializationState(io), x)
+    mmwrite(Serializer(io), x)
     @test eq(deserialize(seekstart(io)), x)
 end
 

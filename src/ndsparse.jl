@@ -119,7 +119,7 @@ function IndexedTables.valuenames(t::DNDSparse{K,V}) where {K,V}
         if V<:NamedTuple
             (fieldnames(V)...,)
         else
-            ((ndims(t) + (1:fieldcount(V)))...,)
+            ((ndims(t) .+ (1:fieldcount(V)))...,)
         end
     else
         ndims(t) + 1

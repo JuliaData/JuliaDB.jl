@@ -1,4 +1,4 @@
-using JuliaDB
+using JuliaDB, Dagger
 using Test
 
 @testset "setindex!" begin

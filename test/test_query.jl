@@ -1,5 +1,5 @@
 using JuliaDB
-using Test
+using Test, Statistics
 
 @testset "map & reduce" begin
     t = NDSparse(Columns([1,1,2,2], [1,2,1,2]), [1,2,3,4])

@@ -113,7 +113,7 @@ function _loadtable_serial(T, file::Union{IO, AbstractString, AbstractArray};
 
         cols = (namecol, cols...)
         if !isempty(header)
-            unshift!(header, string(filenamecol))
+            pushfirst!(header, string(filenamecol))
         end
     end
 
@@ -132,7 +132,7 @@ function _loadtable_serial(T, file::Union{IO, AbstractString, AbstractArray};
         index = Columns([1:n;])
     else
         indexcolnames = map(indexcols, _indexcols) do name, i
-            if i==0
+            if i === nothing
                 error("Cannot index by unknown column $name")
             else
                 isa(name, Int) ? canonical_name(header[name]) : canonical_name(name)
@@ -164,7 +164,7 @@ function _loadtable_serial(T, file::Union{IO, AbstractString, AbstractArray};
     end
 
     datacolnames = map(datacols, _datacols) do name, i
-        if i == 0
+        if i === nothing
             if isa(name, Int)
                 error("Unknown column numbered $name specified in datacols")
             else
@@ -176,7 +176,7 @@ function _loadtable_serial(T, file::Union{IO, AbstractString, AbstractArray};
     end
 
     datavecs = map(_datacols) do i
-        if i == 0
+        if i === nothing
             DataValueArray{Union{}}(n) # missing column
         else
             cols[i]
@@ -198,13 +198,13 @@ function lookupbyheader(header, key)
     elseif isa(key, String)
         return findfirst(x->x==key, header)
     elseif isa(key, Int)
-        return 0 < key <= length(header) ? key : 0
+        return 0 < key <= length(header) ? key : nothing
     elseif isa(key, Tuple) || isa(key, Vector)
         for k in key
             x = lookupbyheader(header, k)
             x != 0 && return x
         end
-        return 0
+        return nothing
     end
 end
 
