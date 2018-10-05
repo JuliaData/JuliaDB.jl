@@ -120,7 +120,7 @@ merge(m1::Maybe, m2::Maybe) = Maybe(merge(m1.feature, m2.feature))
 nulls(xs) = Base.Generator(isna, xs)
 nulls(xs::DataValueArray) = xs.isna
 Base.@propagate_inbounds function featuremat!(A, c::Maybe, xs, dropna=Val(true))
-    copy!(A, CartesianRange((1:length(xs), 1:1)), reshape(nulls(xs), (length(xs), 1)), CartesianRange((1:length(xs), 1:1)))
+    copyto!(A, CartesianIndices((1:length(xs), 1:1)), reshape(nulls(xs), (length(xs), 1)), CartesianIndices((1:length(xs), 1:1)))
     featuremat!(view(A, 1:length(xs), 2:size(A, 2)), c.feature, xs, Val(true))
     A
 end
