@@ -189,7 +189,7 @@ function load(f::AbstractString)
 end
 
 """
-`save(t::Union{DNDSparse, DNDSparse}, outputdir::AbstractString)`
+`save(t::DNDSparse, outputdir::AbstractString)`
 
 Saves a distributed dataset to disk. Saved data can be loaded with `load`.
 """
