@@ -6,7 +6,7 @@ using IndexedTables, Dagger, OnlineStats, Distributed, Serialization, Nullables,
 import Base: collect, join
 import IndexedTables: NextTable, table, NDSparse, ndsparse, Tup, groupjoin
 import TextParse: csvread
-import Dagger: compute, distribute, free!, gather, load, save
+import Dagger: compute, distribute, load, save
 using DataValues
 
 # re-export

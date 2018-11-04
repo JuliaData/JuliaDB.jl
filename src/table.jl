@@ -2,10 +2,10 @@ import Base:collect, ==
 import IndexedTables: NextTable, table, colnames, reindex,
                       excludecols, showtable, ColDict,
                       AbstractIndexedTable, Dataset
-import Dagger: domainchunks, chunks, free!
+import Dagger: domainchunks, chunks
 
 # re-export the essentials
-export distribute, chunks, compute, free!
+export distribute, chunks, compute
 
 const IndexTuple = Union{Tuple, NamedTuple}
 
@@ -33,22 +33,8 @@ mutable struct DNextTable{T,K} <: AbstractIndexedTable
     # extent of values in the pkeys
     domains::Vector{IndexSpace}
     chunks::Vector
-    freed::Bool
-    function DNextTable{T,K}(pkey, domains, chunks) where {T, K}
-        t = new(pkey, domains, chunks, false)
-        Dagger.refcount_chunks(t.chunks)
-        finalizer(free!, t)
-        t
-    end
 end
 
-function free!(x::DNextTable)
-    if !x.freed
-        @async Dagger.free_chunks(x.chunks)
-        x.freed = true
-    end
-    nothing
-end
 
 noweakref(w::WeakRefString) = string(w)
 noweakref(x) = x
