@@ -5,7 +5,7 @@ using OnlineStats
 using DataValues
 import DataValues: NA
 
-import JuliaDB: pkeynames, pkeys, excludecols
+import JuliaDB: pkeynames, pkeys, excludecols, select
 
 @testset "table" begin
     t = table([1, 1, 1, 2, 2, 2], [1, 1, 2, 2, 1, 1], [1, 2, 3, 4, 5, 6], names=[:x, :y, :z], pkey=(:x, :y), chunks=2)
