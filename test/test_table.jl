@@ -84,7 +84,7 @@ import JuliaDB: pkeynames, pkeys, excludecols, select
     @test setcol(t, :x, :x => (x->1 / x)) == table([1.0, 0.5], [3, 4], names=Symbol[:x, :y])
     t = table([0.01, 0.05], [1, 2], [3, 4], names=[:t, :x, :y], pkey=:t, chunks=2)
     t2 = setcol(t, :t, [0.1, 0.05])
-    #@test t == t2
+    @test t2 == table([0.05, 0.1], [2,1], [4,3], names=[:t,:x,:y])
     t = table([0.01, 0.05], [2, 1], [3, 4], names=[:t, :x, :y], pkey=:t, chunks=2)
     @test pushcol(t, :z, [1 // 2, 3 // 4]) == table([0.01, 0.05], [2, 1], [3, 4], Rational{Int64}[1//2, 3//4], names=Symbol[:t, :x, :y, :z])
     t = table([0.01, 0.05], [2, 1], [3, 4], names=[:t, :x, :y], pkey=:t, chunks=2)
@@ -109,12 +109,10 @@ import JuliaDB: pkeynames, pkeys, excludecols, select
     @test join(l, r, lkey=:a, rkey=:a, lselect=:b, rselect=:d, how=:outer) == table([0, 1, 1, 1, 1, 2, 2, 3], DataValueArray([NA, 1, 1, 2, 2, 1, 2, NA]), DataValueArray([1, 2, 3, 2, 3, NA, NA, 4]), names=Symbol[:a, :b, :d])
     l = table([1, 1, 1, 2], [1, 2, 2, 1], [1, 2, 3, 4], names=[:a, :b, :c], pkey=(:a, :b), chunks=2)
     r = table([0, 1, 1, 2], [1, 2, 2, 1], [1, 2, 3, 4], names=[:a, :b, :d], pkey=(:a, :b), chunks=2)
-    #=
     @test groupjoin(l, r) == table([1, 2], [2, 1], [Columns((c = [2, 2, 3, 3], d = [2, 3, 2, 3])), Columns((c = [4], d = [4]))], names=Symbol[:a, :b, :groups])
     @test groupjoin(l, r, how=:left) == table([1, 1, 2], [1, 2, 1], [Columns((c = [], d = [])), Columns((c = [2, 2, 3, 3], d = [2, 3, 2, 3])), Columns((c = [4], d = [4]))], names=Symbol[:a, :b, :groups])
     @test groupjoin(l, r, how=:outer) == table([0, 1, 1, 2], [1, 1, 2, 1], [Columns((c = [], d = [])), Columns((c = [], d = [])), Columns((c = [2, 2, 3, 3], d = [2, 3, 2, 3])), Columns((c = [4], d = [4]))], names=Symbol[:a, :b, :groups])
     @test groupjoin(l, r, lkey=:a, rkey=:a, lselect=:c, rselect=:d, how=:outer) == table([0, 1, 2], [Columns((c = [], d = [])), Columns((c = [1, 1, 2, 2, 3, 3], d = [2, 3, 2, 3, 2, 3])), Columns((c = [4], d = [4]))], names=Symbol[:a, :groups])
-    =#
     x = ndsparse((["ko", "ko", "xrx", "xrx"], Date.(["2017-11-11", "2017-11-12", "2017-11-11", "2017-11-12"])), [1, 2, 3, 4], chunks=2)
     y = ndsparse((["ko", "ko", "xrx", "xrx"], Date.(["2017-11-12", "2017-11-13", "2017-11-10", "2017-11-13"])), [5, 6, 7, 8], chunks=2)
     @test asofjoin(x, y) == ndsparse((String["ko", "ko", "xrx", "xrx"], Date.(["2017-11-11", "2017-11-12", "2017-11-11", "2017-11-12"])), [1, 5, 7, 7])
@@ -189,7 +187,7 @@ import JuliaDB: pkeynames, pkeys, excludecols, select
     manh = map((row->row.x + row.y), t)
     polar = map((p->(r = hypot(p.x + p.y), θ = atan(p.y, p.x))), t)
     vx = map((row->row.x / row.t), t, select=(:t, :x))
-    #@test collect(map(sin, polar, select=:θ)) == [0.948683, 0.894427]
+    #@test collect(map(sin, polar, select=:θ)) ≈ [0.948683, 0.894427]
     t = table([0.1, 0.5, NA, 0.7], [2, NA, 4, 5], [NA, 6, NA, 7], names=[:t, :x, :y], chunks=2)
     @test dropna(t) == table([0.7], [5], [7], names=Symbol[:t, :x, :y])
     @test dropna(t, :y) == table(DataValues.DataValue{Float64}[0.5, 0.7], DataValues.DataValue{Int64}[NA, 5], [6, 7], names=Symbol[:t, :x, :y])
