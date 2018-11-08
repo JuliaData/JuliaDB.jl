@@ -1,11 +1,14 @@
-using Base.Test
+using Test
 using JuliaDB
 using PooledArrays
 using DataValues
 using MemPool
+using Random
+using Serialization
+using Dagger
 
 function roundtrip(x, eq=(==), io=IOBuffer())
-    mmwrite(SerializationState(io), x)
+    mmwrite(Serializer(io), x)
     @test eq(deserialize(seekstart(io)), x)
 end
 
@@ -71,7 +74,7 @@ import Dagger: Chunk
         rm(cache)
     end
     missingcoltbl = loadndsparse(joinpath(@__DIR__, "missingcols"), datacols=[:a, :x, :y], usecache=false, chunks=2)
-    @test eltype(missingcoltbl) == @NT(a,x,y){Int, DataValue{Int}, DataValue{Float64}}
+    @test eltype(missingcoltbl) == NamedTuple{(:a,:x,:y),Tuple{Int, DataValue{Int}, DataValue{Float64}}}
 
     @test collect(loadtable(shuffle_files,chunks=2)) == table(spdata_unordered.data)
     # file name as a column:
@@ -92,7 +95,7 @@ import Dagger: Chunk
     @test haskey(nds.index.columns, :dummy)
     @test !haskey(nds.index.columns, :ticker)
     @test length(nds.index.columns) == 2
-    @test fieldnames(nds.data.columns) == [:open, :high, :low, :close, :volume]
+    @test keys(nds.data.columns) == (:open, :high, :low, :close, :volume)
     @test length(nds.data.columns) == 5
 
     dt = loadndsparse(shuffle_files, usecache=false, chunks=2)
@@ -109,7 +112,7 @@ import Dagger: Chunk
     nds = collect(dt)
     @test haskey(nds.index.columns, :a)
     @test haskey(nds.index.columns, :b)
-    @test fieldnames(nds.data.columns) == [:c,:d,:e,:f,:g]
+    @test keys(nds.data.columns) == (:c,:d,:e,:f,:g)
 end
 
 @testset "save" begin

@@ -43,7 +43,7 @@ function rechunk(dt::DDataset,
                  closed=true,
                  sortchunks=true,
                  nsamples=2000,
-                 batchsize=nworkers())
+                 batchsize=max(2, nworkers()))
 
     if sortchunks
         perm = sortperm(dt.domains, by=first)

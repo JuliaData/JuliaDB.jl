@@ -1,5 +1,5 @@
-using JuliaDB
-using Base.Test
+using JuliaDB, Dagger
+using Test
 
 @testset "setindex!" begin
     x = ndsparse(([1,2],[2,3]), [4,5], chunks=2)
@@ -8,11 +8,11 @@ using Base.Test
     x[2,4] = 7
     @test x == ndsparse(([1,2,2], [2,3,4]), [4,6,7])
 
-    x = ndsparse(@NT(x=[1,2],y=[2,3]), [4,5], chunks=2)
+    x = ndsparse((x=[1,2],y=[2,3]), [4,5], chunks=2)
     x[2,3] = 6
-    @test x == ndsparse(@NT(x=[1,2], y=[2,3]), [4,6])
+    @test x == ndsparse((x=[1,2], y=[2,3]), [4,6])
     x[2,4] = 7
-    @test x == ndsparse(@NT(x=[1,2,2], y=[2,3,4]), [4,6,7])
+    @test x == ndsparse((x=[1,2,2], y=[2,3,4]), [4,6,7])
 end
 
 @testset "extractarray" begin

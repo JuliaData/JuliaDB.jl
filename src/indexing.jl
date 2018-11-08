@@ -47,7 +47,7 @@ end
 
 # update a given domain to include a new key
 function update_domain(d::IndexSpace{<:NamedTuple}, key::Tuple)
-    knt = namedtuple(fieldnames(first(d))...)(key...)
+    knt = namedtuple(keys(first(d))...)(key)
     IndexSpace(Interval(min(first(d.interval), knt),
                         max(last(d.interval), knt)),
                Interval(map(min, first(d.interval), knt),
@@ -75,10 +75,6 @@ function insert_row!(x::DNDSparse{K,T}, idxs::Tuple, val) where {K,T}
     ds[i] = update_domain(ds[i], idxs)
     tmp = cs[i]
     cs[i] = compute(get_context(), delayed(x->(x[idxs...] = val; x))(cs[i]))
-    isa(cs[i].handle, DRef) && Dagger.addrefcount(cs[i].handle, 1)
-    isa(tmp.handle, DRef) && Dagger.addrefcount(tmp.handle, -1)
-    # TODO: tmp is not freed yet. Should ensure Dagger.free_chunks is called on it.
-
     x.domains = ds
     x.chunks = cs
 end

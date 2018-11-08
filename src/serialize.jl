@@ -4,9 +4,9 @@ import MemPool: mmwrite, mmread, MMSer
 #### DataValueArray
 
 function mmwrite(io::AbstractSerializer, xs::DataValueArray)
-    Base.serialize_type(io, MMSer{DataValueArray})
+    Serialization.serialize_type(io, MMSer{DataValueArray})
     
-    mmwrite(io, BitArray(xs.isnull))
+    mmwrite(io, BitArray(xs.isna))
     mmwrite(io, xs.values)
 end
 
@@ -19,7 +19,7 @@ end
 using PooledArrays
 
 function mmwrite(io::AbstractSerializer, xs::PooledArray)
-    Base.serialize_type(io, MMSer{PooledArray})
+    Serialization.serialize_type(io, MMSer{PooledArray})
     
     mmwrite(io, xs.pool)
     mmwrite(io, xs.refs)
@@ -34,7 +34,7 @@ end
 # Columns, NDSparse
 
 function mmwrite(io::AbstractSerializer, xs::Columns)
-    Base.serialize_type(io, MMSer{Columns})
+    Serialization.serialize_type(io, MMSer{Columns})
     
     if eltype(xs) <: NamedTuple
         fnames = fieldnames(eltype(xs))
@@ -60,7 +60,7 @@ function mmread(::Type{Columns}, io, mmap)
 end
 
 function mmwrite(io::AbstractSerializer, xs::NDSparse)
-    Base.serialize_type(io, MMSer{NDSparse})
+    Serialization.serialize_type(io, MMSer{NDSparse})
 
     flush!(xs)
     mmwrite(io, xs.index)
@@ -74,7 +74,7 @@ function mmread(::Type{NDSparse}, io, mmap)
 end
 
 function mmwrite(io::AbstractSerializer, xs::NextTable)
-    Base.serialize_type(io, MMSer{NextTable})
+    Serialization.serialize_type(io, MMSer{NextTable})
 
     #flush!(xs)
     mmwrite(io, rows(xs))

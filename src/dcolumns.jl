@@ -19,7 +19,7 @@ function DColumns(arrays::Tup)
 
     i = findfirst(x->isa(x, ArrayOp), arrays)
     wrap = isa(arrays, Tuple) ? tuple :
-                                namedtuple(fieldnames(arrays)...)
+                                namedtuple(keys(arrays)...)∘tuple
     if i == 0
         error("""At least 1 array passed to
                  DColumns must be a DArray""")
@@ -53,7 +53,7 @@ function DColumns(arrays::Tup)
     T = isa(arrays, Tuple) ? Tuple{map(eltype, arrays)...} :
         wrap{map(eltype, arrays)...}
 
-    DArray(T, domain(darrays[1]), domainchunks(darrays[1]), cs, (i, x...)->vcat(x...))
+    DArray(T, domain(darrays[1]), domainchunks(darrays[1]), cs, dvcat)
 end
 
 function itable(keycols::DColumns, valuecols::DColumns)
@@ -69,7 +69,7 @@ function extractarray(t::Union{DNDSparse,DColumns}, accessor)
         lengths = length.(domain.(cs))
         dmnchunks = DomainBlocks((1,), (cumsum(lengths),))
         T = promote_eltype_chunktypes(cs)
-        DArray(T, ArrayDomain(1:sum(lengths)), dmnchunks, [cs...], (i, x...)->vcat(x...))
+        DArray(T, ArrayDomain(1:sum(lengths)), dmnchunks, [cs...], dvcat)
     end
 
     cs = map(delayed(accessor), t.chunks)
@@ -101,7 +101,7 @@ function columns(t::Union{DNDSparse, DColumns}, which::Tuple...)
         ls = length.(domain.(cs))
         d = ArrayDomain((1:sum(ls),))
         dchunks = DomainBlocks((1,), (cumsum(ls),))
-        DArray(eltype(T), d, dchunks, cs, (i, x...) -> vcat(x...))
+        DArray(eltype(T), d, dchunks, cs, dvcat)
     end
 end
 
@@ -109,7 +109,7 @@ function _columns_as(t, which)
     stripas(w) = isa(w, As) ? w.src : w
     which_ = ntuple(i->as(stripas(which[i]), i), length(which))
     cs = columns(t, which_)
-    asvecs = find(isas, which)
+    asvecs = findall(isas, which)
     outvecs = Any[cs...]
     outvecs[asvecs] = map((w,x) -> w.f(x), [which[asvecs]...], outvecs[asvecs])
     tup = IndexedTables._output_tuple(which)

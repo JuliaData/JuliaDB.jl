@@ -2,10 +2,9 @@ include("testenv.jl")
 addprocs_with_testenv(2)
 
 using JuliaDB
-using Base.Test
+using Test
 using TextParse
 using IndexedTables
-using NamedTuples
 using PooledArrays
 
 include("test_iteration.jl")

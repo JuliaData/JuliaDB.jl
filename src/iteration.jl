@@ -1,14 +1,14 @@
 # Extract a column as a Dagger array
 export DColumns, column, columns, rows, pairs
 
-import Base: keys, values
+import Base: keys, values, iterate
 import IndexedTables: DimName, Columns, column, columns,
        rows, pkeys, pairs, Tup, namedtuple, itable
 
 import Dagger: DomainBlocks, ArrayDomain, DArray,
                 ArrayOp, domainchunks, chunks, Distribute
 
-import Base.Iterators: PartitionIterator, start, next, done
+import Base.Iterators: PartitionIterator
 
 function Iterators.partition(t::DDataset, n::Integer)
     PartitionIterator(t, n)
@@ -20,20 +20,19 @@ struct PartIteratorState{T}
     used::Int
 end
 
-function start(p::PartitionIterator{<:DDataset})
-    if !isempty(p.c.chunks)
-        c = collect(p.c.chunks[1])
-        PartIteratorState(1, c, 0)
+function iterate(p::PartitionIterator{<:DDataset})
+    state = if !isempty(p.c.chunks)
+        PartIteratorState(1, collect(p.c.chunks[1]), 0)
     else
         PartIteratorState(1, collect(p.c), 0)
     end
+    return iterate(p, state)
 end
 
-function done(t::PartitionIterator{<:DDataset}, p::PartIteratorState)
-    p.chunkno == length(t.c.chunks) && p.used >= length(p.chunk)
-end
-
-function next(t::PartitionIterator{<:DDataset}, p::PartIteratorState)
+function iterate(t::PartitionIterator{<:DDataset}, p::PartIteratorState)
+    if p.chunkno == length(t.c.chunks) && p.used >= length(p.chunk)
+        return nothing
+    end
     if p.used + t.n <= length(p.chunk)
         # easy
         nextpart = subtable(p.chunk, p.used+1:(p.used+t.n))
@@ -78,7 +77,7 @@ function DColumns(arrays::Tup)
 
     i = findfirst(x->isa(x, ArrayOp), arrays)
     wrap = isa(arrays, Tuple) ? tuple :
-                                namedtuple(fieldnames(arrays)...)
+                                namedtuple(keys(arrays)...)∘tuple
     if i == 0
         error("""At least 1 array passed to
                  DColumns must be a DArray""")
@@ -112,7 +111,7 @@ function DColumns(arrays::Tup)
     T = isa(arrays, Tuple) ? Tuple{map(eltype, arrays)...} :
         wrap{map(eltype, arrays)...}
 
-    DArray(T, domain(darrays[1]), domainchunks(darrays[1]), cs, (i, x...)->vcat(x...))
+    DArray(T, domain(darrays[1]), domainchunks(darrays[1]), cs, dvcat)
 end
 
 function itable(keycols::DArray, valuecols::DArray)
@@ -158,7 +157,7 @@ function columns(t::Union{DDataset, DArray})
             names = fieldnames(eltype(t))
         end
         if all(x -> x isa Symbol, names)
-            IndexedTables.namedtuple(names...)(arrays...)
+            IndexedTables.namedtuple(names...)(arrays)
         else
             arrays
         end

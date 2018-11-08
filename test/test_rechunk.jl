@@ -1,5 +1,5 @@
 using JuliaDB
-using Base.Test
+using Test
 
 @testset "rechunk" begin
     t = NDSparse([1:10;], ones(10), ones(10))

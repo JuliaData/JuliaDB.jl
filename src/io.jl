@@ -1,6 +1,5 @@
 export loadfiles, ingest, ingest!, load, save, loadndsparse, loadtable
-import Base: serialize, deserialize
-import Dagger: refcount_chunks
+import Serialization: serialize, deserialize
 
 const JULIADB_DIR = ".juliadb"
 const JULIADB_FILECACHE = "csv_metadata"
@@ -22,13 +21,13 @@ end
 
 function offset_index!(x, o)
     l = length(x)
-    copy!(columns(x.index)[1], o:o+l-1)
+    copyto!(columns(x.index)[1], o:o+l-1)
     x
 end
 
 function offset_index!(x::DNDSparse, o=1)
     lengths = map(a->get(a.nrows), x.domains)
-    offs = [0, cumsum(lengths[1:end-1]);] .+ 1
+    offs = [0; cumsum(lengths[1:end-1])] .+ 1
     fromchunks(delayedmap(offset_index!, x.chunks, offs))
 end
 
@@ -222,33 +221,25 @@ function _makerelative!(t, dir::AbstractString)
     end
 end
 
-function serialize(io::AbstractSerializer, A::Union{DNextTable,DNDSparse})
-    @async refcount_chunks(A)
-    invoke(serialize, Tuple{AbstractSerializer,Any}, io, A)
-end
-
 deserialize(io::AbstractSerializer, DT::Type{DNDSparse{K,V}}) where {K,V} = _deser(io, DT)
 deserialize(io::AbstractSerializer, DT::Type{DNextTable{T,K}}) where {T,K} = _deser(io, DT)
 function _deser(io::AbstractSerializer, t)
-    nf = nfields(t)
+    nf = fieldcount(t)
     x = ccall(:jl_new_struct_uninit, Any, (Any,), t)
-    t.mutable && Base.Serializer.deserialize_cycle(io, x)
+    t.mutable && Serialization.deserialize_cycle(io, x)
     for i in 1:nf
         tag = Int32(read(io.io, UInt8)::UInt8)
-        if tag != Base.Serializer.UNDEFREF_TAG
-            ccall(:jl_set_nth_field, Void, (Any, Csize_t, Any), x, i-1, Base.Serializer.handle_deserialize(io, tag))
+        if tag != Serialization.UNDEFREF_TAG
+            ccall(:jl_set_nth_field, Cvoid, (Any, Csize_t, Any), x, i-1, Serialization.handle_deserialize(io, tag))
         end
     end
-    finalizer(x, free!)
     return x
 end
-
-refcount_chunks(A::Union{DNextTable,DNDSparse}) = refcount_chunks(A.chunks)
 
 using WeakRefStrings
 
 function MemPool.mmwrite(io::AbstractSerializer, arr::StringArray)
-    Base.serialize_type(io, MemPool.MMSer{StringArray})
+    Serialization.serialize_type(io, MemPool.MMSer{StringArray})
     serialize(io, eltype(arr))
     MemPool.mmwrite(io, arr.buffer)
     MemPool.mmwrite(io, arr.offsets)

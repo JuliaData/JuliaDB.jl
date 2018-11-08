@@ -1,7 +1,7 @@
 export AbstractNDSparse
 
 import Dagger: chunktype, domain, tochunk, distribute,
-               chunks, Context, compute, gather, free!
+               chunks, Context, compute
 
 import IndexedTables: eltypes, astuple, colnames, ndsparse, pkeynames, valuenames
 
@@ -19,20 +19,6 @@ A distributed [NDSparse](@ref) datastructure. Can be constructed by:
 mutable struct DNDSparse{K,V} <: AbstractNDSparse
     domains::Vector{IndexSpace{K}}
     chunks::Vector
-    freed::Bool
-    function DNDSparse{K, V}(domains, chunks) where {K, V}
-        x = new(domains, chunks, false)
-        Dagger.refcount_chunks(x.chunks)
-        finalizer(x, free!)
-        x
-    end
-end
-function free!(x::DNDSparse)
-    if !x.freed
-        @schedule Dagger.free_chunks(x.chunks)
-        x.freed = true
-    end
-    nothing
 end
 
 const DDataset = Union{DNextTable, DNDSparse}
@@ -68,9 +54,9 @@ function ndsparse(::Val{:distributed}, ks::Tup,
     end
 
     nchunks = length(kdarrays[1].chunks)
-    inames = isa(ks, NamedTuple) ? fieldnames(ks) : nothing
+    inames = isa(ks, NamedTuple) ? keys(ks) : nothing
     ndims = length(ks)
-    dnames = isa(vs, NamedTuple) ? fieldnames(vs) : nothing
+    dnames = isa(vs, NamedTuple) ? keys(vs) : nothing
     iscols = isa(vs, Tup)
 
     function makechunk(args...)
@@ -79,7 +65,7 @@ function ndsparse(::Val{:distributed}, ks::Tup,
         ndsparse(k,v; agg=agg, kwargs...)
     end
 
-    cs = Array{Any}(nchunks)
+    cs = Array{Any}(undef, nchunks)
     for i = 1:nchunks
         args = Any[map(x->x.chunks[i], kdarrays)...]
         append!(args, isa(vs, Tup) ? [map(x->x.chunks[i], vdarrays)...] :
@@ -101,25 +87,25 @@ end
 Base.eltype(dt::DNDSparse{K,V}) where {K,V} = V
 Base.keytype(dt::DNDSparse{K,V}) where {K,V} = IndexedTables.astuple(K)
 IndexedTables.dimlabels(dt::DNDSparse{K}) where {K} = fieldnames(K)
-Base.ndims(dt::DNDSparse{K}) where {K} = nfields(K)
+Base.ndims(dt::DNDSparse{K}) where {K} = fieldcount(K)
 keytype(dt::DNDSparse{K}) where {K} = astuple(K)
 
 # TableLike API
 Base.@pure function IndexedTables.colnames(t::DNDSparse{K,V}) where {K,V}
-    dnames = V<:Tup ? fieldnames(V) : [1]
-    if all(x->isa(x, Integer), dnames)
-        dnames = map(x->x+nfields(K), dnames)
+    dnames = V<:Tup ? fieldnames(V) : (1,)
+    if dnames isa Tuple{Vararg{Integer}}
+        dnames = map(x->x+fieldcount(K), dnames)
     end
-    vcat(fieldnames(K), dnames)
+    (fieldnames(K)..., dnames...)
 end
 
-Base.@pure pkeynames(t::DNDSparse{K,V}) where {K, V} = (fieldnames(K)...)
+Base.@pure pkeynames(t::DNDSparse{K,V}) where {K, V} = (fieldnames(K)...,)
 function IndexedTables.valuenames(t::DNDSparse{K,V}) where {K,V}
     if V <: Tup
         if V<:NamedTuple
-            (fieldnames(V)...)
+            (fieldnames(V)...,)
         else
-            ((ndims(t) + (1:nfields(V)))...)
+            ((ndims(t) .+ (1:fieldcount(V)))...,)
         end
     else
         ndims(t) + 1
@@ -127,7 +113,7 @@ function IndexedTables.valuenames(t::DNDSparse{K,V}) where {K,V}
 end
 
 
-const compute_context = Ref{Union{Void, Context}}(nothing)
+const compute_context = Ref{Union{Nothing, Context}}(nothing)
 get_context() = compute_context[] == nothing ? Context() : compute_context[]
 
 """
@@ -240,7 +226,7 @@ function Dagger.domain(nd::NDSparse)
         return EmptySpace{T}()
     end
 
-    wrap = T<:NamedTuple ? T : tuple
+    wrap = T<:NamedTuple ? T∘tuple : tuple
 
     interval = Interval(wrap(first(nd.index)...), wrap(last(nd.index)...))
  #  cs = astuple(nd.index.columns)
@@ -253,7 +239,7 @@ end
 function subindexspace(t::Union{NDSparse, NextTable}, r)
     ks = pkeys(t)
     T = eltype(typeof(ks))
-    wrap = T<:NamedTuple ? T : tuple
+    wrap = T<:NamedTuple ? T∘tuple : tuple
 
     if isempty(r)
         return EmptySpace{T}()
@@ -277,8 +263,8 @@ Base.isempty(::IndexSpace) = false
 nrows(td::IndexSpace) = td.nrows
 nrows(td::EmptySpace) = Nullable(0)
 
-Base.ndims(::IndexSpace{T}) where {T}  = nfields(T)
-Base.ndims(::EmptySpace{T}) where {T}  = nfields(T)
+Base.ndims(::IndexSpace{T}) where {T}  = fieldcount(T)
+Base.ndims(::EmptySpace{T}) where {T}  = fieldcount(T)
 
 Base.first(td::IndexSpace) = first(td.interval)
 Base.last(td::IndexSpace) = last(td.interval)
@@ -399,7 +385,7 @@ function fromchunks(::Type{<:NDSparse}, chunks::AbstractArray;
                     closed = false,
                     allowoverlap = true)
 
-    nzidxs = find(x->!isempty(x), domains)
+    nzidxs = findall(!isempty, domains)
     domains = domains[nzidxs]
 
     dt = DNDSparse{KV...}(domains, chunks[nzidxs])
@@ -450,7 +436,7 @@ Returns a `DNDSparse`.
 """
 function distribute(nds::NDSparse{V}, rowgroups::AbstractArray;
                      allowoverlap = true, closed = false) where V
-    splits = cumsum([0, rowgroups;])
+    splits = cumsum([0; rowgroups])
 
     if splits[end] != length(nds)
         throw(ArgumentError("the row groups don't add up to total number of rows"))
@@ -552,7 +538,7 @@ function Base.show(io::IO, big::DNDSparse)
         eltypeheader = "$(eltype(t))"
     else
         cnames = colnames(t)
-        nf = nfields(eltype(t))
+        nf = fieldcount(eltype(t))
         if eltype(t) <: NamedTuple
             eltypeheader = "$(nf) field named tuples"
         else
@@ -565,5 +551,3 @@ function Base.show(io::IO, big::DNDSparse)
     showtable(io, t; header=header, cnames=cnames,
               divider=ndims(t), ellipsis=:end)
 end
-
-Base.@deprecate_binding DTable DNDSparse

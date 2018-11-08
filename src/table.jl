@@ -2,10 +2,10 @@ import Base:collect, ==
 import IndexedTables: NextTable, table, colnames, reindex,
                       excludecols, showtable, ColDict,
                       AbstractIndexedTable, Dataset
-import Dagger: domainchunks, chunks, free!
+import Dagger: domainchunks, chunks
 
 # re-export the essentials
-export distribute, chunks, compute, free!
+export distribute, chunks, compute
 
 const IndexTuple = Union{Tuple, NamedTuple}
 
@@ -33,22 +33,8 @@ mutable struct DNextTable{T,K} <: AbstractIndexedTable
     # extent of values in the pkeys
     domains::Vector{IndexSpace}
     chunks::Vector
-    freed::Bool
-    function DNextTable{T,K}(pkey, domains, chunks) where {T, K}
-        t = new(pkey, domains, chunks, false)
-        Dagger.refcount_chunks(t.chunks)
-        finalizer(t, free!)
-        t
-    end
 end
 
-function free!(x::DNextTable)
-    if !x.freed
-        @schedule Dagger.free_chunks(x.chunks)
-        x.freed = true
-    end
-    nothing
-end
 
 noweakref(w::WeakRefString) = string(w)
 noweakref(x) = x
@@ -60,9 +46,9 @@ function Dagger.domain(t::NextTable)
         return t.pkey => EmptySpace{T}()
     end
 
-    wrap = T<:NamedTuple ? IndexedTables.namedtuple(fieldnames(T)...) : tuple
+    wrap = T<:NamedTuple ? IndexedTables.namedtuple(fieldnames(T)...)∘tuple : tuple
 
-    interval = Interval(wrap(noweakref.(first(ks))...), wrap(noweakref.(last(ks))...))
+    interval = Interval(map(noweakref, first(ks)), map(noweakref, last(ks)))
     cs = astuple(columns(ks))
     extr = map(extrema, cs[2:end]) # we use first and last value of first column
     boundingrect = Interval(wrap(noweakref(first(cs[1])), noweakref.(map(first, extr))...),
@@ -72,7 +58,7 @@ end
 
 # if one of the input vectors is a Dagger operation / array
 # chose the distributed implementation.
-IndexedTables._impl(::Val, ::Dagger.ArrayOp, x...) = Val{:distributed}()
+IndexedTables._impl(::Val, ::Dagger.ArrayOp, x...) = Val(:distributed)
 
 function table(::Val{:distributed}, tup::Tup; chunks=nothing, kwargs...)
     if chunks === nothing
@@ -94,8 +80,8 @@ function table(::Val{:distributed}, tup::Tup; chunks=nothing, kwargs...)
     end
 
     nchunks = length(darrays[1].chunks)
-    cs = Array{Any}(nchunks)
-    names = isa(tup, NamedTuple) ? fieldnames(tup) : nothing
+    cs = Array{Any}(undef, nchunks)
+    names = isa(tup, NamedTuple) ? [keys(tup)...] : nothing
     f = delayed((cs...) -> table(cs...; names=names, kwargs...))
     for i = 1:nchunks
         cs[i] = f(map(x->x.chunks[i], darrays)...)
@@ -153,11 +139,11 @@ function fromchunks(cs::AbstractArray, args...; output=nothing, fnoffset=0, kwar
         if !isdir(output)
             mkdir(output)
         end
-        cs = Any[begin
-            fn = lpad(idx+fnoffset, 5, "0")
+        cs = Any[(
+            fn = lpad(idx+fnoffset, 5, "0");
             delayed(Dagger.savechunk, get_result=true)(
-                c, output, fn)
-        end for (idx, c) in enumerate(cs)]
+                c, output, fn);
+        ) for (idx, c) in enumerate(cs)]
 
         vec_thunk = treereduce(delayed(vcat, meta=true), cs)
         if length(cs) == 1
@@ -180,7 +166,7 @@ function fromchunks(::Type{<:AbstractVector},
     dmnchunks = DomainBlocks((1,), (cumsum(lengths),))
     T = promote_eltype_chunktypes(cs)
     DArray(T, ArrayDomain(1:sum(lengths)),
-           dmnchunks, cs, (i, x...)->vcat(x...))
+           dmnchunks, cs, dvcat)
 end
 
 function fromchunks(::Type{<:NextTable}, chunks::AbstractArray;
@@ -189,7 +175,7 @@ function fromchunks(::Type{<:NextTable}, chunks::AbstractArray;
                     K = promote_eltypes(domains),
                     T = promote_eltype_chunktypes(chunks))
 
-    nzidxs = find(!isempty, domains)
+    nzidxs = findall(!isempty, domains)
     domains = domains[nzidxs]
 
     DNextTable{T, K}(pkey, domains, chunks[nzidxs])

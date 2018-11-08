@@ -149,6 +149,7 @@ end
 
 import IndexedTables: naturaljoin, leftjoin, asofjoin, merge
 import Base: broadcast
+import Base.Broadcast: broadcasted
 
 export naturaljoin, innerjoin, leftjoin, asofjoin, merge
 
@@ -344,6 +345,8 @@ function broadcast(f, A::DNDSparse{K1,V1}, B::DNDSparse{K2,V2}; dimmap=nothing) 
         treereduce(delayed(_merge), chunks)
     end
 end
+
+broadcasted(f, A::DNDSparse, B::DNDSparse) = broadcast(f, A, B)
 
 function match_indices(A::DNDSparse{K1},B::DNDSparse{K2}) where {K1,K2}
     if K1 <: NamedTuple && K2 <: NamedTuple

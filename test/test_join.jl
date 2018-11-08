@@ -1,6 +1,6 @@
 using JuliaDB
 using IndexedTables
-using Base.Test
+using Test
 
 @testset "join" begin
     t1 = NDSparse(Columns([1,1,2,2], [1,2,1,2]), [1,2,3,4])

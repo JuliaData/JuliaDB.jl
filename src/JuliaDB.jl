@@ -1,17 +1,16 @@
 __precompile__()
 module JuliaDB
 
-using IndexedTables, Dagger, NamedTuples, OnlineStats
+using IndexedTables, Dagger, OnlineStats, Distributed, Serialization, Nullables, Printf, Statistics
 
-import Base: collect, select, join
+import Base: collect, join
 import IndexedTables: NextTable, table, NDSparse, ndsparse, Tup, groupjoin
 import TextParse: csvread
-import IndexedTables: Table
-import Dagger: compute, distribute, free!, gather, load, save
+import Dagger: compute, distribute, load, save
 using DataValues
 
 # re-export
-export IndexedTable, AbstractNDSparse, NDSparse, NextTable, Columns, colnames,
+export AbstractNDSparse, NDSparse, NextTable, Columns, colnames,
        table, ndsparse, compute, groupby, summarize, groupreduce, groupjoin,
        ColDict, insertafter!, insertbefore!, @cols, setcol, pushcol,
        popcol, insertcol, insertcolafter, insertcolbefore,
