@@ -2,7 +2,7 @@
 
 ## Introduction
 
-This is a port of a well known [tutorial](https://rpubs.com/justmarkham/dplyr-tutorial) for the [JuliaDB](http://juliadb.org/latest/) package. This tutorial is available as a Jupyter notebook [here](https://github.com/piever/JuliaDBTutorial/blob/master/hflights.ipynb).
+This is a port of a well known [`dplyr` tutorial](https://rpubs.com/justmarkham/dplyr-tutorial) for the [JuliaDB](http://juliadb.org/latest/) package. This tutorial is also available as a Jupyter notebook [here](https://github.com/piever/JuliaDBTutorial/blob/master/hflights.ipynb).
 
 ## Getting the data
 
@@ -335,7 +335,7 @@ To get the average delay, we first filter away datapoints where `ArrDelay` is mi
 
 
 ```julia
-groupby(@NT(avg_delay = mean∘dropna), flights, :Dest, select = :ArrDelay)
+groupby((avg_delay = mean∘dropna), flights, :Dest, select = :ArrDelay)
 ```
 
 
@@ -417,7 +417,7 @@ sortedflights = reindex(flights, :Dest)
 using BenchmarkTools
 
 println("Presorted timing:")
-@benchmark groupby(@NT(avg_delay = mean∘dropna), sortedflights, select = :ArrDelay)
+@benchmark groupby((avg_delay = mean∘dropna), sortedflights, select = :ArrDelay)
 ```
 
     Presorted timing:
@@ -439,7 +439,7 @@ println("Presorted timing:")
 
 ```julia
 println("Non presorted timing:")
-@benchmark groupby(@NT(avg_delay = mean∘dropna), flights, :Dest, select = :ArrDelay)
+@benchmark groupby((avg_delay = mean∘dropna), flights, :Dest, select = :ArrDelay)
 ```
 
     Non presorted timing:
@@ -467,7 +467,7 @@ summarize(mean∘dropna, flights, :Dest, select = (:Cancelled, :Diverted))
 # For each carrier, calculate the minimum and maximum arrival and departure delays:
 
 cols = Tuple(find(i -> contains(string(i), "Delay"), colnames(flights)))
-summarize(@NT(min = minimum∘dropna, max = maximum∘dropna), flights, :UniqueCarrier, select = cols)
+summarize((min = minimum∘dropna, max = maximum∘dropna), flights, :UniqueCarrier, select = cols)
 ```
 
 
@@ -541,7 +541,7 @@ For each destination, count the total number of flights and the number of distin
 
 
 ```julia
-groupby(@NT(flight_count = length, plane_count = length∘union), flights, :Dest, select = :TailNum)
+groupby((flight_count = length, plane_count = length∘union), flights, :Dest, select = :TailNum)
 ```
 
 

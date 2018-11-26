@@ -1,9 +1,7 @@
-import IndexedTables: aggregate, aggregate_vec, reducedim_vec, _convert
-using OnlineStatsBase
-import IndexedTables: groupreduce, groupby, ApplyColwise
-import Base: reduce
+import IndexedTables: reducedim_vec, _convert, groupreduce, groupby, ApplyColwise, reduce
+import OnlineStatsBase: OnlineStat
 
-export reducedim_vec, aggregate, aggregate_vec
+export reducedim_vec, aggregate_vec
 
 _merger(f) = f
 _merger(f::OnlineStat) = merge
@@ -139,4 +137,3 @@ function reducedim_vec(f, x::DNDSparse, dims)
 end
 
 reducedim_vec(f, x::DNDSparse, dims::Symbol) = reducedim_vec(f, x, [dims])
-Base.@deprecate aggregate_stats(s, t; by=pkeynames(t), with=valuenames(t)) groupreduce(s, t, by; select=with)
