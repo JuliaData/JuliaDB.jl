@@ -135,3 +135,21 @@ end
 
 rm(ingest_output, recursive=true)
 rm(ingest_output_unordered, recursive=true)
+
+@testset "load and save with missings" begin
+    nm1, nm2 = tempname(), tempname()
+    # Create a csv with one missing value and a column with all missings
+    open(nm1, "w") do io
+        write(io, "A,B,C\n1,1,NA\n1,NA,NA\n")
+    end
+
+    t1 = loadtable(nm1, delim = ',')
+    save(t1, nm2)
+    t2 = load(nm2)
+
+    @test all([all(collect(c1 .=== c2)) for (c1, c2) in zip(columns(t1), columns(t2))])
+
+    # Clean up
+    rm(nm1, recursive=true)
+    rm(nm2, recursive=true)
+end
