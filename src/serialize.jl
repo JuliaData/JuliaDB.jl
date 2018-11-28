@@ -73,8 +73,8 @@ function mmread(::Type{NDSparse}, io, mmap)
     NDSparse(idx, data, presorted=true, copy=false)
 end
 
-function mmwrite(io::AbstractSerializer, xs::NextTable)
-    Serialization.serialize_type(io, MMSer{NextTable})
+function mmwrite(io::AbstractSerializer, xs::IndexedTable)
+    Serialization.serialize_type(io, MMSer{IndexedTable})
 
     #flush!(xs)
     mmwrite(io, rows(xs))
@@ -82,7 +82,7 @@ function mmwrite(io::AbstractSerializer, xs::NextTable)
     mmwrite(io, xs.perms)
 end
 
-function mmread(::Type{NextTable}, io, mmap)
+function mmread(::Type{IndexedTable}, io, mmap)
     data = deserialize(io)
     pkey = deserialize(io)
     perms = deserialize(io)

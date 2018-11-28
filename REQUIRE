@@ -5,7 +5,7 @@ MemPool 0.1.1
 Dagger 0.7.3
 Glob 1.2.0
 OnlineStats 0.17.0
-OnlineStatsBase
+OnlineStatsBase 0.9.1
 PooledArrays 0.4.1
 WeakRefStrings
 StatsBase

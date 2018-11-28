@@ -4,7 +4,7 @@ export getindexcol, getdatacol, dindex, ddata,
 
 import Base: keys, values
 import IndexedTables: DimName, Columns, column, columns,
-       rows, pairs, as, As, Tup, namedtuple, itable
+       rows, pairs, as, As, Tup, namedtuple
 
 import Dagger: DomainBlocks, ArrayDomain, DArray,
                 ArrayOp, domainchunks, chunks, Distribute

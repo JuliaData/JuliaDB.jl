@@ -27,6 +27,6 @@ end
 mapslices(f, x::DNDSparse, dims::Symbol; name=nothing) =
     mapslices(f, x, (dims,); name=name)
 
-function flatten(x::DNextTable, col)
+function flatten(x::DIndexedTable, col)
     fromchunks(delayedmap(t -> flatten(t, col), x.chunks))
 end
