@@ -386,8 +386,12 @@ function fromchunks(::Type{<:NDSparse}, chunks::AbstractArray;
                     allowoverlap = true)
 
     nzidxs = findall(!isempty, domains)
-    domains = domains[nzidxs]
+    # work around #228, fixed in Julia 1.1
+    if isempty(nzidxs)
+        nzidxs = Int[]
+    end
 
+    domains = domains[nzidxs]
     dt = DNDSparse{KV...}(domains, chunks[nzidxs])
 
     if !allowoverlap && has_overlaps(domains, closed=closed)
