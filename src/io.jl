@@ -34,13 +34,13 @@ end
 Base.@deprecate loadfiles(files, delim=','; opts...) loadndsparse(files; delim=delim, opts...)
 
 """
-`loadtable(files::Union{AbstractVector,String}; <options>)`
+    loadtable(files::Union{AbstractVector,String}; kw...)
 
-Load a [table](@ref Table) from CSV files.
+Load an [IndexedTable](@ref) from CSV files.
 
 `files` is either a vector of file paths, or a directory name.
 
-# Options:
+# Keyword Argument Options:
 
 - `output::AbstractString` -- directory name to write the table to. By default data is loaded directly to memory. Specifying this option will allow you to load data larger than the available memory.
 - `indexcols::Vector` -- columns to use as primary key columns. (defaults to [])

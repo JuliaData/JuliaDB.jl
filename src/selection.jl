@@ -41,7 +41,7 @@ If the mapping is many-to-one, `agg` is used to aggregate the results.
 `name` optionally specifies a name for the new dimension. `xlate` must be a
 monotonically increasing function.
 
-See also [`reduce`](@ref) and [`aggregate`](@ref)
+See also [`reduce`](@ref).
 """
 function convertdim(t::DNDSparse{K,V}, d::DimName, xlat;
                     agg=nothing, vecagg=nothing, name=nothing) where {K,V}

@@ -14,7 +14,7 @@ interval(x::IndexSpace) = x.interval
 A distributed [NDSparse](@ref) datastructure. Can be constructed by:
 - [`ndsparse`](@ref) from Julia objects
 - [`loadndsparse`](@ref) from data on disk
-- [`distribute`](@ref) from an [`NDSparse`](@ref) object
+- [`distribute`](@ref) with an argument of type [`NDSparse`](@ref)
 """
 mutable struct DNDSparse{K,V} <: AbstractNDSparse
     domains::Vector{IndexSpace{K}}

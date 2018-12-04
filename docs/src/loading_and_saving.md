@@ -34,4 +34,4 @@ A table can be saved to disk for fast, efficient reloading via the [`save`](@ref
 
 ## Load Table from Binary Format
 
-Tables can be loaded 
+Tables can be loaded efficiently via [`load`](@ref).
