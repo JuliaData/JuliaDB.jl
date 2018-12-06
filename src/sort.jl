@@ -1,10 +1,3 @@
-import IndexedTables: pkeynames, excludecols, pkeys, reindex
-import Dagger: dsort_chunks
-
-export reindex, rechunk
-
-using StatsBase
-
 function reindex(t::DDataset, by=pkeynames(t), select=excludecols(t, by); kwargs...)
     @noinline function _rechunk(c)
         reindex(c, by, select; kwargs...)

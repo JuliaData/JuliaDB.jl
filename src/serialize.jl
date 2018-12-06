@@ -1,5 +1,3 @@
-using MemPool
-import MemPool: mmwrite, mmread, MMSer
 
 #### DataValueArray
 

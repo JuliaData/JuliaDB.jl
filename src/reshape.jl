@@ -1,6 +1,3 @@
-import IndexedTables: stack, unstack
-export stack, unstack
-
 function stack(t::DDataset, by = pkeynames(t); select = isa(t, DNDSparse) ? valuenames(t) : excludecols(t, by),
     variable = :variable, value = :value)
 

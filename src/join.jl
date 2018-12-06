@@ -1,5 +1,4 @@
 ## Table
-export rechunk_together
 
 function rechunk_together(left, right, lkey, rkey,
                           lselect=excludecols(left, lkey), rselect=excludecols(right, rkey); chunks=nworkers(), keepkeys=false)
@@ -146,12 +145,6 @@ function join(f, left::DDataset, right::IndexedTables.Dataset; how=:inner, kwarg
 end
 
 ## NDSparse join
-
-import IndexedTables: naturaljoin, leftjoin, asofjoin, merge
-import Base: broadcast
-import Base.Broadcast: broadcasted
-
-export naturaljoin, innerjoin, leftjoin, asofjoin, merge
 
 """
     naturaljoin(left::DNDSparse, right::DNDSparse, [op])

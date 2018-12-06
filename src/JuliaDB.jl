@@ -3,18 +3,47 @@ module JuliaDB
 
 using IndexedTables, Dagger, OnlineStats, Distributed, Serialization, Nullables, Printf, Statistics
 
-import Base: collect, join
-import IndexedTables: IndexedTable, table, NDSparse, ndsparse, Tup, groupjoin
+import Base: collect, join, keys, values, iterate, broadcast, merge, reduce, mapslices, 
+    ==
+import Base.Broadcast: broadcasted
+import Base.Iterators: PartitionIterator
+
+import IndexedTables: IndexedTable, table, NDSparse, ndsparse, Tup, groupjoin,
+    DimName, Columns, column, columns, rows, pkeys, pairs, Tup, namedtuple, flatten,
+    naturaljoin, leftjoin, asofjoin, eltypes, astuple, colnames, pkeynames, valuenames,
+    showtable, reducedim_vec, _convert, groupreduce, groupby, ApplyColwise, stack, 
+    unstack, selectkeys, selectvalues, select, lowerselection, convertdim, excludecols, 
+    reindex, ColDict, AbstractIndexedTable, Dataset, promoted_similar
 import TextParse: csvread
-import Dagger: compute, distribute, load, save
+import Dagger: compute, distribute, load, save, DomainBlocks, ArrayDomain, DArray,
+    ArrayOp, domainchunks, chunks, Distribute, debug_compute, get_logs!, LocalEventLog,
+    chunktype, tochunk, distribute, Context, treereduce, dsort_chunks
+import Serialization: serialize, deserialize
+import MemPool: mmwrite, mmread, MMSer, approx_size
+ 
+
+using PooledArrays
+using DataValues
+using WeakRefStrings
+using MemPool
+using StatsBase
+using OnlineStatsBase
 using DataValues
 
-# re-export
-export AbstractNDSparse, NDSparse, IndexedTable, Columns, colnames,
-       table, ndsparse, compute, groupby, summarize, groupreduce, groupjoin,
-       ColDict, insertafter!, insertbefore!, @cols, setcol, pushcol,
-       popcol, insertcol, insertcolafter, insertcolbefore,
-       renamecol, NA, dropna, flatten, ML, All, Not, Between, Keys
+
+
+
+export @cols, @dateformat_str, AbstractNDSparse, All, Between, ColDict, Columns, DColumns, 
+    IndexedTable, JuliaDB, Keys, ML, NA, NDSparse, Not, aggregate, aggregate_stats, 
+    aggregate_vec, asofjoin, chunks, colnames, column, columns, compute, convertdim, 
+    csvread, distribute, dropna, fetch_timings!, flatten, glob, groupby, groupjoin, 
+    groupreduce, ingest, ingest!, innerjoin, insert_row!, insertafter!, insertbefore!, 
+    insertcol, insertcolafter, insertcolbefore, leftjoin, load, load_table, loadfiles, 
+    loadndsparse, loadtable, merge, naturaljoin, ndsparse, pairs, partitionplot, 
+    partitionplot!, popcol, pushcol, rechunk, rechunk_together, reducedim_vec, reindex, 
+    renamecol, rows, save, select, selectkeys, selectvalues, setcol, stack, 
+    start_tracking_time, stop_tracking_time, summarize, table, tracktime, unstack
+
 
 include("util.jl")
 include("serialize.jl")

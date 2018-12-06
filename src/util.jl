@@ -1,10 +1,5 @@
-import IndexedTables: astuple
-
-using PooledArrays
-using DataValues
-using WeakRefStrings
-
-function treereduce(f, xs, v0=xs[1])
+# treereduce method without v0 is in Dagger.  Why does this live here?
+function treereduce(f, xs, v0)
     length(xs) == 0 && return v0
     length(xs) == 1 && return xs[1]
     l = length(xs)
@@ -41,8 +36,6 @@ end
 # Data loading utilities
 using TextParse
 using Glob
-
-export @dateformat_str, load, csvread, load_table, glob
 
 Base.@deprecate load_table(args...;kwargs...) loadndsparse(args...; distributed=false, kwargs...)
 
@@ -216,9 +209,6 @@ function _repeated(x, n)
     Iterators.repeated(x,n)
 end
 
-
-import MemPool: approx_size
-
 function approx_size(cs::Columns)
     sum(map(approx_size, astuple(cs.columns)))
 end
@@ -242,7 +232,6 @@ function approx_size(x::StringArray)
 end
 
 # smarter merges on DataValueArray + other arrays
-import IndexedTables: promoted_similar
 
 function promoted_similar(x::DataValueArray, y::DataValueArray, n)
     similar(x, promote_type(eltype(x),eltype(y)), n)

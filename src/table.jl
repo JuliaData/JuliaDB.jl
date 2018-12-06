@@ -1,12 +1,3 @@
-import Base:collect, ==
-import IndexedTables: IndexedTable, table, colnames, reindex,
-                      excludecols, showtable, ColDict,
-                      AbstractIndexedTable, Dataset
-import Dagger: domainchunks, chunks
-
-# re-export the essentials
-export distribute, chunks, compute
-
 const IndexTuple = Union{Tuple, NamedTuple}
 
 """
@@ -180,8 +171,6 @@ function fromchunks(::Type{<:IndexedTable}, chunks::AbstractArray;
 
     DIndexedTable{T, K}(pkey, domains, chunks[nzidxs])
 end
-
-import Base.reduce
 
 function promote_eltypes(ts::AbstractArray)
     t = eltype(ts[1])

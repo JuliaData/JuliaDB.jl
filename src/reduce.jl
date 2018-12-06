@@ -1,10 +1,3 @@
-import IndexedTables: aggregate, aggregate_vec, reducedim_vec, _convert
-using OnlineStatsBase
-import IndexedTables: groupreduce, groupby, ApplyColwise
-import Base: reduce
-
-export reducedim_vec, aggregate, aggregate_vec
-
 _merger(f) = f
 _merger(f::OnlineStat) = merge
 _merger(f::Tup) = map(_merger, f)

@@ -1,7 +1,5 @@
 using RecipesBase
 
-export partitionplot
-
 #-----------------------------------------------------------------# partitionplot
 @userplot struct PartitionPlot
     args

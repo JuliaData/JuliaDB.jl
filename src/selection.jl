@@ -1,9 +1,3 @@
-import IndexedTables: selectkeys, selectvalues, select, lowerselection
-import IndexedTables: convertdim
-import Base: mapslices
-
-export convertdim, selectkeys, selectvalues
-
 function Base.map(f, t::DDataset; select=nothing)
     # TODO: fix when select has a user-supplied vector
     delayedmap(t.chunks) do x

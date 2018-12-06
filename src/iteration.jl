@@ -1,14 +1,4 @@
 # Extract a column as a Dagger array
-export DColumns, column, columns, rows, pairs
-
-import Base: keys, values, iterate
-import IndexedTables: DimName, Columns, column, columns,
-       rows, pkeys, pairs, Tup, namedtuple, itable
-
-import Dagger: DomainBlocks, ArrayDomain, DArray,
-                ArrayOp, domainchunks, chunks, Distribute
-
-import Base.Iterators: PartitionIterator
 
 function Iterators.partition(t::DDataset, n::Integer)
     PartitionIterator(t, n)

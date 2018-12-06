@@ -1,5 +1,3 @@
-import IndexedTables: flatten
-
 function mapslices(f, x::DNDSparse, dims; name=nothing)
     iterdims = setdiff([1:ndims(x);], map(d->keyindex(x, d), dims))
     if iterdims != [1:length(iterdims);]

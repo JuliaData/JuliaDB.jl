@@ -1,10 +1,3 @@
-export AbstractNDSparse
-
-import Dagger: chunktype, domain, tochunk, distribute,
-               chunks, Context, compute
-
-import IndexedTables: eltypes, astuple, colnames, ndsparse, pkeynames, valuenames
-
 boundingrect(x::IndexSpace) = x.boundingrect
 interval(x::IndexSpace) = x.interval
 
@@ -529,8 +522,6 @@ function subtable(t::DNDSparse{K,V}, idx) where {K, V}
 
     DNDSparse{K,V}(ds, cs)
 end
-
-import IndexedTables: showtable
 
 function Base.show(io::IO, big::DNDSparse)
     h, w = displaysize(io)
