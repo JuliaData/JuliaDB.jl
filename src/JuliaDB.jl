@@ -1,13 +1,9 @@
-__precompile__()
 module JuliaDB
-
-using IndexedTables, Dagger, OnlineStats, Distributed, Serialization, Nullables, Printf, Statistics
 
 import Base: collect, join, keys, values, iterate, broadcast, merge, reduce, mapslices, 
     ==
 import Base.Broadcast: broadcasted
 import Base.Iterators: PartitionIterator
-
 import IndexedTables: IndexedTable, table, NDSparse, ndsparse, Tup, groupjoin,
     DimName, Columns, column, columns, rows, pkeys, pairs, Tup, namedtuple, flatten,
     naturaljoin, leftjoin, asofjoin, eltypes, astuple, colnames, pkeynames, valuenames,
@@ -21,18 +17,11 @@ import Dagger: compute, distribute, load, save, DomainBlocks, ArrayDomain, DArra
 import Serialization: serialize, deserialize
 import MemPool: mmwrite, mmread, MMSer, approx_size
  
+using IndexedTables, Dagger, OnlineStats, Distributed, Serialization, Nullables, Printf, 
+    Statistics, PooledArrays, WeakRefStrings, MemPool, StatsBase, OnlineStatsBase,
+    DataValues
 
-using PooledArrays
-using DataValues
-using WeakRefStrings
-using MemPool
-using StatsBase
-using OnlineStatsBase
-using DataValues
-
-
-
-
+#-----------------------------------------------------------------------# exports
 export @cols, @dateformat_str, AbstractNDSparse, All, Between, ColDict, Columns, DColumns, 
     IndexedTable, JuliaDB, Keys, ML, NA, NDSparse, Not, aggregate, aggregate_stats, 
     aggregate_vec, asofjoin, chunks, colnames, column, columns, compute, convertdim, 
@@ -43,7 +32,6 @@ export @cols, @dateformat_str, AbstractNDSparse, All, Between, ColDict, Columns,
     partitionplot!, popcol, pushcol, rechunk, rechunk_together, reducedim_vec, reindex, 
     renamecol, rows, save, select, selectkeys, selectvalues, setcol, stack, 
     start_tracking_time, stop_tracking_time, summarize, table, tracktime, unstack
-
 
 include("util.jl")
 include("serialize.jl")
