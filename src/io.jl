@@ -63,7 +63,7 @@ Load a [table](@ref Table) from CSV files.
 - `usecache::Bool`: (vestigial)
 """
 function loadtable(files::Union{AbstractVector,String}; opts...)
-    _loadtable(NextTable, files; opts...)
+    _loadtable(IndexedTable, files; opts...)
 end
 
 """
@@ -188,7 +188,7 @@ function load(f::AbstractString)
 end
 
 """
-    save(t::Union{DNDSparse, DNextTable}, destdir::AbstractString)
+    save(t::Union{DNDSparse, DIndexedTable}, destdir::AbstractString)
 
 Saves a distributed dataset to disk in directory `destdir`. Saved data can be loaded with [`load`](@ref).
 """
@@ -206,7 +206,7 @@ function save(x::DDataset, output::AbstractString)
 end
 
 """
-    save(t::Union{NDSparse, NextTable}, dest::AbstractString)
+    save(t::Union{NDSparse, IndexedTable}, dest::AbstractString)
 
 Save a dataset to disk as `dest`.  Saved data can be loaded with [`load`](@ref).
 """
@@ -227,7 +227,7 @@ function _makerelative!(t, dir::AbstractString)
 end
 
 deserialize(io::AbstractSerializer, DT::Type{DNDSparse{K,V}}) where {K,V} = _deser(io, DT)
-deserialize(io::AbstractSerializer, DT::Type{DNextTable{T,K}}) where {T,K} = _deser(io, DT)
+deserialize(io::AbstractSerializer, DT::Type{DIndexedTable{T,K}}) where {T,K} = _deser(io, DT)
 function _deser(io::AbstractSerializer, t)
     nf = fieldcount(t)
     x = ccall(:jl_new_struct_uninit, Any, (Any,), t)
