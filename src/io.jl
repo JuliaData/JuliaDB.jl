@@ -179,6 +179,7 @@ function load(f::AbstractString)
             deserialize(io)
         end
         _makerelative!(x, f)
+        _evenlydistribute!(x, workers())
         x
     elseif isfile(f)
         MemPool.unwrap_payload(open(deserialize, f))
@@ -218,6 +219,12 @@ function _makerelative!(t, dir::AbstractString)
         if isa(h, FileRef)
             c.handle = FileRef(joinpath(dir, h.file), h.size)
         end
+    end
+end
+
+function _evenlydistribute!(t, wrkrs)
+    for (c, w) in zip(t.chunks, Iterators.cycle(wrkrs))
+        c.affinity = [Dagger.OSProc(w) => 1]
     end
 end
 
