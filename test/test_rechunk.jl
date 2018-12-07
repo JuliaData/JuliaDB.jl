@@ -1,6 +1,3 @@
-using JuliaDB
-using Test
-
 @testset "rechunk" begin
     t = NDSparse([1:10;], ones(10), ones(10))
     d = distribute(t, 2)

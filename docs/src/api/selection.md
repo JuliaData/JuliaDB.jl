@@ -30,7 +30,7 @@ filter
 ```
 
 ```@docs
-dropna
+dropmissing
 ```
 
 ## AoS and SoA

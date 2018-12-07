@@ -9,7 +9,8 @@ import IndexedTables: IndexedTable, table, NDSparse, ndsparse, Tup, groupjoin,
     naturaljoin, leftjoin, asofjoin, eltypes, astuple, colnames, pkeynames, valuenames,
     showtable, reducedim_vec, _convert, groupreduce, groupby, ApplyColwise, stack, 
     unstack, selectkeys, selectvalues, select, lowerselection, convertdim, excludecols, 
-    reindex, ColDict, AbstractIndexedTable, Dataset, promoted_similar
+    reindex, ColDict, AbstractIndexedTable, Dataset, promoted_similar, dropmissing,
+    nonmissing
 import TextParse: csvread
 import Dagger: compute, distribute, load, save, DomainBlocks, ArrayDomain, DArray,
     ArrayOp, domainchunks, chunks, Distribute, debug_compute, get_logs!, LocalEventLog,
@@ -19,13 +20,14 @@ import MemPool: mmwrite, mmread, MMSer, approx_size
  
 using IndexedTables, Dagger, OnlineStats, Distributed, Serialization, Nullables, Printf, 
     Statistics, PooledArrays, WeakRefStrings, MemPool, StatsBase, OnlineStatsBase,
-    DataValues
+    DataValues, RecipesBase, TextParse, Glob
+
 
 #-----------------------------------------------------------------------# exports
 export @cols, @dateformat_str, AbstractNDSparse, All, Between, ColDict, Columns, DColumns, 
     IndexedTable, JuliaDB, Keys, ML, NA, NDSparse, Not, aggregate, aggregate_stats, 
     aggregate_vec, asofjoin, chunks, colnames, column, columns, compute, convertdim, 
-    csvread, distribute, dropna, fetch_timings!, flatten, glob, groupby, groupjoin, 
+    csvread, distribute, dropmissing, fetch_timings!, flatten, glob, groupby, groupjoin, 
     groupreduce, ingest, ingest!, innerjoin, insert_row!, insertafter!, insertbefore!, 
     insertcol, insertcolafter, insertcolbefore, leftjoin, load, load_table, loadfiles, 
     loadndsparse, loadtable, merge, naturaljoin, ndsparse, pairs, partitionplot, 

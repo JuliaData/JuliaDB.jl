@@ -1,20 +1,18 @@
 
-#### DataValueArray
+# #### DataValueArray
 
-function mmwrite(io::AbstractSerializer, xs::DataValueArray)
-    Serialization.serialize_type(io, MMSer{DataValueArray})
+# function mmwrite(io::AbstractSerializer, xs::DataValueArray)
+#     Serialization.serialize_type(io, MMSer{DataValueArray})
     
-    mmwrite(io, BitArray(xs.isna))
-    mmwrite(io, xs.values)
-end
+#     mmwrite(io, BitArray(xs.isna))
+#     mmwrite(io, xs.values)
+# end
 
-function mmread(::Type{DataValueArray}, io, mmap)
-    isnull = deserialize(io)
-    vals = deserialize(io)
-    DataValueArray(vals, isnull)
-end
-
-using PooledArrays
+# function mmread(::Type{DataValueArray}, io, mmap)
+#     isnull = deserialize(io)
+#     vals = deserialize(io)
+#     DataValueArray(vals, isnull)
+# end
 
 function mmwrite(io::AbstractSerializer, xs::PooledArray)
     Serialization.serialize_type(io, MMSer{PooledArray})

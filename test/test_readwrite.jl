@@ -1,20 +1,11 @@
-using Test
-using JuliaDB
-using PooledArrays
-using DataValues
-using MemPool
-using Random
-using Serialization
-using Dagger
-
 function roundtrip(x, eq=(==), io=IOBuffer())
     mmwrite(Serializer(io), x)
     @test eq(deserialize(seekstart(io)), x)
 end
 
-@testset "PooledArray/DataValueArray" begin
-    roundtrip(PooledArray([randstring(rand(1:10)) for i=4]))
-    roundtrip(DataValueArray(rand(10), rand(Bool,10)), isequal)
+@testset "PooledArray/Vector{Union{T,Missing}}" begin
+    roundtrip(PooledArray([randstring(rand(1:10)) for i in 1:4]))
+    roundtrip([rand(Bool) ? rand() : missing for i in 1:50], isequal)
 end
 
 @testset "Columns" begin
@@ -74,7 +65,7 @@ import Dagger: Chunk
         rm(cache)
     end
     missingcoltbl = loadndsparse(joinpath(@__DIR__, "missingcols"), datacols=[:a, :x, :y], usecache=false, chunks=2)
-    @test eltype(missingcoltbl) == NamedTuple{(:a,:x,:y),Tuple{Int, DataValue{Int}, DataValue{Float64}}}
+    @test eltype(missingcoltbl) == NamedTuple{(:a,:x,:y),Tuple{Int, Union{Missing,Int}, Union{Missing,Float64}}}
 
     @test collect(loadtable(shuffle_files,chunks=2)) == table(spdata_unordered.data)
     # file name as a column:
@@ -140,7 +131,7 @@ rm(ingest_output_unordered, recursive=true)
     nm1, nm2 = tempname(), tempname()
     # Create a csv with one missing value and a column with all missings
     open(nm1, "w") do io
-        write(io, "A,B,C\n1,1,NA\n1,NA,NA\n")
+        write(io, "A,B,C\n1,1,missing\n1,missing,missing\n")
     end
 
     t1 = loadtable(nm1, delim = ',')

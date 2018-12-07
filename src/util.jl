@@ -34,8 +34,6 @@ function extrema_range(x::AbstractArray{T}, r::UnitRange) where T
 end
 
 # Data loading utilities
-using TextParse
-using Glob
 
 Base.@deprecate load_table(args...;kwargs...) loadndsparse(args...; distributed=false, kwargs...)
 
@@ -217,8 +215,6 @@ function approx_size(t::NDSparse)
     approx_size(t.data) + approx_size(t.index)
 end
 
-using PooledArrays
-
 function approx_size(pa::PooledArray)
     approx_size(pa.refs) + approx_size(pa.pool) * 2
 end
@@ -312,4 +308,4 @@ end
 
 
 # mild piracy
-Base.similar(::PooledArrays.PooledArray, ::Type{DataValue{T}}, sz::Tuple{Vararg{Int64,N}}) where {T,N} = DataValueArray{T}(sz)
+Base.similar(::PooledArray, ::Type{DataValue{T}}, sz::Tuple{Vararg{Int64,N}}) where {T,N} = DataValueArray{T}(sz)

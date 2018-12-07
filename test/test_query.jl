@@ -1,6 +1,3 @@
-using JuliaDB
-using Test, Statistics
-
 @testset "map & reduce" begin
     t = NDSparse(Columns([1,1,2,2], [1,2,1,2]), [1,2,3,4])
     d = distribute(t, 2)

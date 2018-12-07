@@ -1,15 +1,9 @@
 module ML
 
-using JuliaDB
-using Dagger
-using OnlineStats
-using PooledArrays
-using DataValues
-using Statistics
+using JuliaDB, Dagger, OnlineStats, PooledArrays, DataValues, Statistics
 
 import Dagger: ArrayOp, DArray, treereduce
 import JuliaDB: Dataset, DDataset, nrows
-
 import Base: merge
 
 # Core schema types
@@ -23,33 +17,33 @@ featuremat!(A, ::Nothing, xs) = A
 schema(xs::ArrayOp) = schema(compute(xs))
 schema(xs::ArrayOp, T) = schema(compute(xs), T)
 
+#-----------------------------------------------------------------------# Continuous
 struct Continuous
-  series::Series
+    stat::Variance
 end
 
 function schema(xs, ::Type{Continuous})
-  Continuous(fit!(Series(Variance()),xs))
+    Continuous(fit!(Variance(),xs))
 end
 function schema(xs::AbstractArray{<:Real})
     schema(xs, Continuous)
 end
 width(::Continuous) = 1
 function merge(c1::Continuous, c2::Continuous)
-    Continuous(merge(c1.series, c2.series))
+    Continuous(merge(c1.stat, c2.stat))
 end
-Statistics.mean(c::Continuous)::Float64 = mean(c.series.stats[1])
-Statistics.std(c::Continuous)::Float64 = std(c.series.stats[1])
+Statistics.mean(c::Continuous)::Float64 = mean(c.tat)
+Statistics.std(c::Continuous)::Float64 = std(c.stat)
 function Base.show(io::IO, c::Continuous)
     write(io, "Continous(μ=$(mean(c)), σ=$(std(c)))")
 end
-Base.@propagate_inbounds function featuremat!(A, c::Continuous, xs,
-                                         dropna=Val(false))
+Base.@propagate_inbounds function featuremat!(A, c::Continuous, xs, dropmissing=Val(false))
     m = mean(c)
     s = std(c)
     for i in 1:length(xs)
         x =  xs[i]
-        if dropna isa Val{true}
-            if isna(x)
+        if dropmissing isa Val{true}
+            if ismissing(x)
                 continue
             else
                 A[i, 1] = (get(x) - m) / s
@@ -61,33 +55,33 @@ Base.@propagate_inbounds function featuremat!(A, c::Continuous, xs,
     A
 end
 
-
+#-----------------------------------------------------------------------# Categorical
 struct Categorical
-  series::Series
+    stat::CountMap
 end
-function Categorical(xs::AbstractArray)
-    Categorical(Series(CountMap(Dict(zip(xs, zeros(Int, length(xs)))))))
+function Categorical(xs::AbstractArray{T}) where {T}
+    Categorical(CountMap(Dict(zip(xs, 1:length(xs)))))
 end
 
-function schema(xs::AbstractArray, ::Type{Categorical})
-  Categorical(fit!(Series(CountMap(eltype(xs))),xs))
+function schema(xs::AbstractArray{T}, ::Type{Categorical}) where {T}
+  Categorical(fit!(CountMap(T), xs))
 end
 
 function schema(xs::PooledArray)
     schema(xs, Categorical)
 end
 
-Base.keys(c::Categorical) = keys(c.series.stats[1])
+Base.keys(c::Categorical) = keys(c.stats[1])
 width(c::Categorical) = length(keys(c))
-merge(c1::Categorical, c2::Categorical) = Categorical(merge(c1.series, c2.series))
+merge(c1::Categorical, c2::Categorical) = Categorical(merge(c1.stat, c2.stat))
 function Base.show(io::IO, c::Categorical)
     write(io, "Categorical($(collect(keys(c))))")
 end
-Base.@propagate_inbounds function featuremat!(A, c::Categorical, xs, dropna=Val(false))
+Base.@propagate_inbounds function featuremat!(A, c::Categorical, xs, dropmissing=Val(false))
     ks = keys(c)
     labeldict = Dict{eltype(ks), Int}(zip(ks, 1:length(ks)))
     for i = 1:length(xs)
-        if dropna isa Val{true} && isna(xs[i])
+        if dropmissing isa Val{true} && ismissing(xs[i])
             continue
         end
         A[i, labeldict[xs[i]]] = one(eltype(A))
@@ -97,29 +91,23 @@ end
 
 # distributed schema calculation
 function schema(xs::DArray)
-    collect(treereduce(delayed(merge),
-                       delayedmap(x -> schema(x), xs.chunks)))
+    collect(treereduce(delayed(merge), delayedmap(x -> schema(x), xs.chunks)))
 end
-
-for S in (Continuous, Categorical)
-    @eval function schema(xs::DArray, T::Type{$S})
-        collect(treereduce(delayed(merge),
-                           delayedmap(x -> schema(x, T), xs.chunks)))
-    end
+function schema(xs::DArray, ::Type{T}) where {T<:Union{Continuous, Categorical}}
+    collect(treereduce(delayed(merge), delayedmap(x -> schema(x, T), xs.chunks)))
 end
 
 struct Maybe{T}
-  feature::T
+    feature::T
 end
-function schema(xs::DataValueArray, T::Type)
-    Maybe(schema(dropna(xs), T))
+function schema(xs::Vector{Union{Missing,S}}, T::Type) where {S}
+    Maybe(schema(dropmissing(xs), T))
 end
-schema(xs::DataValueArray) = Maybe(schema(dropna(xs)))
+schema(xs::Vector{Union{T,Missing}}) where {T}= Maybe(schema(dropmissing(xs)))
 width(c::Maybe) = width(c.feature) + 1
 merge(m1::Maybe, m2::Maybe) = Maybe(merge(m1.feature, m2.feature))
-nulls(xs) = Base.Generator(isna, xs)
-nulls(xs::DataValueArray) = xs.isna
-Base.@propagate_inbounds function featuremat!(A, c::Maybe, xs, dropna=Val(true))
+nulls(xs) = Base.Generator(ismissing, xs)
+Base.@propagate_inbounds function featuremat!(A, c::Maybe, xs, dropmissing=Val(true))
     copyto!(A, CartesianIndices((1:length(xs), 1:1)), reshape(nulls(xs), (length(xs), 1)), CartesianIndices((1:length(xs), 1:1)))
     featuremat!(view(A, 1:length(xs), 2:size(A, 2)), c.feature, xs, Val(true))
     A
@@ -175,11 +163,12 @@ function featuremat(s, t::DDataset)
     lengths = get.(nrows.(t.domains))
     domains = Dagger.DomainBlocks((1,1), ([w], cumsum(lengths)))
 
-    DArray(Float32,
-           Dagger.ArrayDomain(w, sum(lengths)),
-           domains,
-           reshape(delayedmap(x->featuremat(s,x), t.chunks),
-                   (1, length(t.chunks))))
+    DArray(
+        Float32,
+        Dagger.ArrayDomain(w, sum(lengths)),
+        domains,
+        reshape(delayedmap(x->featuremat(s,x), t.chunks), (1, length(t.chunks)))
+    )
 end
 
 end

@@ -86,7 +86,7 @@ table
 An `NDSparse` object is a collection of values sparsely distributed over domains which may be discrete or continuous. For example, stock prices are sparsely distributed over the domains of stock ticker symbols, and timestamps.
 
 ```jldoctest nds
-julia> prices = ndsparse(@NT(ticker=["GOOG", "GOOG", "KO", "KO"],
+julia> prices = ndsparse((ticker=["GOOG", "GOOG", "KO", "KO"],
                          date=Date.(["2017-11-10", "2017-11-11",
                                      "2017-11-10", "2017-11-11"])),
                          [1029.74, 1028.23, 46.23, 46.53])

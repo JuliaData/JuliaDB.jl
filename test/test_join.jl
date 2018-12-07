@@ -1,7 +1,3 @@
-using JuliaDB
-using IndexedTables
-using Test
-
 @testset "join" begin
     t1 = NDSparse(Columns([1,1,2,2], [1,2,1,2]), [1,2,3,4])
     t2 = NDSparse(Columns([0,2,2,3], [1,1,2,2]), [1,2,3,4])

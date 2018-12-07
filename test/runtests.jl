@@ -1,11 +1,9 @@
+using Distributed
 include("testenv.jl")
 addprocs_with_testenv(2)
 
-using JuliaDB
-using Test
-using TextParse
-using IndexedTables
-using PooledArrays
+using JuliaDB, Test, TextParse, IndexedTables, PooledArrays, Dagger, OnlineStats,
+    Statistics, MemPool, Random, Serialization, Dagger, Dates
 
 include("test_iteration.jl")
 include("test_util.jl")

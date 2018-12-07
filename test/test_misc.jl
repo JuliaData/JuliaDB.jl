@@ -1,6 +1,3 @@
-using JuliaDB, Dagger
-using Test
-
 @testset "setindex!" begin
     x = ndsparse(([1,2],[2,3]), [4,5], chunks=2)
     x[2,3] = 6

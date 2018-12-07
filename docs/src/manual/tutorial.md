@@ -335,7 +335,7 @@ To get the average delay, we first filter away datapoints where `ArrDelay` is mi
 
 
 ```julia
-groupby(@NT(avg_delay = mean∘dropna), flights, :Dest, select = :ArrDelay)
+groupby((avg_delay = mean∘dropmissing), flights, :Dest, select = :ArrDelay)
 ```
 
 
@@ -417,7 +417,7 @@ sortedflights = reindex(flights, :Dest)
 using BenchmarkTools
 
 println("Presorted timing:")
-@benchmark groupby(@NT(avg_delay = mean∘dropna), sortedflights, select = :ArrDelay)
+@benchmark groupby((avg_delay = mean∘dropmissing), sortedflights, select = :ArrDelay)
 ```
 
     Presorted timing:
@@ -439,7 +439,7 @@ println("Presorted timing:")
 
 ```julia
 println("Non presorted timing:")
-@benchmark groupby(@NT(avg_delay = mean∘dropna), flights, :Dest, select = :ArrDelay)
+@benchmark groupby((avg_delay = mean∘dropmissing), flights, :Dest, select = :ArrDelay)
 ```
 
     Non presorted timing:
@@ -462,12 +462,12 @@ Using `summarize`, we can summarize several columns at the same time:
 
 
 ```julia
-summarize(mean∘dropna, flights, :Dest, select = (:Cancelled, :Diverted))
+summarize(mean∘dropmissing, flights, :Dest, select = (:Cancelled, :Diverted))
 
 # For each carrier, calculate the minimum and maximum arrival and departure delays:
 
 cols = Tuple(find(i -> contains(string(i), "Delay"), colnames(flights)))
-summarize(@NT(min = minimum∘dropna, max = maximum∘dropna), flights, :UniqueCarrier, select = cols)
+summarize((min = minimum∘dropmissing, max = maximum∘dropmissing), flights, :UniqueCarrier, select = cols)
 ```
 
 
@@ -541,7 +541,7 @@ For each destination, count the total number of flights and the number of distin
 
 
 ```julia
-groupby(@NT(flight_count = length, plane_count = length∘union), flights, :Dest, select = :TailNum)
+groupb(flight_count = length, plane_count = length∘union), flights, :Dest, select = :TailNum)
 ```
 
 

@@ -5,9 +5,9 @@ function Base.map(f, t::DDataset; select=nothing)
     end |> fromchunks
 end
 
-function DataValues.dropna(t::DDataset, select=(colnames(t)...,))
+function dropmissing(t::DDataset, select=(colnames(t)...,))
     delayedmap(t.chunks) do x
-        dropna(x, select)
+        dropmissing(x, select)
     end |> fromchunks
 end
 

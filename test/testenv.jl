@@ -5,8 +5,6 @@
 # This file can be included multiple times in the same module if necessary,
 # which can happen with unisolated test runs.
 
-using Distributed
-
 if !isdefined(@__MODULE__, :testenv_defined)
     const testenv_defined = true
     if haskey(ENV, "JULIA_TEST_EXEFLAGS")
