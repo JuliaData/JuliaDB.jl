@@ -24,7 +24,6 @@ end
 end
 
 @testset "select" begin
-
     t = NDSparse(Columns(a=[1,1,1,2,2], b=[1,2,3,1,2]), [1,2,3,4,5])
     for i=[1, 3, 5]
         d = distribute(t, i)
@@ -32,6 +31,12 @@ end
         res = filter((1=>x->true, 2=>x->x%2 == 0), t)
         @test collect(filter((1=>x->true, 2=>x->x%2 == 0), d)) == res
         @test collect(filter((:a=>x->true, :b => x->x%2 == 0), d)) == res
+
+        # check empty, #228
+        res = filter((1=>x->false, 2=>x->x%2 == 0), t)
+        @test collect(filter((1=>x->false, 2=>x->x%2 == 0), d)) == res
+        @test collect(filter((:a=>x->false, :b => x->x%2 == 0), d)) == res
+
     end
 end
 

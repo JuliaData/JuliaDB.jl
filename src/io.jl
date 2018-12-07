@@ -189,9 +189,9 @@ function load(f::AbstractString)
 end
 
 """
-`save(t::Union{DNDSparse, DNDSparse}, outputdir::AbstractString)`
+    save(t::Union{DNDSparse, DNextTable}, destdir::AbstractString)
 
-Saves a distributed dataset to disk. Saved data can be loaded with `load`.
+Saves a distributed dataset to disk in directory `destdir`. Saved data can be loaded with [`load`](@ref).
 """
 function save(x::DDataset, output::AbstractString)
     if !isempty(x.chunks)
@@ -206,6 +206,11 @@ function save(x::DDataset, output::AbstractString)
     y
 end
 
+"""
+    save(t::Union{NDSparse, NextTable}, dest::AbstractString)
+
+Save a dataset to disk as `dest`.  Saved data can be loaded with [`load`](@ref).
+"""
 function save(data::Dataset, f::AbstractString)
     sz = open(f, "w") do io
         serialize(io, MemPool.MMWrap(data))
