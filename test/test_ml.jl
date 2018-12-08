@@ -2,7 +2,7 @@ import JuliaDB.ML
 
 @testset "feature extraction" begin
     @testset "schema" begin
-        @test ML.schema([1:10;]).stat == fit!(Variance(), [1:10;])
+        @test ML.schema(1:10).stat == fit!(Variance(), 1:10)
         x = repeat([1,2], inner=5)
         @test ML.schema(x, ML.Categorical).stat == fit!(CountMap(Int), x) == ML.schema(PooledArray(x)).stat
         m = ML.schema(Vector{Union{Int,Missing}}(x))

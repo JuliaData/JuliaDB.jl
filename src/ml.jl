@@ -22,8 +22,8 @@ struct Continuous
     stat::Variance
 end
 
-function schema(xs, ::Type{Continuous})
-    Continuous(fit!(Variance(),xs))
+function schema(xs::AbstractArray, ::Type{Continuous})
+    Continuous(fit!(Variance(), xs))
 end
 function schema(xs::AbstractArray{<:Real})
     schema(xs, Continuous)
@@ -32,7 +32,7 @@ width(::Continuous) = 1
 function merge(c1::Continuous, c2::Continuous)
     Continuous(merge(c1.stat, c2.stat))
 end
-Statistics.mean(c::Continuous)::Float64 = mean(c.tat)
+Statistics.mean(c::Continuous)::Float64 = mean(c.stat)
 Statistics.std(c::Continuous)::Float64 = std(c.stat)
 function Base.show(io::IO, c::Continuous)
     write(io, "Continous(μ=$(mean(c)), σ=$(std(c)))")
@@ -46,7 +46,8 @@ Base.@propagate_inbounds function featuremat!(A, c::Continuous, xs, dropmissing=
             if ismissing(x)
                 continue
             else
-                A[i, 1] = (get(x) - m) / s
+                # A[i, 1] = (get(x) - m) / s
+                A[i, 1] = (x - m) / s
             end
         else
             A[i, 1] = (x - m) / s
@@ -64,14 +65,14 @@ function Categorical(xs::AbstractArray{T}) where {T}
 end
 
 function schema(xs::AbstractArray{T}, ::Type{Categorical}) where {T}
-  Categorical(fit!(CountMap(T), xs))
+    Categorical(fit!(CountMap(T), xs))
 end
 
 function schema(xs::PooledArray)
     schema(xs, Categorical)
 end
 
-Base.keys(c::Categorical) = keys(c.stats[1])
+Base.keys(c::Categorical) = keys(c.stat)
 width(c::Categorical) = length(keys(c))
 merge(c1::Categorical, c2::Categorical) = Categorical(merge(c1.stat, c2.stat))
 function Base.show(io::IO, c::Categorical)
@@ -93,8 +94,11 @@ end
 function schema(xs::DArray)
     collect(treereduce(delayed(merge), delayedmap(x -> schema(x), xs.chunks)))
 end
-function schema(xs::DArray, ::Type{T}) where {T<:Union{Continuous, Categorical}}
-    collect(treereduce(delayed(merge), delayedmap(x -> schema(x, T), xs.chunks)))
+function schema(xs::DArray, ::Type{Continuous})
+    collect(treereduce(delayed(merge), delayedmap(x -> schema(x, Continuous), xs.chunks)))
+end
+function schema(xs::DArray, ::Type{Categorical})
+    collect(treereduce(delayed(merge), delayedmap(x -> schema(x, Categorical), xs.chunks)))
 end
 
 struct Maybe{T}
@@ -106,7 +110,7 @@ end
 schema(xs::Vector{Union{T,Missing}}) where {T}= Maybe(schema(dropmissing(xs)))
 width(c::Maybe) = width(c.feature) + 1
 merge(m1::Maybe, m2::Maybe) = Maybe(merge(m1.feature, m2.feature))
-nulls(xs) = Base.Generator(ismissing, xs)
+nulls(xs) = map(ismissing, xs)
 Base.@propagate_inbounds function featuremat!(A, c::Maybe, xs, dropmissing=Val(true))
     copyto!(A, CartesianIndices((1:length(xs), 1:1)), reshape(nulls(xs), (length(xs), 1)), CartesianIndices((1:length(xs), 1:1)))
     featuremat!(view(A, 1:length(xs), 2:size(A, 2)), c.feature, xs, Val(true))
