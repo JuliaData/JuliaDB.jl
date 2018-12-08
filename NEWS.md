@@ -10,3 +10,8 @@
 - **(breaking)** Uses new redisigned version of OnlineStats
     - **(breaking)** Does not wrap OnlineStats in Series wrapper. (IndexedTables.jl#149) this means `m = reduce(Mean(), t, select=:x)` will return a `Mean` object rather than a `Series(Mean())` object. Also `value(m) == 0.45` for example, rather than `value(m) == (0.45,)`
 - **(feature)** - `view` works with logical indexes now (IndexedTables#134)
+
+
+## v0.9.0
+
+- **(breaking)** Missing values represented as `Union{T,Missing}` rather than `DataValue`.

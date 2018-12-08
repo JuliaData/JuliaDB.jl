@@ -132,7 +132,7 @@ function _loadtable_serial(T, file::Union{IO, AbstractString, AbstractArray};
 
         indexvecs = cols[_indexcols]
 
-        nullableidx = findall(x->eltype(x) <: Union{DataValue,Nullable}, indexvecs)
+        nullableidx = findall(x->eltype(x) <: Union{DataValue,Nullable} || Missing <: eltype(x), indexvecs)
         if !isempty(nullableidx)
             badcol_names = header[_indexcols[nullableidx]]
             warn("Indexed columns may contain Nullables or NAs. Column(s) with nullables: $(join(badcol_names, ", ", " and ")). This will result in wrong sorting.")
@@ -168,7 +168,8 @@ function _loadtable_serial(T, file::Union{IO, AbstractString, AbstractArray};
 
     datavecs = map(_datacols) do i
         if i === nothing
-            DataValueArray{Union{}}(n) # missing column
+            # DataValueArray{Union{}}(n) # missing column
+            fill(missing, n)
         else
             cols[i]
         end
@@ -225,20 +226,6 @@ end
 
 function approx_size(x::StringArray)
     approx_size(x.buffer) + approx_size(x.offsets) + approx_size(x.lengths)
-end
-
-# smarter merges on DataValueArray + other arrays
-
-function promoted_similar(x::DataValueArray, y::DataValueArray, n)
-    similar(x, promote_type(eltype(x),eltype(y)), n)
-end
-
-function promoted_similar(x::DataValueArray, y::AbstractArray, n)
-    similar(x, promote_type(eltype(x),eltype(y)), n)
-end
-
-function promoted_similar(x::AbstractArray, y::DataValueArray, n)
-    similar(y, promote_type(eltype(x),eltype(y)), n)
 end
 
 # The following is not inferable, this is OK because the only place we use
@@ -305,7 +292,3 @@ end
 function tuplesetindex(x::Union{NamedTuple, Tuple}, v::Tuple, i::Tuple)
     reduce((t, j)->tuplesetindex(t, v[j], i[j]), 1:length(i), init=x)
 end
-
-
-# mild piracy
-Base.similar(::PooledArray, ::Type{DataValue{T}}, sz::Tuple{Vararg{Int64,N}}) where {T,N} = DataValueArray{T}(sz)

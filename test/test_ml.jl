@@ -2,16 +2,16 @@ import JuliaDB.ML
 
 @testset "feature extraction" begin
     @testset "schema" begin
-        @test ML.schema([1:10;]).series == fit!(Series(Variance()), [1:10;])
+        @test ML.schema([1:10;]).stat == fit!(Variance(), [1:10;])
         x = repeat([1,2], inner=5)
-        @test ML.schema(x, ML.Categorical).series == fit!(Series(CountMap(Int)), x) == ML.schema(PooledArray(x)).series
+        @test ML.schema(x, ML.Categorical).stat == fit!(CountMap(Int), x) == ML.schema(PooledArray(x)).stat
         m = ML.schema(Vector{Union{Int,Missing}}(x))
         @test m isa ML.Maybe
-        @test m.feature.series == ML.schema(x).series
+        @test m.feature.stat == ML.schema(x).stat
         t = table(PooledArray([1,2,1,2]), [1,2,3,4], names=[:x, :y])
         sch = ML.schema(t)
-        @test sch[:x].series == ML.schema(PooledArray([1,2,1,2])).series
-        @test sch[:y].series == ML.schema([1,2,3,4]).series
+        @test sch[:x].stat == ML.schema(PooledArray([1,2,1,2])).stat
+        @test sch[:y].stat == ML.schema([1,2,3,4]).stat
     end
 
     @testset "featuremat" begin
@@ -45,8 +45,8 @@ import JuliaDB.ML
             )
         )
 
-        @test schd[:x1].series.stats[1].σ2 ≈ sch[:x1].series.stats[1].σ2
-        @test schd[:x2].series == sch[:x2].series
-        @test schd[:x3].series == sch[:x3].series
+        @test schd[:x1].stat.σ2 ≈ sch[:x1].stat.σ2
+        @test schd[:x2].stat == sch[:x2].stat
+        @test schd[:x3].stat == sch[:x3].stat
     end
 end

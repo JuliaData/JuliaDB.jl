@@ -1,6 +1,6 @@
 module ML
 
-using JuliaDB, Dagger, OnlineStats, PooledArrays, DataValues, Statistics
+using JuliaDB, Dagger, OnlineStats, PooledArrays, Statistics
 
 import Dagger: ArrayOp, DArray, treereduce
 import JuliaDB: Dataset, DDataset, nrows
