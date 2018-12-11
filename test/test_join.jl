@@ -15,14 +15,14 @@
         d1 = distribute(t1, n)
         for n2 = 1:5
             d2 = distribute(t2, n2)
-            @test collect(innerjoin(d1, d2)) == j1
-            @test collect(innerjoin(+, d1, d2)) == j2
+            @test isequal(collect(innerjoin(d1, d2)), j1)
+            @test isequal(collect(innerjoin(+, d1, d2)), j2)
 
-            @test collect(leftjoin(d1, d2)) == lj1
-            @test collect(leftjoin(+, d1, d2)) == lj2
+            @test isequal(collect(leftjoin(d1, d2)), lj1)
+            @test isequal(collect(leftjoin(+, d1, d2)), lj2)
 
-            @test collect(merge(d1, d2)) == mj1
-            @test collect(merge(d2, d1)) == mj2
+            @test isequal(collect(merge(d1, d2)), mj1)
+            @test isequal(collect(merge(d2, d1)), mj2)
         end
     end
 

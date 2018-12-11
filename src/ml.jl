@@ -105,9 +105,10 @@ struct Maybe{T}
     feature::T
 end
 function schema(xs::Vector{Union{Missing,S}}, T::Type) where {S}
-    Maybe(schema(dropmissing(xs), T))
+    Maybe(schema(collect(skipmissing(xs)), T))
 end
-schema(xs::Vector{Union{T,Missing}}) where {T}= Maybe(schema(dropmissing(xs)))
+schema(xs::Vector{Union{T,Missing}}) where {T} = Maybe(schema(collect(skipmissing(xs))))
+
 width(c::Maybe) = width(c.feature) + 1
 merge(m1::Maybe, m2::Maybe) = Maybe(merge(m1.feature, m2.feature))
 nulls(xs) = map(ismissing, xs)

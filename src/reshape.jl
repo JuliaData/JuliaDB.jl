@@ -22,5 +22,5 @@ function unstack(t::D, by = pkeynames(t); variable = :variable, value = :value) 
     col = column(t, variable)
     cols = S.(collect(Dagger.treereduce(delayed(union), delayedmap(unique, col.chunks))))
     T = eltype(columns(t, value))
-    unstack(D, Missing <: T ? nonmissing(T) : T, pkeys(tgrp), columns(tgrp, value), cols)
+    unstack(D, Base.nonmissingtype(T), pkeys(tgrp), columns(tgrp, value), cols)
 end

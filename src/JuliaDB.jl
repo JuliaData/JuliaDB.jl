@@ -9,8 +9,7 @@ import IndexedTables: IndexedTable, table, NDSparse, ndsparse, Tup, groupjoin,
     naturaljoin, leftjoin, asofjoin, eltypes, astuple, colnames, pkeynames, valuenames,
     showtable, reducedim_vec, _convert, groupreduce, groupby, ApplyColwise, stack, 
     unstack, selectkeys, selectvalues, select, lowerselection, convertdim, excludecols, 
-    reindex, ColDict, AbstractIndexedTable, Dataset, promoted_similar, dropmissing,
-    nonmissing
+    reindex, ColDict, AbstractIndexedTable, Dataset, promoted_similar, dropmissing
 import TextParse: csvread
 import Dagger: compute, distribute, load, save, DomainBlocks, ArrayDomain, DArray,
     ArrayOp, domainchunks, chunks, Distribute, debug_compute, get_logs!, LocalEventLog,
@@ -53,6 +52,14 @@ function (==)(x::DDataset, y::Dataset)
     collect(x) == y
 end
 (==)(x::Dataset, y::DDataset) = y == x
+
+function Base.isequal(x::DDataset, y::Union{Dataset, DDataset})
+    y1 = distribute(y, length.(domainchunks(rows(x))))
+    res = delayed(isequal, get_result=true).(x.chunks, y1.chunks)
+    all(collect(delayed((xs...) -> [xs...])(res...)))
+end
+Base.isequal(x::DDataset, y::Dataset) = isequal(collect(x), y)
+Base.isequal(x::Dataset, y::DDataset) = isequal(x, collect(y))
 
 include("iteration.jl")
 include("sort.jl")
