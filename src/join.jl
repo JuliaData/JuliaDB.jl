@@ -284,7 +284,7 @@ function merge(left::DNDSparse{I1,D1}, right::DNDSparse{I2,D2}; agg=IndexedTable
     return cache_thunks(t)
 end
 
-function merge(left::DNextTable, right::DNextTable; chunks=nworkers())
+function merge(left::DIndexedTable, right::DIndexedTable; chunks=nworkers())
     l, r = rechunk_together(left, right, pkeynames(left), pkeynames(right); chunks=chunks)
     fromchunks(delayedmap(merge, l.chunks, r.chunks))
 end

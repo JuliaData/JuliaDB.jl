@@ -66,7 +66,7 @@ function iterate(t::PartitionIterator{<:DDataset}, p::PartIteratorState)
     end
 end
 
-Base.eltype(iter::PartitionIterator{<:DNextTable}) = NextTable
+Base.eltype(iter::PartitionIterator{<:DIndexedTable}) = IndexedTable
 Base.eltype(iter::PartitionIterator{<:DNDSparse}) = NDSparse
 
 function DColumns(arrays::Tup)
@@ -223,7 +223,7 @@ function rows(t::Union{DDataset, DArray}, which)
     dist_selector(t, rows, which)
 end
 
-function pkeys(t::DNextTable)
+function pkeys(t::DIndexedTable)
     if isempty(t.pkey)
         Columns((Base.OneTo(length(compute(t))),))
     else

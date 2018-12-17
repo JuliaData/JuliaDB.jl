@@ -18,7 +18,7 @@ function subtable(nds::NDSparse, r)
     NDSparse(keys(nds)[r], values(nds)[r], presorted=true, copy=false)
 end
 
-function subtable(t::NextTable, r)
+function subtable(t::IndexedTable, r)
     t[r]
 end
 
@@ -185,7 +185,7 @@ function _loadtable_serial(T, file::Union{IO, AbstractString, AbstractArray};
 
     data = Columns(datavecs...; names=datacolnames)
 
-    if T<:NextTable && implicitindex
+    if T<:IndexedTable && implicitindex
         table(data, copy = copy), true
     else
         convert(T, index, data, copy = copy), implicitindex
@@ -233,7 +233,7 @@ function approx_size(pa::PooledArray)
     approx_size(pa.refs) + approx_size(pa.pool) * 2
 end
 
-function approx_size(t::NextTable)
+function approx_size(t::IndexedTable)
     approx_size(rows(t))
 end
 

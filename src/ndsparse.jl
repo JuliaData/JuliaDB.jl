@@ -21,7 +21,7 @@ mutable struct DNDSparse{K,V} <: AbstractNDSparse
     chunks::Vector
 end
 
-const DDataset = Union{DNextTable, DNDSparse}
+const DDataset = Union{DIndexedTable, DNDSparse}
 
 function ndsparse(::Val{:distributed}, ks::Tup,
                   vs::Union{Tup, AbstractArray};
@@ -236,7 +236,7 @@ function Dagger.domain(nd::NDSparse)
     return IndexSpace(interval, interval, Nullable{Int}(length(nd)))
 end
 
-function subindexspace(t::Union{NDSparse, NextTable}, r)
+function subindexspace(t::Union{NDSparse, IndexedTable}, r)
     ks = pkeys(t)
     T = eltype(typeof(ks))
     wrap = T<:NamedTuple ? T∘tuple : tuple

@@ -58,7 +58,7 @@ import JuliaDB: pkeynames, pkeys, excludecols, select
     @test excludecols(t, (2,)) == (1, 3)
     @test excludecols(t, pkeynames(t)) == (3,)
     @test excludecols([1, 2, 3], (1,)) == ()
-    @test convert(NextTable, Columns(x=[1, 2], y=[3, 4]), Columns(z=[1, 2]), presorted=true) == table([1, 2], [3, 4], [1, 2], names=Symbol[:x, :y, :z])
+    @test convert(IndexedTable, Columns(x=[1, 2], y=[3, 4]), Columns(z=[1, 2]), presorted=true) == table([1, 2], [3, 4], [1, 2], names=Symbol[:x, :y, :z])
     @test colnames([1, 2, 3]) == (1,)
     @test colnames(Columns([1, 2, 3], [3, 4, 5])) == (1, 2)
     @test colnames(table([1, 2, 3], [3, 4, 5])) == (1, 2)

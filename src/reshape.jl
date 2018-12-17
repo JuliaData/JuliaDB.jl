@@ -12,7 +12,7 @@ function stack(t::DDataset, by = pkeynames(t); select = isa(t, DNDSparse) ? valu
 end
 
 function unstack(::Type{D}, ::Type{T}, key, val, cols::AbstractVector{S}) where {D <:DDataset, T, S}
-    D1 = D isa DNDSparse ? NDSparse : NextTable
+    D1 = D isa DNDSparse ? NDSparse : IndexedTable
     function unstackchunk(x, y)
         unstack(D1, T, x, y, cols)
     end

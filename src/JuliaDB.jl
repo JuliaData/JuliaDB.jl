@@ -4,13 +4,13 @@ module JuliaDB
 using IndexedTables, Dagger, OnlineStats, Distributed, Serialization, Nullables, Printf, Statistics
 
 import Base: collect, join
-import IndexedTables: NextTable, table, NDSparse, ndsparse, Tup, groupjoin
+import IndexedTables: IndexedTable, table, NDSparse, ndsparse, Tup, groupjoin
 import TextParse: csvread
 import Dagger: compute, distribute, load, save
 using DataValues
 
 # re-export
-export AbstractNDSparse, NDSparse, NextTable, Columns, colnames,
+export AbstractNDSparse, NDSparse, IndexedTable, Columns, colnames,
        table, ndsparse, compute, groupby, summarize, groupreduce, groupjoin,
        ColDict, insertafter!, insertbefore!, @cols, setcol, pushcol,
        popcol, insertcol, insertcolafter, insertcolbefore,

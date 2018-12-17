@@ -1,9 +1,9 @@
-import IndexedTables: aggregate, aggregate_vec, reducedim_vec, _convert
+import IndexedTables: reducedim_vec, _convert
 using OnlineStatsBase
 import IndexedTables: groupreduce, groupby, ApplyColwise
 import Base: reduce
 
-export reducedim_vec, aggregate, aggregate_vec
+export reducedim_vec
 
 _merger(f) = f
 _merger(f::OnlineStat) = merge
@@ -49,7 +49,7 @@ function groupreduce(f, t::DDataset, by=pkeynames(t); kwargs...)
     @noinline function groupchunk(x)
         groupreduce(f, x, by; kwargs...)
     end
-    if f isa Tup || t isa DNextTable
+    if f isa Tup || t isa DIndexedTable
         g, _ = IndexedTables.init_funcs(f, false)
     else
         g = f
@@ -62,9 +62,9 @@ function groupreduce(f, t::DDataset, by=pkeynames(t); kwargs...)
     end
     @noinline function mergechunk(x, y)
         # use NDSparse's merge
-        if x isa NextTable
+        if x isa IndexedTable
             z = merge(_convert(NDSparse, x), _convert(NDSparse, y), agg=mergef)
-            _convert(NextTable, z)
+            _convert(IndexedTable, z)
         else
             merge(x,y, agg=mergef)
         end
@@ -126,7 +126,7 @@ _reducedim(f, x::DNDSparse, dims::Symbol, cache) = _reducedim(f, x, [dims], cach
 
 Like `reducedim`, except uses a function mapping a vector of values to a scalar instead of a 2-argument scalar function.
 
-See also [`reducedim`](@ref) and [`aggregate_vec`](@ref).
+See also [`reducedim`](@ref).
 """
 function reducedim_vec(f, x::DNDSparse, dims)
     keep = setdiff([1:ndims(x);], dims)
