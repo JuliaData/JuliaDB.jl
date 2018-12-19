@@ -231,7 +231,7 @@ using MemPool
 
 # Fix to load n/p number of files per process
 function _evenlydistribute!(t, wrkrs)
-    for (r, w) in zip(t.chunks, wrkrs)
+    for (r, w) in zip(t.chunks, Iterators.cycle(wrkrs))
         if r.handle isa FileRef
             r.handle.force_pid[] = w
         end
