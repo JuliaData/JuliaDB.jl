@@ -228,9 +228,11 @@ function _makerelative!(t, dir::AbstractString)
 end
 
 function _evenlydistribute!(t, wrkrs)
-    for (c, w) in zip(t.chunks, Iterators.cycle(wrkrs))
-        c.affinity = [Dagger.OSProc(w) => 1]
-    end
+    t.chunks = [(
+        thunk = delayed(identity)(c);
+        thunk.affinity = [Dagger.OSProc(w) => 1];
+        thunk
+    ) for (c, w) in zip(t.chunks, Iterators.cycle(wrkrs))]
 end
 
 deserialize(io::AbstractSerializer, DT::Type{DNDSparse{K,V}}) where {K,V} = _deser(io, DT)
