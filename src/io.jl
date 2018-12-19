@@ -227,12 +227,15 @@ function _makerelative!(t, dir::AbstractString)
     end
 end
 
+using MemPool
+
+# Fix to load n/p number of files per process
 function _evenlydistribute!(t, wrkrs)
-    t.chunks = [(
-        thunk = delayed(identity)(c);
-        thunk.affinity = [Dagger.OSProc(w) => 1];
-        thunk
-    ) for (c, w) in zip(t.chunks, Iterators.cycle(wrkrs))]
+    for (r, w) in zip(t.chunks, wrkrs)
+        if r.handle isa FileRef
+            r.handle.force_pid[] = w
+        end
+    end
 end
 
 deserialize(io::AbstractSerializer, DT::Type{DNDSparse{K,V}}) where {K,V} = _deser(io, DT)
