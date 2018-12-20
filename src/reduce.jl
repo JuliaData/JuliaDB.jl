@@ -1,10 +1,3 @@
-import IndexedTables: aggregate, aggregate_vec, reducedim_vec, _convert
-using OnlineStatsBase
-import IndexedTables: groupreduce, groupby, ApplyColwise
-import Base: reduce
-
-export reducedim_vec, aggregate, aggregate_vec
-
 _merger(f) = f
 _merger(f::OnlineStat) = merge
 _merger(f::Tup) = map(_merger, f)
@@ -49,7 +42,7 @@ function groupreduce(f, t::DDataset, by=pkeynames(t); kwargs...)
     @noinline function groupchunk(x)
         groupreduce(f, x, by; kwargs...)
     end
-    if f isa Tup || t isa DNextTable
+    if f isa Tup || t isa DIndexedTable
         g, _ = IndexedTables.init_funcs(f, false)
     else
         g = f
@@ -62,9 +55,9 @@ function groupreduce(f, t::DDataset, by=pkeynames(t); kwargs...)
     end
     @noinline function mergechunk(x, y)
         # use NDSparse's merge
-        if x isa NextTable
+        if x isa IndexedTable
             z = merge(_convert(NDSparse, x), _convert(NDSparse, y), agg=mergef)
-            _convert(NextTable, z)
+            _convert(IndexedTable, z)
         else
             merge(x,y, agg=mergef)
         end

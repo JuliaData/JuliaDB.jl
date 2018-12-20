@@ -21,7 +21,7 @@ same type.  JuliaDB integrates with OnlineStats via the [`reduce`](@ref) and
 ```@repl ex1
 using JuliaDB, OnlineStats
 
-t = table(@NT(x = randn(100), y = randn(100), z = rand(1:5, 100)))
+t = table((x = randn(100), y = randn(100), z = rand(1:5, 100)))
 ```
 
 ---

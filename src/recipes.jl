@@ -1,17 +1,10 @@
-using RecipesBase
-
-export partitionplot
-
 #-----------------------------------------------------------------# partitionplot
 @userplot struct PartitionPlot
     args
 end
 
-getvalue(x) = x 
-getvalue(x::DataValues.DataValue) = get(x)
-
 indextype(x::Type) = x 
-indextype(x::Type{DataValues.DataValue{T}}) where {T} = T
+indextype(::Type{Union{T,Missing}}) where {T} = T
 
 @recipe function f(o::PartitionPlot; nparts = 100, stat = Extrema(), by = nothing, dropmissing = false)
     t = o.args[1]
@@ -20,7 +13,7 @@ indextype(x::Type{DataValues.DataValue{T}}) where {T} = T
         sel_y = o.args[3]
         T = indextype.(fieldtype(eltype(t), IndexedTables.colindex(t, sel_x)))
         s = dropmissing ? 
-            FTSeries(IndexedPartition(T, stat, nparts); filter = x->all(!isna, x), transform = x->getvalue.(x)) :
+            FTSeries(IndexedPartition(T, stat, nparts); filter = x->all(!ismissing, x)) :
             FTSeries(IndexedPartition(T, stat, nparts))
         if by == nothing 
             reduce(s, t; select = (sel_x, sel_y))
@@ -35,7 +28,7 @@ indextype(x::Type{DataValues.DataValue{T}}) where {T} = T
         end
     elseif length(o.args) == 2 
         s = dropmissing ? 
-            FTSeries(Partition(stat, nparts); filter = !isna, transform = getvalue) :
+            FTSeries(Partition(stat, nparts); filter = !ismissing) :
             FTSeries(Partition(stat, nparts))
         if by == nothing
             reduce(s, t; select = sel_x)

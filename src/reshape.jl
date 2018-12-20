@@ -1,6 +1,3 @@
-import IndexedTables: stack, unstack
-export stack, unstack
-
 function stack(t::DDataset, by = pkeynames(t); select = isa(t, DNDSparse) ? valuenames(t) : excludecols(t, by),
     variable = :variable, value = :value)
 
@@ -12,7 +9,7 @@ function stack(t::DDataset, by = pkeynames(t); select = isa(t, DNDSparse) ? valu
 end
 
 function unstack(::Type{D}, ::Type{T}, key, val, cols::AbstractVector{S}) where {D <:DDataset, T, S}
-    D1 = D isa DNDSparse ? NDSparse : NextTable
+    D1 = D isa DNDSparse ? NDSparse : IndexedTable
     function unstackchunk(x, y)
         unstack(D1, T, x, y, cols)
     end
@@ -25,5 +22,5 @@ function unstack(t::D, by = pkeynames(t); variable = :variable, value = :value) 
     col = column(t, variable)
     cols = S.(collect(Dagger.treereduce(delayed(union), delayedmap(unique, col.chunks))))
     T = eltype(columns(t, value))
-    unstack(D, T isa Type{<:DataValue} ? eltype(T) : T, pkeys(tgrp), columns(tgrp, value), cols)
+    unstack(D, Base.nonmissingtype(T), pkeys(tgrp), columns(tgrp, value), cols)
 end

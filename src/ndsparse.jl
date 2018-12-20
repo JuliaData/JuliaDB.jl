@@ -1,10 +1,3 @@
-export AbstractNDSparse
-
-import Dagger: chunktype, domain, tochunk, distribute,
-               chunks, Context, compute
-
-import IndexedTables: eltypes, astuple, colnames, ndsparse, pkeynames, valuenames
-
 boundingrect(x::IndexSpace) = x.boundingrect
 interval(x::IndexSpace) = x.interval
 
@@ -21,7 +14,7 @@ mutable struct DNDSparse{K,V} <: AbstractNDSparse
     chunks::Vector
 end
 
-const DDataset = Union{DNextTable, DNDSparse}
+const DDataset = Union{DIndexedTable, DNDSparse}
 
 function ndsparse(::Val{:distributed}, ks::Tup,
                   vs::Union{Tup, AbstractArray};
@@ -60,8 +53,8 @@ function ndsparse(::Val{:distributed}, ks::Tup,
     iscols = isa(vs, Tup)
 
     function makechunk(args...)
-        k = Columns(args[1:ndims]..., names=inames)
-        v = iscols ? Columns(args[ndims+1:end]..., names=dnames) : args[end]
+        k = Columns(args[1:ndims], names=inames)
+        v = iscols ? Columns(args[ndims+1:end], names=dnames) : args[end]
         ndsparse(k,v; agg=agg, kwargs...)
     end
 
@@ -236,7 +229,7 @@ function Dagger.domain(nd::NDSparse)
     return IndexSpace(interval, interval, Nullable{Int}(length(nd)))
 end
 
-function subindexspace(t::Union{NDSparse, NextTable}, r)
+function subindexspace(t::Union{NDSparse, IndexedTable}, r)
     ks = pkeys(t)
     T = eltype(typeof(ks))
     wrap = T<:NamedTuple ? T∘tuple : tuple
@@ -298,8 +291,8 @@ end
 # index spaces spanned by the chunks in the index
 function index_spaces(t::NDSparse)
     intervals = map(x-> Interval(map(first, x), map(last, x)), t.index)
-    boundingrects = map(x-> Interval(map(first, x), map(last, x)), t.data.columns.boundingrect)
-    map(IndexSpace, intervals, boundingrects, t.data.columns.length)
+    boundingrects = map(x-> Interval(map(first, x), map(last, x)), columns(t.data).boundingrect)
+    map(IndexSpace, intervals, boundingrects, columns(t.data).length)
 end
 
 """
@@ -453,7 +446,7 @@ function distribute(nds::NDSparse{V}, rowgroups::AbstractArray;
     # the master process - which would lead to all operations being serial.
     chunks = map(r->delayed(identity)(subtable(nds, r)), ranges)
     domains = map(r->subindexspace(nds, r), ranges)
-    realK = eltypes(typeof(nds.index.columns))
+    realK = eltypes(typeof(columns(nds.index)))
     cache_thunks(fromchunks(chunks, domains=domains, KV = (realK, V),
                             allowoverlap=allowoverlap, closed=closed))
 end
@@ -529,8 +522,6 @@ function subtable(t::DNDSparse{K,V}, idx) where {K, V}
 
     DNDSparse{K,V}(ds, cs)
 end
-
-import IndexedTables: showtable
 
 function Base.show(io::IO, big::DNDSparse)
     h, w = displaysize(io)

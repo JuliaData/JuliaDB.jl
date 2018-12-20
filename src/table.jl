@@ -1,12 +1,3 @@
-import Base:collect, ==
-import IndexedTables: NextTable, table, colnames, reindex,
-                      excludecols, showtable, ColDict,
-                      AbstractIndexedTable, Dataset
-import Dagger: domainchunks, chunks
-
-# re-export the essentials
-export distribute, chunks, compute
-
 const IndexTuple = Union{Tuple, NamedTuple}
 
 """
@@ -27,7 +18,7 @@ end
 """
 A distributed table
 """
-mutable struct DNextTable{T,K} <: AbstractIndexedTable
+mutable struct DIndexedTable{T,K} <: AbstractIndexedTable
     # primary key columns
     pkey::Vector{Int}
     # extent of values in the pkeys
@@ -38,7 +29,7 @@ end
 
 noweakref(w::WeakRefString) = string(w)
 noweakref(x) = x
-function Dagger.domain(t::NextTable)
+function Dagger.domain(t::IndexedTable)
     ks = pkeys(t)
     T = eltype(ks)
 
@@ -90,8 +81,8 @@ function table(::Val{:distributed}, tup::Tup; chunks=nothing, kwargs...)
 end
 
 # Copying constructor
-function table(t::Union{NextTable, DNextTable};
-               columns=IndexedTables.columns(t),
+function table(t::Union{IndexedTable, DIndexedTable};
+               columns=columns(t),
                pkey=t.pkey,
                presorted=false,
                copy=true, kwargs...)
@@ -102,8 +93,8 @@ function table(t::Union{NextTable, DNextTable};
           copy=copy, kwargs...)
 end
 
-Base.eltype(dt::DNextTable{T}) where {T} = T
-function colnames(t::DNextTable{T}) where T
+Base.eltype(dt::DIndexedTable{T}) where {T} = T
+function colnames(t::DIndexedTable{T}) where T
     fieldnames(T)
 end
 
@@ -119,7 +110,7 @@ function trylength(t)::Nullable{Int}
     return len
 end
 
-function Base.length(t::DNextTable)
+function Base.length(t::DIndexedTable)
     l = trylength(t)
     if isnull(l)
         error("The length of the DNDSparse is not yet known since some of its parts are not yet computed. Call `compute` to compute them, and then call `length` on the result of `compute`.")
@@ -169,7 +160,7 @@ function fromchunks(::Type{<:AbstractVector},
            dmnchunks, cs, dvcat)
 end
 
-function fromchunks(::Type{<:NextTable}, chunks::AbstractArray;
+function fromchunks(::Type{<:IndexedTable}, chunks::AbstractArray;
                     domains::AbstractArray = last.(domain.(chunks)),
                     pkey=first(domain(first(chunks))),
                     K = promote_eltypes(domains),
@@ -178,10 +169,8 @@ function fromchunks(::Type{<:NextTable}, chunks::AbstractArray;
     nzidxs = findall(!isempty, domains)
     domains = domains[nzidxs]
 
-    DNextTable{T, K}(pkey, domains, chunks[nzidxs])
+    DIndexedTable{T, K}(pkey, domains, chunks[nzidxs])
 end
-
-import Base.reduce
 
 function promote_eltypes(ts::AbstractArray)
     t = eltype(ts[1])
@@ -204,13 +193,13 @@ end
 
 Distribute a table in `chunks` pieces. Equivalent to `table(t, chunks=chunks)`.
 """
-distribute(t::NextTable, chunks) = table(t, chunks=chunks, copy=false)
+distribute(t::IndexedTable, chunks) = table(t, chunks=chunks, copy=false)
 
-compute(t::DNextTable; kwargs...) = compute(get_context(), t; kwargs...)
+compute(t::DIndexedTable; kwargs...) = compute(get_context(), t; kwargs...)
 
-function compute(ctx, t::DNextTable; output=nothing)
+function compute(ctx, t::DIndexedTable; output=nothing)
     if any(Dagger.istask, t.chunks)
-        fromchunks(NextTable, cs, output=output)
+        fromchunks(IndexedTable, cs, output=output)
     else
         map(Dagger.unrelease, t.chunks) # don't let this be freed
         foreach(Dagger.persist!, t.chunks)
@@ -218,11 +207,11 @@ function compute(ctx, t::DNextTable; output=nothing)
     end
 end
 
-distribute(t::DNextTable, cs) = table(t, chunks=cs)
+distribute(t::DIndexedTable, cs) = table(t, chunks=cs)
 
-collect(t::DNextTable) = collect(get_context(), t)
+collect(t::DIndexedTable) = collect(get_context(), t)
 
-function collect(ctx::Context, dt::DNextTable{T}) where T
+function collect(ctx::Context, dt::DIndexedTable{T}) where T
     cs = dt.chunks
     if length(cs) > 0
         collect(ctx, treereduce(delayed(_merge), cs))
@@ -233,7 +222,7 @@ end
 
 # merging two tables
 
-function _merge(f, a::NextTable, b::NextTable)
+function _merge(f, a::IndexedTable, b::IndexedTable)
     if isempty(a.pkey) && isempty(b.pkey)
         return table(vcat(rows(a), rows(b)))
     end
@@ -256,14 +245,14 @@ function _merge(f, a::NextTable, b::NextTable)
     end
 end
 
-_merge(f, x::NextTable) = x
-function _merge(f, x::NextTable, y::NextTable, ys::NextTable...)
+_merge(f, x::IndexedTable) = x
+function _merge(f, x::IndexedTable, y::IndexedTable, ys::IndexedTable...)
     treereduce((a,b)->_merge(f, a, b), [x,y,ys...])
 end
 
-_merge(x::NextTable, y::NextTable...) = _merge((a,b) -> merge(a, b), x, y...)
+_merge(x::IndexedTable, y::IndexedTable...) = _merge((a,b) -> merge(a, b), x, y...)
 
-function Base.show(io::IO, big::DNextTable)
+function Base.show(io::IO, big::DIndexedTable)
     h, w = displaysize(io)
     showrows = h - 5 # This will trigger an ellipsis when there's
                      # more to see than the screen fits

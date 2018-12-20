@@ -1,13 +1,5 @@
 # Extract a column as a Dagger array
-export getindexcol, getdatacol, dindex, ddata,
-       DColumns, column, columns, rows, pairs, as
 
-import Base: keys, values
-import IndexedTables: DimName, Columns, column, columns,
-       rows, pairs, as, As, Tup, namedtuple, itable
-
-import Dagger: DomainBlocks, ArrayDomain, DArray,
-                ArrayOp, domainchunks, chunks, Distribute
 
 const DColumns = DArray{<:Tup}
 

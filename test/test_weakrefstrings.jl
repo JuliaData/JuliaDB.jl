@@ -1,7 +1,3 @@
-using JuliaDB
-using WeakRefStrings
-using Dagger
-
 @testset "WeakRefStrings" begin
     # fix #198, #199
     db = table(WeakRefStrings.StringVector(["A", "B", "A", "B"]), Dagger.distribute(ones(4), 2), names = [:x, :y])

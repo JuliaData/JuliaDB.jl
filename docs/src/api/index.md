@@ -22,7 +22,7 @@ Select subsets of columns, map, and filter.
 - [`select`](@ref) - select and transform a column or a subset of columns
 - [`map`](@ref) - apply a function row-wise
 - [`filter`](@ref) - filter rows
-- [`dropna`](@ref) - drop rows with NA values
+- [`dropmissing`](@ref) - drop rows with missing values
 - [`columns`](@ref) - extract struct of column vectors
 - [`rows`](@ref) - extract vector of structs
 - [`keys`](@ref) - vector of keys of an NDSparse

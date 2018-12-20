@@ -1,8 +1,5 @@
-using JuliaDB
-using Test, Statistics
-
 @testset "map & reduce" begin
-    t = NDSparse(Columns([1,1,2,2], [1,2,1,2]), [1,2,3,4])
+    t = NDSparse(Columns(([1,1,2,2], [1,2,1,2])), [1,2,3,4])
     d = distribute(t, 2)
     @test collect(map(-, d)) == map(-, t)
     @test reduce(+, d) == 10
@@ -42,7 +39,7 @@ end
 
 function Base.isapprox(x::NDSparse, y::NDSparse)
     flush!(x); flush!(y)
-    all(map(isapprox, x.data.columns, y.data.columns))
+    all(map(isapprox, columns(x.data), columns(y.data)))
 end
 
 @testset "convertdim" begin
@@ -62,7 +59,7 @@ end
 end
 
 @testset "reduce" begin
-    t1 = NDSparse(Columns([1,1,2,2], [1,2,1,2]), [1,2,3,4])
+    t1 = NDSparse(Columns(([1,1,2,2], [1,2,1,2])), [1,2,3,4])
     rd1 = reduce(+, t1, dims=1)
     rd2 = reduce(+, t1, dims=2)
     rdv1 = reducedim_vec(length, t1, 1)
@@ -79,13 +76,13 @@ end
 end
 
 @testset "select" begin
-    t1 = NDSparse(Columns([1,2,3,4], [2,1,1,2]), [1,2,3,4])
+    t1 = NDSparse(Columns(([1,2,3,4], [2,1,1,2])), [1,2,3,4])
     d1 = distribute(t1, 2)
     @test collect(selectkeys(d1, 2, agg=+)) == selectkeys(t1, 2, agg=+)
 end
 
 @testset "permutedims" begin
-    t = NDSparse(Columns([1,1,2,2], ["a","b","a","b"]), [1,2,3,4])
+    t = NDSparse(Columns(([1,1,2,2], ["a","b","a","b"])), [1,2,3,4])
     for n=1:5
         d = distribute(t, n)
         @test collect(permutedims(d, [2,1])) == permutedims(t, [2,1])

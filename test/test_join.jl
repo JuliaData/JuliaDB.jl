@@ -1,10 +1,6 @@
-using JuliaDB
-using IndexedTables
-using Test
-
 @testset "join" begin
-    t1 = NDSparse(Columns([1,1,2,2], [1,2,1,2]), [1,2,3,4])
-    t2 = NDSparse(Columns([0,2,2,3], [1,1,2,2]), [1,2,3,4])
+    t1 = NDSparse(Columns(([1,1,2,2], [1,2,1,2])), [1,2,3,4])
+    t2 = NDSparse(Columns(([0,2,2,3], [1,1,2,2])), [1,2,3,4])
 
     j1 = innerjoin(t1,t2)
     j2 = innerjoin(+, t1,t2)
@@ -19,14 +15,14 @@ using Test
         d1 = distribute(t1, n)
         for n2 = 1:5
             d2 = distribute(t2, n2)
-            @test collect(innerjoin(d1, d2)) == j1
-            @test collect(innerjoin(+, d1, d2)) == j2
+            @test isequal(collect(innerjoin(d1, d2)), j1)
+            @test isequal(collect(innerjoin(+, d1, d2)), j2)
 
-            @test collect(leftjoin(d1, d2)) == lj1
-            @test collect(leftjoin(+, d1, d2)) == lj2
+            @test isequal(collect(leftjoin(d1, d2)), lj1)
+            @test isequal(collect(leftjoin(+, d1, d2)), lj2)
 
-            @test collect(merge(d1, d2)) == mj1
-            @test collect(merge(d2, d1)) == mj2
+            @test isequal(collect(merge(d1, d2)), mj1)
+            @test isequal(collect(merge(d2, d1)), mj2)
         end
     end
 
@@ -45,8 +41,8 @@ using Test
 end
 
 @testset "broadcast" begin
-    t1 = NDSparse(Columns([1,2,3,4],[1,1,2,2]), [5,6,7,8])
-    t2 = NDSparse(Columns([0,1,2,4]),[0,10,100,10000])
+    t1 = NDSparse(Columns(([1,2,3,4],[1,1,2,2])), [5,6,7,8])
+    t2 = NDSparse(Columns(([0,1,2,4],)),[0,10,100,10000])
 
     for n=1:4
         for m=1:4
