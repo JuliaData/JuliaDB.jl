@@ -34,7 +34,7 @@ import JuliaDB: pkeynames, pkeys, excludecols, select
     b = table([1, 2, 3], [4, 5, 6], names=[:x, :y], chunks=2)
     @test table(([1, 2, 3], [4, 5, 6])) == a
     @test table((x = [1, 2, 3], y = [4, 5, 6])) == b
-    @test table(Columns([1, 2, 3], [4, 5, 6])) == a
+    @test table(Columns(([1, 2, 3], [4, 5, 6]))) == a
     @test table(Columns(x=[1, 2, 3], y=[4, 5, 6])) == b
     @test b == table(b)
     b = table([2, 3, 1], [4, 5, 6], names=[:x, :y], pkey=:x, chunks=2)
@@ -55,15 +55,15 @@ import JuliaDB: pkeynames, pkeys, excludecols, select
     @test excludecols([1, 2, 3], (1,)) == ()
     @test convert(IndexedTable, Columns(x=[1, 2], y=[3, 4]), Columns(z=[1, 2]), presorted=true) == table([1, 2], [3, 4], [1, 2], names=Symbol[:x, :y, :z])
     @test colnames([1, 2, 3]) == (1,)
-    @test colnames(Columns([1, 2, 3], [3, 4, 5])) == (1, 2)
+    @test colnames(Columns(([1, 2, 3], [3, 4, 5]))) == (1, 2)
     @test colnames(table([1, 2, 3], [3, 4, 5])) == (1, 2)
     @test colnames(Columns(x=[1, 2, 3], y=[3, 4, 5])) == (:x, :y)
     @test colnames(table([1, 2, 3], [3, 4, 5], names=[:x, :y])) == (:x, :y)
     @test colnames(ndsparse(Columns(x=[1, 2, 3]), Columns(y=[3, 4, 5]))) == (:x, :y)
     @test colnames(ndsparse(Columns(x=[1, 2, 3]), [3, 4, 5])) == (:x, 2)
     @test colnames(ndsparse(Columns(x=[1, 2, 3]), [3, 4, 5])) == (:x, 2)
-    @test colnames(ndsparse(Columns([1, 2, 3], [4, 5, 6]), Columns(x=[6, 7, 8]))) == (1, 2, :x)
-    @test colnames(ndsparse(Columns(x=[1, 2, 3]), Columns([3, 4, 5], [6, 7, 8]))) == (:x, 2, 3)
+    @test colnames(ndsparse(Columns(([1, 2, 3], [4, 5, 6])), Columns(x=[6, 7, 8]))) == (1, 2, :x)
+    @test colnames(ndsparse(Columns(x=[1, 2, 3]), Columns(([3, 4, 5], [6, 7, 8])))) == (:x, 2, 3)
     t = table([1, 2], [3, 4], names=[:x, :y], chunks=2)
     @test columns(t) == (x = [1, 2], y = [3, 4])
     @test columns(t, :x) == [1, 2]
