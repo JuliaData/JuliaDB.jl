@@ -1,0 +1,3 @@
+```@autodocs
+modules = [JuliaDB, IndexedTables]
+```

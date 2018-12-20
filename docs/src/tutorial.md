@@ -6,17 +6,20 @@ This is a port of a well known [tutorial](https://rpubs.com/justmarkham/dplyr-tu
 
 ## Getting the data
 
-The data is some example flight dataset that you can find [here](https://raw.githubusercontent.com/piever/JuliaDBTutorial/master/hflights.csv).
-Simply open the link and choose `Save as` from the `File` menu in your browser to save the data to a folder on your computer.
+The flights dataset for the tutorial is [here](https://raw.githubusercontent.com/piever/JuliaDBTutorial/master/hflights.csv).  Alternatively, run the following in Julia:
+
+```julia
+download("https://raw.githubusercontent.com/piever/JuliaDBTutorial/master/hflights.csv")
+```
 
 ## Loading the data
 
 Loading a csv file is straightforward with JuliaDB:
 
-
 ```julia
-using JuliaDB, IndexedTables
-flights = loadtable("hflights.csv");
+using JuliaDB
+
+flights = loadtable("hflights.csv")
 ```
 
 Of course, replace the path with the location of the dataset you have just downloaded.
@@ -27,7 +30,7 @@ In order to select only rows matching certain criteria, use the `filter` functio
 
 
 ```julia
-filter(i -> (i.Month == 1) && (i.DayofMonth == 1), flights);
+filter(i -> (i.Month == 1) && (i.DayofMonth == 1), flights)
 ```
 
 To test if one of two conditions is verified:
@@ -38,7 +41,7 @@ filter(i -> (i.UniqueCarrier == "AA") || (i.UniqueCarrier == "UA"), flights)
 
 # in this case, you can simply test whether the `UniqueCarrier` is in a given list:
 
-filter(i -> i.UniqueCarrier in ["AA", "UA"], flights);
+filter(i -> i.UniqueCarrier in ["AA", "UA"], flights)
 ```
 
 ## Select: pick columns by name
@@ -49,9 +52,6 @@ You can use the `select` function to select a subset of columns:
 ```julia
 select(flights, (:DepTime, :ArrTime, :FlightNum))
 ```
-
-
-
 
     Table with 227496 rows, 3 columns:
     DepTime  ArrTime  FlightNum
@@ -87,11 +87,8 @@ Let's select all columns between `:Year` and `:Month` as well as all columns con
 
 
 ```julia
-select(flights, All(Between(:Year, :DayofMonth), i -> contains(string(i), "Taxi"), i -> contains(string(i), "Delay")))
+select(flights, All(Between(:Year, :DayofMonth), i -> occursin("Taxi", string(i)), i -> occursin("Delay", string(i))))
 ```
-
-
-
 
     Table with 227496 rows, 7 columns:
     Year  Month  DayofMonth  TaxiIn  TaxiOut  ArrDelay  DepDelay
@@ -135,44 +132,35 @@ If one wants to apply several operations one after the other, there are two main
 - nesting
 - piping
 
-Let's assume we want to select `UniqueCarrier` and `DepDelay` columns and filter for delays over 60 minutes. The nesting approach would be:
-
-
+Let's assume we want to select `UniqueCarrier` and `DepDelay` columns and filter for delays over 60 minutes. Since the `DepDelay` column has missing data, we also need to filter out `missing` values via `!ismissing`.  The nesting approach would be:
 
 ```julia
-filter(i -> i.DepDelay > 60, select(flights, (:UniqueCarrier, :DepDelay)))
+filter(i -> !ismissing(i.DepDelay > 60), select(flights, (:UniqueCarrier, :DepDelay)))
 ```
 
-
-
-
-    Table with 10242 rows, 2 columns:
+    Table with 224591 rows, 2 columns:
     UniqueCarrier  DepDelay
     ───────────────────────
-    "AA"           90
-    "AA"           67
-    "AA"           74
-    "AA"           125
-    "AA"           82
-    "AA"           99
-    "AA"           70
-    "AA"           61
-    "AA"           74
-    "AS"           73
-    "B6"           136
-    "B6"           68
+    "AA"           0
+    "AA"           1
+    "AA"           -8
+    "AA"           3
+    "AA"           5
+    "AA"           -1
+    "AA"           -1
+    "AA"           -5
+    "AA"           43
+    "AA"           43
     ⋮
-    "WN"           129
-    "WN"           61
-    "WN"           70
-    "WN"           76
-    "WN"           63
-    "WN"           144
-    "WN"           117
-    "WN"           124
-    "WN"           72
-    "WN"           70
-    "WN"           78
+    "WN"           1
+    "WN"           16
+    "WN"           -2
+    "WN"           7
+    "WN"           8
+    "WN"           7
+    "WN"           -3
+    "WN"           -4
+    "WN"           0
 
 
 
@@ -183,40 +171,33 @@ For piping, we'll use the excellent [Lazy](https://github.com/MikeInnes/Lazy.jl)
 import Lazy
 Lazy.@as x flights begin
     select(x, (:UniqueCarrier, :DepDelay))
-    filter(i -> i.DepDelay > 60, x)
+    filter(i -> !ismissing(i.DepDelay > 60), x)
 end
 ```
 
-
-
-
-    Table with 10242 rows, 2 columns:
+    Table with 224591 rows, 2 columns:
     UniqueCarrier  DepDelay
     ───────────────────────
-    "AA"           90
-    "AA"           67
-    "AA"           74
-    "AA"           125
-    "AA"           82
-    "AA"           99
-    "AA"           70
-    "AA"           61
-    "AA"           74
-    "AS"           73
-    "B6"           136
-    "B6"           68
+    "AA"           0
+    "AA"           1
+    "AA"           -8
+    "AA"           3
+    "AA"           5
+    "AA"           -1
+    "AA"           -1
+    "AA"           -5
+    "AA"           43
+    "AA"           43
     ⋮
-    "WN"           129
-    "WN"           61
-    "WN"           70
-    "WN"           76
-    "WN"           63
-    "WN"           144
-    "WN"           117
-    "WN"           124
-    "WN"           72
-    "WN"           70
-    "WN"           78
+    "WN"           1
+    "WN"           16
+    "WN"           -2
+    "WN"           7
+    "WN"           8
+    "WN"           7
+    "WN"           -3
+    "WN"           -4
+    "WN"           0
 
 
 
@@ -230,9 +211,6 @@ Select `UniqueCarrier` and `DepDelay` columns and sort by `DepDelay`:
 ```julia
 sort(flights, :DepDelay, select = (:UniqueCarrier, :DepDelay))
 ```
-
-
-
 
     Table with 227496 rows, 2 columns:
     UniqueCarrier  DepDelay
@@ -250,22 +228,20 @@ sort(flights, :DepDelay, select = (:UniqueCarrier, :DepDelay))
     "XE"           -17
     "DL"           -17
     ⋮
-    "US"           #NA
-    "US"           #NA
-    "US"           #NA
-    "WN"           #NA
-    "WN"           #NA
-    "WN"           #NA
-    "WN"           #NA
-    "WN"           #NA
-    "WN"           #NA
-    "WN"           #NA
-    "WN"           #NA
-
+    "US"           missing
+    "US"           missing
+    "US"           missing
+    "WN"           missing
+    "WN"           missing
+    "WN"           missing
+    "WN"           missing
+    "WN"           missing
+    "WN"           missing
+    "WN"           missing
+    "WN"           missing
 
 
 or, in reverse order:
-
 
 ```julia
 sort(flights, :DepDelay, select = (:UniqueCarrier, :DepDelay), rev = true)
@@ -280,36 +256,29 @@ To apply a function row by row, use `map`: the first argument is the anonymous f
 speed = map(i -> i.Distance / i.AirTime * 60, flights)
 ```
 
-
-
-
-    227496-element DataValues.DataValueArray{Float64,1}:
-     336.0  
-     298.667
-     280.0  
-     344.615
-     305.455
-     298.667
-     312.558
-     336.0  
-     327.805
-     298.667
-     320.0  
-     327.805
-     305.455
-     ⋮      
-     261.818
-     508.889
-     473.793
-     479.302
-     496.627
-     468.6  
-     478.163
-     483.093
-     498.511
-     445.574
-     424.688
-     460.678
+    227496-element Array{Union{Missing, Float64},1}:
+     336.0
+     298.6666666666667
+     280.0
+     344.61538461538464
+     305.45454545454544
+     298.6666666666667
+     312.55813953488376
+     336.0
+     327.8048780487805
+     298.6666666666667
+     320.0
+     ⋮
+     473.7931034482758
+     479.30232558139534
+     496.6265060240964
+     468.59999999999997
+     478.1632653061224
+     483.0927835051546
+     498.5106382978723
+     445.57377049180326
+     424.6875
+     460.6779661016949
 
 
 
@@ -319,14 +288,14 @@ Use the `pushcol` function to add a column to an existing dataset:
 
 
 ```julia
-pushcol(flights, :Speed, speed);
+pushcol(flights, :Speed, speed)
 ```
 
 If you need to add the new column to the existing dataset:
 
 
 ```julia
-flights = pushcol(flights, :Speed, speed);
+flights = pushcol(flights, :Speed, speed)
 ```
 
 ## Reduce variables to values
@@ -335,7 +304,9 @@ To get the average delay, we first filter away datapoints where `ArrDelay` is mi
 
 
 ```julia
-groupby((avg_delay = mean∘dropmissing), flights, :Dest, select = :ArrDelay)
+using Statistics
+
+groupby(mean ∘ skipmissing, flights, :Dest, select = :ArrDelay)
 ```
 
 
@@ -380,9 +351,6 @@ If you'll group often by the same variable, you can sort your data by that varia
 sortedflights = reindex(flights, :Dest)
 ```
 
-
-
-
     Table with 227496 rows, 22 columns:
     Columns:
     #   colname            type
@@ -411,27 +379,25 @@ sortedflights = reindex(flights, :Dest)
     22  Speed              DataValues.DataValue{Float64}
 
 
-
-
 ```julia
 using BenchmarkTools
 
 println("Presorted timing:")
-@benchmark groupby((avg_delay = mean∘dropmissing), sortedflights, select = :ArrDelay)
+@benchmark groupby(mean ∘ skipmissing, sortedflights, select = :ArrDelay)
 ```
 
     Presorted timing:
 
     BenchmarkTools.Trial:
-      memory estimate:  3.96 MiB
-      allocs estimate:  2189
+      memory estimate:  31.23 MiB
+      allocs estimate:  1588558
       --------------
-      minimum time:     7.407 ms (0.00% GC)
-      median time:      7.892 ms (0.00% GC)
-      mean time:        8.167 ms (2.90% GC)
-      maximum time:     10.980 ms (13.07% GC)
+      minimum time:     39.565 ms (8.03% GC)
+      median time:      44.401 ms (9.83% GC)
+      mean time:        44.990 ms (10.36% GC)
+      maximum time:     57.016 ms (15.96% GC)
       --------------
-      samples:          612
+      samples:          112
       evals/sample:     1
 
 
@@ -439,21 +405,21 @@ println("Presorted timing:")
 
 ```julia
 println("Non presorted timing:")
-@benchmark groupby((avg_delay = mean∘dropmissing), flights, :Dest, select = :ArrDelay)
+@benchmark groupby(mean ∘ skipmissing, flights, select = :ArrDelay)
 ```
 
     Non presorted timing:
 
     BenchmarkTools.Trial:
-      memory estimate:  7.44 MiB
-      allocs estimate:  2353
+      memory estimate:  1.81 KiB
+      allocs estimate:  30
       --------------
-      minimum time:     112.555 ms (0.00% GC)
-      median time:      114.339 ms (0.00% GC)
-      mean time:        115.784 ms (0.33% GC)
-      maximum time:     130.845 ms (0.00% GC)
+      minimum time:     195.095 μs (0.00% GC)
+      median time:      212.309 μs (0.00% GC)
+      mean time:        230.878 μs (0.20% GC)
+      maximum time:     4.859 ms (95.04% GC)
       --------------
-      samples:          44
+      samples:          10000
       evals/sample:     1
 
 
@@ -462,15 +428,13 @@ Using `summarize`, we can summarize several columns at the same time:
 
 
 ```julia
-summarize(mean∘dropmissing, flights, :Dest, select = (:Cancelled, :Diverted))
+summarize(mean ∘ skipmissing, flights, :Dest, select = (:Cancelled, :Diverted))
 
 # For each carrier, calculate the minimum and maximum arrival and departure delays:
 
-cols = Tuple(find(i -> contains(string(i), "Delay"), colnames(flights)))
-summarize((min = minimum∘dropmissing, max = maximum∘dropmissing), flights, :UniqueCarrier, select = cols)
+cols = Tuple(findall(i -> occursin("Delay", string(i)), colnames(flights)))
+summarize((min = minimum∘skipmissing, max = maximum∘skipmissing), flights, :UniqueCarrier, select = cols)
 ```
-
-
 
 
     Table with 15 rows, 5 columns:
@@ -503,9 +467,6 @@ Lazy.@as x flights begin
     sort(x, :length, rev = true)
 end
 ```
-
-
-
 
     Table with 31 rows, 2 columns:
     DayofMonth  length
@@ -541,10 +502,8 @@ For each destination, count the total number of flights and the number of distin
 
 
 ```julia
-groupb(flight_count = length, plane_count = length∘union), flights, :Dest, select = :TailNum)
+groupby((flight_count = length, plane_count = length∘union), flights, :Dest, select = :TailNum)
 ```
-
-
 
 
     Table with 116 rows, 3 columns:
@@ -587,15 +546,12 @@ delay a given flight had and figure out the day and month with the two greatest 
 
 ```julia
 using StatsBase
-fc = filter(t->!isnull(t.DepDelay), flights)
+fc = dropmissing(flights, :DepDelay)
 gfc = groupby(fc, :UniqueCarrier, select = (:Month, :DayofMonth, :DepDelay), flatten = true) do dd
     rks = ordinalrank(column(dd, :DepDelay), rev = true)
     sort(dd[rks .<= 2], by =  i -> i.DepDelay, rev = true)
 end
 ```
-
-
-
 
     Table with 30 rows, 4 columns:
     UniqueCarrier  Month  DayofMonth  DepDelay
@@ -625,12 +581,10 @@ end
     "YV"           4      22          54
     "YV"           4      30          46
 
-
-
 Though in this case, it would have been simpler to use Julia partial sorting:
 
-
 ```julia
+# TODO: fix
 groupby(fc, :UniqueCarrier, select = (:Month, :DayofMonth, :DepDelay), flatten = true) do dd
     select(dd, 1:2, by = i -> i.DepDelay, rev = true)
 end
@@ -679,9 +633,6 @@ lengths = columns(y, :length)
 pushcol(y, :change, lengths .- lag(lengths))
 ```
 
-
-
-
     Table with 12 rows, 3 columns:
     Month  length  change
     ─────────────────────
@@ -699,23 +650,6 @@ pushcol(y, :change, lengths .- lag(lengths))
     12     19117   1096
 
 
-
-### Warning
-
-`missing` (the official Julia way of representing missing data) has not yet been adopted by JuliaDB, so using ShiftedArrays in combination with JuliaDB may be slightly troublesome in Julia 0.6. The situation should be solved in Julia 0.7, where the adoption of `missing` should become more widespread. You can use a different default value with ShiftedArrays. For example, with an `Array` of `Float64` you could do:
-
-
-```julia
-v = [1.2, 2.3, 3.4]
-lag(v, default = NaN)
-```
-
-
-    3-element ShiftedArrays.ShiftedArray{Float64,Float64,1,Array{Float64,1}}:
-     NaN  
-       1.2
-       2.3
-
 ## Visualizing your data
 
 The [StatPlots](https://github.com/JuliaPlots/StatPlots.jl) and [GroupedErrors](https://github.com/piever/GroupedErrors.jl) package as well as native plotting recipes from JuliaDB using [OnlineStats](https://github.com/joshday/OnlineStats.jl) make a rich set of visualizations possible with an intuitive syntax.
@@ -726,7 +660,7 @@ Use the `@df` macro to be able to refer to columns simply by their name. You can
 ```julia
 using StatPlots
 gr(fmt = :png) # choose the fast GR backend and set format to png: svg would probably crash with so many points
-@df flights scatter(:DepDelay, :ArrDelay, group = :Distance .> 1000,  fmt = :png, layout = 2, legend = :topleft)
+@df flights scatter(:DepDelay, :ArrDelay, group = :Distance .> 1000, layout = 2, legend = :topleft)
 ```
 
 ![scatterflights](https://user-images.githubusercontent.com/6333339/40072129-b96c2b7a-586a-11e8-8f5d-4151dbc94345.png)
@@ -737,7 +671,7 @@ For large datasets, summary statistics can be computed using efficient online al
 
 ```julia
 using OnlineStats
-groupreduce(Mean(), flights, :Month; select = :Distance)
+grpred = groupreduce(Mean(), flights, :Month; select = :Distance)
 ```
 
     Table with 12 rows, 2 columns:
@@ -755,6 +689,28 @@ groupreduce(Mean(), flights, :Month; select = :Distance)
     10     Mean: n=18696 | value=788.256
     11     Mean: n=18021 | value=790.691
     12     Mean: n=19117 | value=809.024
+
+Extract the values of the OnlineStat objects with the `value` function.
+
+```julia
+select(grpred, (:Month, :Mean => value))
+```
+
+    Table with 12 rows, 2 columns:
+    Month  Mean
+    ──────────────
+    1      760.804
+    2      763.909
+    3      782.788
+    4      783.845
+    5      789.66
+    6      797.869
+    7      798.52
+    8      793.727
+    9      790.444
+    10     788.256
+    11     790.691
+    12     809.024
 
 ## Interfacing with online datasets
 
