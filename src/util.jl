@@ -120,7 +120,7 @@ function _loadtable_serial(T, file::Union{IO, AbstractString, AbstractArray};
 
     if isempty(_indexcols)
         implicitindex = true
-        index = Columns([1:n;])
+        index = Columns(([1:n;],))
     else
         indexcolnames = map(indexcols, _indexcols) do name, i
             if i === nothing
@@ -138,7 +138,7 @@ function _loadtable_serial(T, file::Union{IO, AbstractString, AbstractArray};
             warn("Indexed columns may contain Nullables or NAs. Column(s) with nullables: $(join(badcol_names, ", ", " and ")). This will result in wrong sorting.")
         end
 
-        index = Columns(indexvecs...; names=indexcolnames)
+        index = Columns(Tuple(indexvecs); names=indexcolnames)
     end
 
     ## Construct Data
@@ -175,7 +175,7 @@ function _loadtable_serial(T, file::Union{IO, AbstractString, AbstractArray};
         end
     end
 
-    data = Columns(datavecs...; names=datacolnames)
+    data = Columns(Tuple(datavecs); names=datacolnames)
 
     if T<:IndexedTable && implicitindex
         table(data, copy = copy), true

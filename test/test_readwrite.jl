@@ -9,12 +9,12 @@ end
 end
 
 @testset "Columns" begin
-    roundtrip(Columns([1,2], ["x","y"]))
+    roundtrip(Columns(([1,2], ["x","y"])))
     roundtrip(Columns(x=[1,2], y=["x","y"]))
 end
 
 @testset "ndsparse" begin
-    ndsparse(Columns([1,2], ["x","y"]),
+    ndsparse(Columns(([1,2], ["x","y"])),
              Columns(x=[1,2], y=["x","y"])) |> roundtrip
 end
 
