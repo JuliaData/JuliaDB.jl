@@ -209,7 +209,7 @@ function _repeated(x, n)
 end
 
 function approx_size(cs::Columns)
-    sum(map(approx_size, astuple(cs.columns)))
+    sum(map(approx_size, astuple(columns(cs))))
 end
 
 function approx_size(t::NDSparse)

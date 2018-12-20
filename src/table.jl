@@ -82,7 +82,7 @@ end
 
 # Copying constructor
 function table(t::Union{IndexedTable, DIndexedTable};
-               columns=IndexedTables.columns(t),
+               columns=columns(t),
                pkey=t.pkey,
                presorted=false,
                copy=true, kwargs...)

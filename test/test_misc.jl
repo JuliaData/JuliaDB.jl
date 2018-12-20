@@ -20,8 +20,8 @@ end
         d = compute(distribute(t, i))
         dist = map(get, map(JuliaDB.nrows, d.domains))
         @test map(length, Dagger.domainchunks(keys(d, 1))) == dist
-        @test collect(keys(d, 2)) == t.index.columns[2]
-        @test collect( values(d, 2)) == t.data.columns[2]
+        @test collect(keys(d, 2)) == columns(t.index)[2]
+        @test collect( values(d, 2)) == columns(t.data)[2]
     end
 end
 

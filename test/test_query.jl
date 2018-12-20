@@ -39,7 +39,7 @@ end
 
 function Base.isapprox(x::NDSparse, y::NDSparse)
     flush!(x); flush!(y)
-    all(map(isapprox, x.data.columns, y.data.columns))
+    all(map(isapprox, columns(x.data), columns(y.data)))
 end
 
 @testset "convertdim" begin

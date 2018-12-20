@@ -291,8 +291,8 @@ end
 # index spaces spanned by the chunks in the index
 function index_spaces(t::NDSparse)
     intervals = map(x-> Interval(map(first, x), map(last, x)), t.index)
-    boundingrects = map(x-> Interval(map(first, x), map(last, x)), t.data.columns.boundingrect)
-    map(IndexSpace, intervals, boundingrects, t.data.columns.length)
+    boundingrects = map(x-> Interval(map(first, x), map(last, x)), columns(t.data).boundingrect)
+    map(IndexSpace, intervals, boundingrects, columns(t.data).length)
 end
 
 """
@@ -446,7 +446,7 @@ function distribute(nds::NDSparse{V}, rowgroups::AbstractArray;
     # the master process - which would lead to all operations being serial.
     chunks = map(r->delayed(identity)(subtable(nds, r)), ranges)
     domains = map(r->subindexspace(nds, r), ranges)
-    realK = eltypes(typeof(nds.index.columns))
+    realK = eltypes(typeof(columns(nds.index)))
     cache_thunks(fromchunks(chunks, domains=domains, KV = (realK, V),
                             allowoverlap=allowoverlap, closed=closed))
 end
