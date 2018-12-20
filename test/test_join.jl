@@ -1,6 +1,6 @@
 @testset "join" begin
-    t1 = NDSparse(Columns([1,1,2,2], [1,2,1,2]), [1,2,3,4])
-    t2 = NDSparse(Columns([0,2,2,3], [1,1,2,2]), [1,2,3,4])
+    t1 = NDSparse(Columns(([1,1,2,2], [1,2,1,2])), [1,2,3,4])
+    t2 = NDSparse(Columns(([0,2,2,3], [1,1,2,2])), [1,2,3,4])
 
     j1 = innerjoin(t1,t2)
     j2 = innerjoin(+, t1,t2)
@@ -41,8 +41,8 @@
 end
 
 @testset "broadcast" begin
-    t1 = NDSparse(Columns([1,2,3,4],[1,1,2,2]), [5,6,7,8])
-    t2 = NDSparse(Columns([0,1,2,4]),[0,10,100,10000])
+    t1 = NDSparse(Columns(([1,2,3,4],[1,1,2,2])), [5,6,7,8])
+    t2 = NDSparse(Columns(([0,1,2,4],)),[0,10,100,10000])
 
     for n=1:4
         for m=1:4

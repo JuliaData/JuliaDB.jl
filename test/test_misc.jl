@@ -36,7 +36,7 @@ end
 
 import JuliaDB: chunks, index_spaces, has_overlaps
 @testset "has_overlaps" begin
-    t = NDSparse(Columns([1,1,2,2,2,3], [1,2,1,1,2,1]), [1,2,3,4,5,6])
+    t = NDSparse(Columns(([1,1,2,2,2,3], [1,2,1,1,2,1])), [1,2,3,4,5,6])
     d = distribute(t, [2,3,1])
     i = d.domains
     @test !has_overlaps(i, closed=false)
