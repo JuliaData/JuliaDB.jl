@@ -53,8 +53,8 @@ function ndsparse(::Val{:distributed}, ks::Tup,
     iscols = isa(vs, Tup)
 
     function makechunk(args...)
-        k = Columns(args[1:ndims]..., names=inames)
-        v = iscols ? Columns(args[ndims+1:end]..., names=dnames) : args[end]
+        k = Columns(args[1:ndims], names=inames)
+        v = iscols ? Columns(args[ndims+1:end], names=dnames) : args[end]
         ndsparse(k,v; agg=agg, kwargs...)
     end
 

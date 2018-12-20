@@ -48,10 +48,10 @@ function mmread(::Type{Columns}, io, mmap)
     fnames = deserialize(io)
     if isa(fnames, Int)
         cols = [deserialize(io) for i=1:fnames]
-        Columns(cols...)
+        Columns(Tuple(cols))
     else
         cols = [deserialize(io) for i=1:length(fnames)]
-        Columns(cols...; names=fnames)
+        Columns(Tuple(cols); names=fnames)
     end
 end
 
