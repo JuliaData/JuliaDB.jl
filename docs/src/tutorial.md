@@ -309,9 +309,6 @@ using Statistics
 groupby(mean ∘ skipmissing, flights, :Dest, select = :ArrDelay)
 ```
 
-
-
-
     Table with 116 rows, 2 columns:
     Dest   avg_delay
     ────────────────
@@ -584,14 +581,10 @@ end
 Though in this case, it would have been simpler to use Julia partial sorting:
 
 ```julia
-# TODO: fix
 groupby(fc, :UniqueCarrier, select = (:Month, :DayofMonth, :DepDelay), flatten = true) do dd
-    select(dd, 1:2, by = i -> i.DepDelay, rev = true)
+    partialsort(dd, 1:2, by = i -> i.DepDelay, rev = true)
 end
 ```
-
-
-
 
     Table with 30 rows, 4 columns:
     UniqueCarrier  Month  DayofMonth  DepDelay
@@ -622,9 +615,7 @@ end
     "YV"           4      30          46
 
 
-
 For each month, calculate the number of flights and the change from the previous month
-
 
 ```julia
 using ShiftedArrays

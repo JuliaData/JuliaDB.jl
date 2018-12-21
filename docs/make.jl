@@ -15,7 +15,7 @@ makedocs(
         # "aggregations.md",
         # "joins.md",
         # "onlinestats_integration.md",
-        # "plotting.md",
+        "plotting.md",
         # "out_of_core.md",
         "api.md",
    ]
