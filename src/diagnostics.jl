@@ -1,6 +1,3 @@
-import Dagger: debug_compute, get_logs!, LocalEventLog
-
-export start_tracking_time, stop_tracking_time, tracktime, fetch_timings!
 
 function time_table(log; profile=false)
 
@@ -60,8 +57,8 @@ function show_timings(t; maxdepth=5)
     t2 = reducedim_vec(aggregate_events, t, :event_id)
     println("Breakdown:")
     println(map(x->first(x)/1e9, t2))
-    if isdefined(t.data.columns, :profile)
-        p = aggregate_profile(t.data.columns.profile)
+    if isdefined(columns(t.data), :profile)
+        p = aggregate_profile(columns(t.data).profile)
         if !isempty(p.samples)
             println("\nProfile output:")
             Profile.print(p.samples, p.lineinfo, maxdepth=maxdepth)

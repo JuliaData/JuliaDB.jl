@@ -1,6 +1,3 @@
-using Test
-using JuliaDB
-
 @testset "iteration" begin
     x = distribute(NDSparse(Columns(a=[1,1], b=[1,2]), Columns(c=[3,4])), 2)
     y = distribute(NDSparse(Columns(a=[1,1], b=[1,2]), [3,4]), 2)

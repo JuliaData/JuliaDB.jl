@@ -1,9 +1,3 @@
-import IndexedTables: selectkeys, selectvalues, select, lowerselection
-import IndexedTables: convertdim
-import Base: mapslices
-
-export convertdim, selectkeys, selectvalues
-
 function Base.map(f, t::DDataset; select=nothing)
     # TODO: fix when select has a user-supplied vector
     delayedmap(t.chunks) do x
@@ -11,9 +5,9 @@ function Base.map(f, t::DDataset; select=nothing)
     end |> fromchunks
 end
 
-function DataValues.dropna(t::DDataset, select=(colnames(t)...,))
+function dropmissing(t::DDataset, select=(colnames(t)...,))
     delayedmap(t.chunks) do x
-        dropna(x, select)
+        dropmissing(x, select)
     end |> fromchunks
 end
 

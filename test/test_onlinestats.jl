@@ -1,10 +1,6 @@
-using JuliaDB
-using OnlineStats
-using Test
-
 @testset "online stats" begin
 global dt
-    t = NDSparse(Columns([1,1,1,2,2,2,3,3,3], [1,2,3,1,2,3,1,2,3]), [0.5,1,1.5,1,2,3,2,3,4])
+    t = NDSparse(Columns(([1,1,1,2,2,2,3,3,3], [1,2,3,1,2,3,1,2,3])), [0.5,1,1.5,1,2,3,2,3,4])
     dt = distribute(t,[3,2,4])
     @test value(reduce(Mean(), t))[1] ≈ 2
     @test value(reduce(Mean(), dt))[1] ≈ 2

@@ -1,6 +1,3 @@
-export loadfiles, ingest, ingest!, load, save, loadndsparse, loadtable
-import Serialization: serialize, deserialize
-
 const JULIADB_DIR = ".juliadb"
 const JULIADB_FILECACHE = "csv_metadata"
 const JULIADB_INDEXFILE = "juliadb_index"
@@ -57,13 +54,13 @@ Load a [table](@ref Table) from CSV files.
 - `samecols` -- a vector of tuples of strings where each tuple contains alternative names for the same column. For example, if some files have the name "vendor_id" and others have the name "VendorID", pass `samecols=[("VendorID", "vendor_id")]`.
 - `colparsers` -- either a vector or dictionary of data types or an [`AbstractToken` object](https://juliacomputing.com/TextParse.jl/stable/#Available-AbstractToken-types-1) from [TextParse](https://juliacomputing.com/TextParse.jl/stable) package. By default, these are inferred automatically. See `type_detect_rows` option below.
 - `type_detect_rows`: number of rows to use to infer the initial `colparsers` defaults to 20.
-- `nastrings::Vector{String}` -- strings that are to be considered NA. (defaults to `TextParse.NA_STRINGS`)
+- `nastrings::Vector{String}` -- strings that are to be considered missing values. (defaults to `TextParse.NA_STRINGS`)
 - `skiplines_begin::Char` -- skip some lines in the beginning of each file. (doesn't skip by default)
 
 - `usecache::Bool`: (vestigial)
 """
 function loadtable(files::Union{AbstractVector,String}; opts...)
-    _loadtable(NextTable, files; opts...)
+    _loadtable(IndexedTable, files; opts...)
 end
 
 """
@@ -189,7 +186,7 @@ function load(f::AbstractString)
 end
 
 """
-    save(t::Union{DNDSparse, DNextTable}, destdir::AbstractString)
+    save(t::Union{DNDSparse, DIndexedTable}, destdir::AbstractString)
 
 Saves a distributed dataset to disk in directory `destdir`. Saved data can be loaded with [`load`](@ref).
 """
@@ -207,7 +204,7 @@ function save(x::DDataset, output::AbstractString)
 end
 
 """
-    save(t::Union{NDSparse, NextTable}, dest::AbstractString)
+    save(t::Union{NDSparse, IndexedTable}, dest::AbstractString)
 
 Save a dataset to disk as `dest`.  Saved data can be loaded with [`load`](@ref).
 """
@@ -239,7 +236,7 @@ function _evenlydistribute!(t, wrkrs)
 end
 
 deserialize(io::AbstractSerializer, DT::Type{DNDSparse{K,V}}) where {K,V} = _deser(io, DT)
-deserialize(io::AbstractSerializer, DT::Type{DNextTable{T,K}}) where {T,K} = _deser(io, DT)
+deserialize(io::AbstractSerializer, DT::Type{DIndexedTable{T,K}}) where {T,K} = _deser(io, DT)
 function _deser(io::AbstractSerializer, t)
     nf = fieldcount(t)
     x = ccall(:jl_new_struct_uninit, Any, (Any,), t)
@@ -252,8 +249,6 @@ function _deser(io::AbstractSerializer, t)
     end
     return x
 end
-
-using WeakRefStrings
 
 function MemPool.mmwrite(io::AbstractSerializer, arr::StringArray)
     Serialization.serialize_type(io, MemPool.MMSer{StringArray})

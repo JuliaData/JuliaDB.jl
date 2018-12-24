@@ -17,7 +17,7 @@ select
 ## Map
 
 ```@docs
-map(f, t::NextTable; kwargs...)
+map(f, t::IndexedTable; kwargs...)
 ```
 
 ```@docs
@@ -30,7 +30,7 @@ filter
 ```
 
 ```@docs
-dropna
+dropmissing
 ```
 
 ## AoS and SoA

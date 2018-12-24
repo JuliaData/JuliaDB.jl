@@ -1,6 +1,3 @@
-using JuliaDB, Dagger
-using Test
-
 @testset "setindex!" begin
     x = ndsparse(([1,2],[2,3]), [4,5], chunks=2)
     x[2,3] = 6
@@ -23,8 +20,8 @@ end
         d = compute(distribute(t, i))
         dist = map(get, map(JuliaDB.nrows, d.domains))
         @test map(length, Dagger.domainchunks(keys(d, 1))) == dist
-        @test collect(keys(d, 2)) == t.index.columns[2]
-        @test collect( values(d, 2)) == t.data.columns[2]
+        @test collect(keys(d, 2)) == columns(t.index)[2]
+        @test collect( values(d, 2)) == columns(t.data)[2]
     end
 end
 
@@ -39,7 +36,7 @@ end
 
 import JuliaDB: chunks, index_spaces, has_overlaps
 @testset "has_overlaps" begin
-    t = NDSparse(Columns([1,1,2,2,2,3], [1,2,1,1,2,1]), [1,2,3,4,5,6])
+    t = NDSparse(Columns(([1,1,2,2,2,3], [1,2,1,1,2,1])), [1,2,3,4,5,6])
     d = distribute(t, [2,3,1])
     i = d.domains
     @test !has_overlaps(i, closed=false)

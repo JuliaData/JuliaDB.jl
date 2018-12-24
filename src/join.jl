@@ -1,5 +1,4 @@
 ## Table
-export rechunk_together
 
 function rechunk_together(left, right, lkey, rkey,
                           lselect=excludecols(left, lkey), rselect=excludecols(right, rkey); chunks=nworkers(), keepkeys=false)
@@ -147,12 +146,6 @@ end
 
 ## NDSparse join
 
-import IndexedTables: naturaljoin, leftjoin, asofjoin, merge
-import Base: broadcast
-import Base.Broadcast: broadcasted
-
-export naturaljoin, innerjoin, leftjoin, asofjoin, merge
-
 """
     naturaljoin(left::DNDSparse, right::DNDSparse, [op])
 
@@ -284,7 +277,7 @@ function merge(left::DNDSparse{I1,D1}, right::DNDSparse{I2,D2}; agg=IndexedTable
     return cache_thunks(t)
 end
 
-function merge(left::DNextTable, right::DNextTable; chunks=nworkers())
+function merge(left::DIndexedTable, right::DIndexedTable; chunks=nworkers())
     l, r = rechunk_together(left, right, pkeynames(left), pkeynames(right); chunks=chunks)
     fromchunks(delayedmap(merge, l.chunks, r.chunks))
 end

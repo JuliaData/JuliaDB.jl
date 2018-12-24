@@ -1,10 +1,5 @@
-import IndexedTables: astuple
-
-using PooledArrays
-using DataValues
-using WeakRefStrings
-
-function treereduce(f, xs, v0=xs[1])
+# treereduce method without v0 is in Dagger.  Why does this live here?
+function treereduce(f, xs, v0)
     length(xs) == 0 && return v0
     length(xs) == 1 && return xs[1]
     l = length(xs)
@@ -18,7 +13,7 @@ function subtable(nds::NDSparse, r)
     NDSparse(keys(nds)[r], values(nds)[r], presorted=true, copy=false)
 end
 
-function subtable(t::NextTable, r)
+function subtable(t::IndexedTable, r)
     t[r]
 end
 
@@ -39,10 +34,6 @@ function extrema_range(x::AbstractArray{T}, r::UnitRange) where T
 end
 
 # Data loading utilities
-using TextParse
-using Glob
-
-export @dateformat_str, load, csvread, load_table, glob
 
 Base.@deprecate load_table(args...;kwargs...) loadndsparse(args...; distributed=false, kwargs...)
 
@@ -129,7 +120,7 @@ function _loadtable_serial(T, file::Union{IO, AbstractString, AbstractArray};
 
     if isempty(_indexcols)
         implicitindex = true
-        index = Columns([1:n;])
+        index = Columns(([1:n;],))
     else
         indexcolnames = map(indexcols, _indexcols) do name, i
             if i === nothing
@@ -141,13 +132,13 @@ function _loadtable_serial(T, file::Union{IO, AbstractString, AbstractArray};
 
         indexvecs = cols[_indexcols]
 
-        nullableidx = findall(x->eltype(x) <: Union{DataValue,Nullable}, indexvecs)
+        nullableidx = findall(x->eltype(x) <: Union{DataValue,Nullable} || Missing <: eltype(x), indexvecs)
         if !isempty(nullableidx)
             badcol_names = header[_indexcols[nullableidx]]
             warn("Indexed columns may contain Nullables or NAs. Column(s) with nullables: $(join(badcol_names, ", ", " and ")). This will result in wrong sorting.")
         end
 
-        index = Columns(indexvecs...; names=indexcolnames)
+        index = Columns(Tuple(indexvecs); names=indexcolnames)
     end
 
     ## Construct Data
@@ -177,15 +168,16 @@ function _loadtable_serial(T, file::Union{IO, AbstractString, AbstractArray};
 
     datavecs = map(_datacols) do i
         if i === nothing
-            DataValueArray{Union{}}(n) # missing column
+            # DataValueArray{Union{}}(n) # missing column
+            fill(missing, n)
         else
             cols[i]
         end
     end
 
-    data = Columns(datavecs...; names=datacolnames)
+    data = Columns(Tuple(datavecs); names=datacolnames)
 
-    if T<:NextTable && implicitindex
+    if T<:IndexedTable && implicitindex
         table(data, copy = copy), true
     else
         convert(T, index, data, copy = copy), implicitindex
@@ -216,44 +208,24 @@ function _repeated(x, n)
     Iterators.repeated(x,n)
 end
 
-
-import MemPool: approx_size
-
 function approx_size(cs::Columns)
-    sum(map(approx_size, astuple(cs.columns)))
+    sum(map(approx_size, astuple(columns(cs))))
 end
 
 function approx_size(t::NDSparse)
     approx_size(t.data) + approx_size(t.index)
 end
 
-using PooledArrays
-
 function approx_size(pa::PooledArray)
     approx_size(pa.refs) + approx_size(pa.pool) * 2
 end
 
-function approx_size(t::NextTable)
+function approx_size(t::IndexedTable)
     approx_size(rows(t))
 end
 
 function approx_size(x::StringArray)
     approx_size(x.buffer) + approx_size(x.offsets) + approx_size(x.lengths)
-end
-
-# smarter merges on DataValueArray + other arrays
-import IndexedTables: promoted_similar
-
-function promoted_similar(x::DataValueArray, y::DataValueArray, n)
-    similar(x, promote_type(eltype(x),eltype(y)), n)
-end
-
-function promoted_similar(x::DataValueArray, y::AbstractArray, n)
-    similar(x, promote_type(eltype(x),eltype(y)), n)
-end
-
-function promoted_similar(x::AbstractArray, y::DataValueArray, n)
-    similar(y, promote_type(eltype(x),eltype(y)), n)
 end
 
 # The following is not inferable, this is OK because the only place we use
@@ -320,7 +292,3 @@ end
 function tuplesetindex(x::Union{NamedTuple, Tuple}, v::Tuple, i::Tuple)
     reduce((t, j)->tuplesetindex(t, v[j], i[j]), 1:length(i), init=x)
 end
-
-
-# mild piracy
-Base.similar(::PooledArrays.PooledArray, ::Type{DataValue{T}}, sz::Tuple{Vararg{Int64,N}}) where {T,N} = DataValueArray{T}(sz)

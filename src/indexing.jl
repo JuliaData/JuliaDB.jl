@@ -1,6 +1,4 @@
 
-export insert_row!
-
 """
     t[idx...]
 

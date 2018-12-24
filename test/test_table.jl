@@ -1,9 +1,4 @@
-using Test, Dates
-using JuliaDB, Dagger
 @everywhere using Statistics
-using OnlineStats
-using DataValues
-import DataValues: NA
 
 import JuliaDB: pkeynames, pkeys, excludecols, select
 
@@ -39,7 +34,7 @@ import JuliaDB: pkeynames, pkeys, excludecols, select
     b = table([1, 2, 3], [4, 5, 6], names=[:x, :y], chunks=2)
     @test table(([1, 2, 3], [4, 5, 6])) == a
     @test table((x = [1, 2, 3], y = [4, 5, 6])) == b
-    @test table(Columns([1, 2, 3], [4, 5, 6])) == a
+    @test table(Columns(([1, 2, 3], [4, 5, 6]))) == a
     @test table(Columns(x=[1, 2, 3], y=[4, 5, 6])) == b
     @test b == table(b)
     b = table([2, 3, 1], [4, 5, 6], names=[:x, :y], pkey=:x, chunks=2)
@@ -58,17 +53,17 @@ import JuliaDB: pkeynames, pkeys, excludecols, select
     @test excludecols(t, (2,)) == (1, 3)
     @test excludecols(t, pkeynames(t)) == (3,)
     @test excludecols([1, 2, 3], (1,)) == ()
-    @test convert(NextTable, Columns(x=[1, 2], y=[3, 4]), Columns(z=[1, 2]), presorted=true) == table([1, 2], [3, 4], [1, 2], names=Symbol[:x, :y, :z])
+    @test convert(IndexedTable, Columns(x=[1, 2], y=[3, 4]), Columns(z=[1, 2]), presorted=true) == table([1, 2], [3, 4], [1, 2], names=Symbol[:x, :y, :z])
     @test colnames([1, 2, 3]) == (1,)
-    @test colnames(Columns([1, 2, 3], [3, 4, 5])) == (1, 2)
+    @test colnames(Columns(([1, 2, 3], [3, 4, 5]))) == (1, 2)
     @test colnames(table([1, 2, 3], [3, 4, 5])) == (1, 2)
     @test colnames(Columns(x=[1, 2, 3], y=[3, 4, 5])) == (:x, :y)
     @test colnames(table([1, 2, 3], [3, 4, 5], names=[:x, :y])) == (:x, :y)
     @test colnames(ndsparse(Columns(x=[1, 2, 3]), Columns(y=[3, 4, 5]))) == (:x, :y)
     @test colnames(ndsparse(Columns(x=[1, 2, 3]), [3, 4, 5])) == (:x, 2)
     @test colnames(ndsparse(Columns(x=[1, 2, 3]), [3, 4, 5])) == (:x, 2)
-    @test colnames(ndsparse(Columns([1, 2, 3], [4, 5, 6]), Columns(x=[6, 7, 8]))) == (1, 2, :x)
-    @test colnames(ndsparse(Columns(x=[1, 2, 3]), Columns([3, 4, 5], [6, 7, 8]))) == (:x, 2, 3)
+    @test colnames(ndsparse(Columns(([1, 2, 3], [4, 5, 6])), Columns(x=[6, 7, 8]))) == (1, 2, :x)
+    @test colnames(ndsparse(Columns(x=[1, 2, 3]), Columns(([3, 4, 5], [6, 7, 8])))) == (:x, 2, 3)
     t = table([1, 2], [3, 4], names=[:x, :y], chunks=2)
     @test columns(t) == (x = [1, 2], y = [3, 4])
     @test columns(t, :x) == [1, 2]
@@ -99,14 +94,23 @@ import JuliaDB: pkeynames, pkeys, excludecols, select
     @test renamecol(t, :t, :time) == table([0.01, 0.05], [2, 1], names=Symbol[:time, :x])
     l = table([1, 1, 2, 2], [1, 2, 1, 2], [1, 2, 3, 4], names=[:a, :b, :c], pkey=(:a, :b), chunks=2)
     r = table([0, 1, 1, 3], [1, 1, 2, 2], [1, 2, 3, 4], names=[:a, :b, :d], pkey=(:a, :b), chunks=2)
-    @test join(l, r) == table([1, 1], [1, 2], [1, 2], [2, 3], names=Symbol[:a, :b, :c, :d])
-    @test join(l, r, how=:left) == table([1, 1, 2, 2], [1, 2, 1, 2], [1, 2, 3, 4], DataValueArray([2, 3, NA, NA]), names=Symbol[:a, :b, :c, :d])
-    @test join(l, r, how=:outer) == table([0, 1, 1, 2, 2, 3], [1, 1, 2, 1, 2, 2], DataValueArray([NA, 1, 2, 3, 4, NA]), DataValueArray([1, 2, 3, NA, NA, 4]), names=Symbol[:a, :b, :c, :d])
+    @test join(l, r) == table([1, 1], [1, 2], [1, 2], [2, 3], names=[:a, :b, :c, :d])
+    @test isequal(
+        join(l, r, how=:left),
+        table([1, 1, 2, 2], [1, 2, 1, 2], [1, 2, 3, 4], [2, 3, missing, missing], names=[:a, :b, :c, :d])
+    )
+    @test isequal(
+        join(l, r, how=:outer),
+        table([0, 1, 1, 2, 2, 3], [1, 1, 2, 1, 2, 2], [missing, 1, 2, 3, 4, missing], [1, 2, 3, missing, missing, 4], names=Symbol[:a, :b, :c, :d])
+    )
     @test join(l, r, how=:anti) == table([2, 2], [1, 2], [3, 4], names=Symbol[:a, :b, :c])
     l1 = table([1, 2, 2, 3], [1, 2, 3, 4], names=[:x, :y], chunks=2)
     r1 = table([2, 2, 3, 3], [5, 6, 7, 8], names=[:x, :z], chunks=2)
     @test join(l1, r1, lkey=:x, rkey=:x) == table([2, 2, 2, 2, 3, 3], [2, 2, 3, 3, 4, 4], [5, 6, 5, 6, 7, 8], names=Symbol[:x, :y, :z])
-    @test join(l, r, lkey=:a, rkey=:a, lselect=:b, rselect=:d, how=:outer) == table([0, 1, 1, 1, 1, 2, 2, 3], DataValueArray([NA, 1, 1, 2, 2, 1, 2, NA]), DataValueArray([1, 2, 3, 2, 3, NA, NA, 4]), names=Symbol[:a, :b, :d])
+    @test isequal(
+        join(l, r, lkey=:a, rkey=:a, lselect=:b, rselect=:d, how=:outer),
+        table((a=[0, 1, 1, 1, 1, 2, 2, 3], b=[missing, 1, 1, 2, 2, 1, 2, missing], d=[1, 2, 3, 2, 3, missing, missing, 4]))
+    )
     l = table([1, 1, 1, 2], [1, 2, 2, 1], [1, 2, 3, 4], names=[:a, :b, :c], pkey=(:a, :b), chunks=2)
     r = table([0, 1, 1, 2], [1, 2, 2, 1], [1, 2, 3, 4], names=[:a, :b, :d], pkey=(:a, :b), chunks=2)
     @test groupjoin(l, r) == table([1, 2], [2, 1], [Columns((c = [2, 2, 3, 3], d = [2, 3, 2, 3])), Columns((c = [4], d = [4]))], names=Symbol[:a, :b, :groups])
@@ -131,7 +135,6 @@ import JuliaDB: pkeynames, pkeys, excludecols, select
     t = table([0.1, 0.5, 0.75], [0, 1, 2], names=[:t, :x], chunks=2)
     @test reduce(+, t, select=:t) == 1.35
     @test reduce(((a, b)->(t = a.t + b.t, x = a.x + b.x)), t) == (t = 1.35, x = 3)
-    @test using OnlineStats == nothing
     @test value(reduce(Mean(), t, select=:t)) == 0.45
     y = reduce((min, max), t, select=:x)
     @test y.max == 2
@@ -188,11 +191,17 @@ import JuliaDB: pkeynames, pkeys, excludecols, select
     polar = map((p->(r = hypot(p.x + p.y), θ = atan(p.y, p.x))), t)
     vx = map((row->row.x / row.t), t, select=(:t, :x))
     #@test collect(map(sin, polar, select=:θ)) ≈ [0.948683, 0.894427]
-    t = table([0.1, 0.5, NA, 0.7], [2, NA, 4, 5], [NA, 6, NA, 7], names=[:t, :x, :y], chunks=2)
-    @test dropna(t) == table([0.7], [5], [7], names=Symbol[:t, :x, :y])
-    @test dropna(t, :y) == table(DataValues.DataValue{Float64}[0.5, 0.7], DataValues.DataValue{Int64}[NA, 5], [6, 7], names=Symbol[:t, :x, :y])
-    t1 = dropna(t, (:t, :x))
-    @test typeof(column(dropna(t, :x), :x)) <: Dagger.DArray{Int64,1}
+    t = table([0.1, 0.5, missing, 0.7], [2, missing, 4, 5], [missing, 6, missing, 7], names=[:t, :x, :y], chunks=2)
+    @test dropmissing(t) == table([0.7], [5], [7], names=[:t, :x, :y])
+    @test isequal(
+        dropmissing(t, :y),
+        table([0.5, 0.7], [missing, 5], [6, 7], names=[:t, :x, :y])
+    )
+    @test isequal(
+        dropmissing(t, (:t, :x)),
+        table([.1,.7], [2,5], [missing,7], names=[:t,:x,:y], chunks=2)
+    )
+    @test typeof(column(dropmissing(t, :x), :x)) <: Dagger.DArray{Int64,1}
     t = table(["a", "b", "c"], [0.01, 0.05, 0.07], [2, 1, 0], names=[:n, :t, :x], chunks=2)
     @test filter((p->p.x / p.t < 100), t) == table(String["b", "c"], [0.05, 0.07], [1, 0], names=Symbol[:n, :t, :x])
     x = ndsparse((n = ["a", "b", "c"], t = [0.01, 0.05, 0.07]), [2, 1, 0], chunks=2)

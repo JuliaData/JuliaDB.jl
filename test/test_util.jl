@@ -1,5 +1,4 @@
 import JuliaDB: tuplesetindex
-using DataValues, PooledArrays
 
 @testset "Utilities" begin
     @testset "tuplesetindex" begin
@@ -31,10 +30,10 @@ import JuliaDB: Interval, hasoverlap
 
 end
 
-@testset "vcat PooledArray DataValueArray" begin
+@testset "vcat PooledArray Vector{Union{T,Missing}}" begin
     a = PooledArray(["x"])
-    b = DataValueArray(["y"])
+    b = Vector{Union{String,Missing}}(["y"])
     c = vcat(a, b)
-    @test c isa DataValueArray
+    @test eltype(c) == Union{String,Missing}
     @test c == ["x", "y"]
 end

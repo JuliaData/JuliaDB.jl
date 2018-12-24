@@ -1,10 +1,3 @@
-import IndexedTables: pkeynames, excludecols, pkeys, reindex
-import Dagger: dsort_chunks
-
-export reindex, rechunk
-
-using StatsBase
-
 function reindex(t::DDataset, by=pkeynames(t), select=excludecols(t, by); kwargs...)
     @noinline function _rechunk(c)
         reindex(c, by, select; kwargs...)
@@ -34,7 +27,7 @@ Optionally `select` specifies which non-indexed fields are kept. By default this
 """
 function rechunk(dt::DDataset,
                  by=pkeynames(dt),
-                 select=dt isa DNextTable ? excludecols(dt, by) : valuenames(dt);
+                 select=dt isa DIndexedTable ? excludecols(dt, by) : valuenames(dt);
                  merge=_merge,
                  splitters=nothing,
                  chunks_presorted=false,

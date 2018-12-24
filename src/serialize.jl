@@ -1,22 +1,18 @@
-using MemPool
-import MemPool: mmwrite, mmread, MMSer
 
-#### DataValueArray
+# #### DataValueArray
 
-function mmwrite(io::AbstractSerializer, xs::DataValueArray)
-    Serialization.serialize_type(io, MMSer{DataValueArray})
+# function mmwrite(io::AbstractSerializer, xs::DataValueArray)
+#     Serialization.serialize_type(io, MMSer{DataValueArray})
     
-    mmwrite(io, BitArray(xs.isna))
-    mmwrite(io, xs.values)
-end
+#     mmwrite(io, BitArray(xs.isna))
+#     mmwrite(io, xs.values)
+# end
 
-function mmread(::Type{DataValueArray}, io, mmap)
-    isnull = deserialize(io)
-    vals = deserialize(io)
-    DataValueArray(vals, isnull)
-end
-
-using PooledArrays
+# function mmread(::Type{DataValueArray}, io, mmap)
+#     isnull = deserialize(io)
+#     vals = deserialize(io)
+#     DataValueArray(vals, isnull)
+# end
 
 function mmwrite(io::AbstractSerializer, xs::PooledArray)
     Serialization.serialize_type(io, MMSer{PooledArray})
@@ -52,10 +48,10 @@ function mmread(::Type{Columns}, io, mmap)
     fnames = deserialize(io)
     if isa(fnames, Int)
         cols = [deserialize(io) for i=1:fnames]
-        Columns(cols...)
+        Columns(Tuple(cols))
     else
         cols = [deserialize(io) for i=1:length(fnames)]
-        Columns(cols...; names=fnames)
+        Columns(Tuple(cols); names=fnames)
     end
 end
 
@@ -73,8 +69,8 @@ function mmread(::Type{NDSparse}, io, mmap)
     NDSparse(idx, data, presorted=true, copy=false)
 end
 
-function mmwrite(io::AbstractSerializer, xs::NextTable)
-    Serialization.serialize_type(io, MMSer{NextTable})
+function mmwrite(io::AbstractSerializer, xs::IndexedTable)
+    Serialization.serialize_type(io, MMSer{IndexedTable})
 
     #flush!(xs)
     mmwrite(io, rows(xs))
@@ -82,7 +78,7 @@ function mmwrite(io::AbstractSerializer, xs::NextTable)
     mmwrite(io, xs.perms)
 end
 
-function mmread(::Type{NextTable}, io, mmap)
+function mmread(::Type{IndexedTable}, io, mmap)
     data = deserialize(io)
     pkey = deserialize(io)
     perms = deserialize(io)

@@ -1,5 +1,3 @@
-import IndexedTables: flatten
-
 function mapslices(f, x::DNDSparse, dims; name=nothing)
     iterdims = setdiff([1:ndims(x);], map(d->keyindex(x, d), dims))
     if iterdims != [1:length(iterdims);]
@@ -27,6 +25,6 @@ end
 mapslices(f, x::DNDSparse, dims::Symbol; name=nothing) =
     mapslices(f, x, (dims,); name=name)
 
-function flatten(x::DNextTable, col)
+function flatten(x::DIndexedTable, col)
     fromchunks(delayedmap(t -> flatten(t, col), x.chunks))
 end
