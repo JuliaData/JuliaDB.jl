@@ -16,7 +16,7 @@ end
     else
         throw(ArgumentError("too many arguments for partitionplot"))
     end
-    # Wrap the (Indexed)Partition in an FTSeris to possibly remove missing values
+    # Wrap the (Indexed)Partition in an FTSeries to possibly remove missing values
     s = FTSeries(o; filter = dropmissing ? !_ismissing : x -> true)
     if by === nothing 
         reduce(s, t; select=sel)
