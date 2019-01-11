@@ -7,12 +7,16 @@ end
 @recipe function f(o::PartitionPlot; nparts=100, stat=Extrema(), by=nothing, dropmissing=false)
     t = o.args[1]
     sel = map(x -> lowerselection(t, x), o.args[2:end])
-    o = if length(sel) == 1 
+    # Create the (Indexed)Partition object
+    o = if length(sel) == 1
         Partition(stat, nparts) 
-    else
-        T = typeof(collect(rows(t)[1])[sel[1]])
+    elseif length(sel) == 2
+        T = typeof(collect(rows(t)[1])[sel[1]])  # Type of first selection
         IndexedPartition(T, stat, nparts)
+    else
+        throw(ArgumentError("too many arguments for partitionplot"))
     end
+    # Wrap the (Indexed)Partition in an FTSeris to possibly remove missing values
     s = FTSeries(o; filter = dropmissing ? !_ismissing : x -> true)
     if by === nothing 
         reduce(s, t; select=sel)
