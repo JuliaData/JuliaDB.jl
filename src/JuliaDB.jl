@@ -9,7 +9,8 @@ import IndexedTables: IndexedTable, table, NDSparse, ndsparse, Tup, groupjoin,
     naturaljoin, leftjoin, asofjoin, eltypes, astuple, colnames, pkeynames, valuenames,
     showtable, reducedim_vec, _convert, groupreduce, groupby, ApplyColwise, stack, 
     unstack, selectkeys, selectvalues, select, lowerselection, convertdim, excludecols, 
-    reindex, ColDict, AbstractIndexedTable, Dataset, promoted_similar, dropmissing
+    reindex, ColDict, AbstractIndexedTable, Dataset, promoted_similar, dropmissing,
+    convertmissing
 import TextParse: csvread
 import Dagger: compute, distribute, load, save, DomainBlocks, ArrayDomain, DArray,
     ArrayOp, domainchunks, chunks, Distribute, debug_compute, get_logs!, LocalEventLog,
@@ -32,7 +33,8 @@ export @cols, @dateformat_str, AbstractNDSparse, All, Between, ColDict, Columns,
     loadndsparse, loadtable, merge, naturaljoin, ndsparse, pairs, partitionplot, 
     partitionplot!, popcol, pushcol, rechunk, rechunk_together, reducedim_vec, reindex, 
     renamecol, rows, save, select, selectkeys, selectvalues, setcol, stack, 
-    start_tracking_time, stop_tracking_time, summarize, table, tracktime, unstack
+    start_tracking_time, stop_tracking_time, summarize, table, tracktime, unstack,
+    convertmissing
 
 include("util.jl")
 include("serialize.jl")

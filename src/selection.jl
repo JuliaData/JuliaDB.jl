@@ -11,6 +11,12 @@ function dropmissing(t::DDataset, select=(colnames(t)...,))
     end |> fromchunks
 end
 
+function convertmissing(t::DDataset, missingtype)
+    delayedmap(t.chunks) do x
+        convertmissing(x, missingtype)
+    end |> fromchunks
+end
+
 function Base.filter(f, t::DDataset; select=isa(f, Union{Tuple, Pair}) ? nothing : valuenames(t))
     g = delayed(x -> filter(f, x; select=select))
     cache_thunks(fromchunks(map(g, t.chunks)))
