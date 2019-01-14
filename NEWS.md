@@ -15,3 +15,8 @@
 ## v0.9.0
 
 - **(breaking)** Missing values represented as `Union{T,Missing}` rather than `DataValue`.
+
+## v0.10.0
+
+- **(breaking)** Support for both `Missing` and `DataValue` representations of missing data.
+    - Defaults to `Missing`.  functions that can create missing values have been given a `missingtype = Missing` keyword argument.
