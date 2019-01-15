@@ -11,12 +11,12 @@ makedocs(
         "tutorial.md",
         "loading_and_saving.md",
         "data_structures.md",
-        # "selection.md",
         # "aggregations.md",
         # "joins.md",
-        # "onlinestats_integration.md",
+        "onlinestats.md",
         "plotting.md",
         # "out_of_core.md",
+        "missing_values.md",
         "api.md",
    ]
 )

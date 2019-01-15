@@ -15,11 +15,8 @@ a Vector of (named) tuples.
 x = 1:10
 y = 'a':'j'
 z = randn(10)
-
 t = table((x=x, y=y, z=z); pkey = [:x, :y])
-
 t[1]
-
 t[end]
 ```
 
@@ -31,7 +28,7 @@ behaves like a sparse array with arbitrary indices.
 
 ```@example data_structures
 nd = ndsparse((x=x, y=y), (z=z,))
-
 nd[1, 'a']
 nd[10, 'j'].z
+nd[end]
 ```

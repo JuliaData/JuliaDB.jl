@@ -7,7 +7,7 @@ Pkg.add("RDatasets")
 
 ## Loading Data From CSV
 
-Loading a CSV file (or multiple files) into one of JuliaDB's [Data Structures](@ref) is accomplished via the [`loadtable`](@ref) and [`loadndsparse`](@ref) functions.
+Loading a CSV file (or multiple files) into one of JuliaDB's [Data Structures](@ref) is accomplished via the [`loadtable`](@ref) and [`loadndsparse`](@ref) functions.  
 
 ```@example loadsave
 using JuliaDB, DelimitedFiles
@@ -17,6 +17,9 @@ writedlm("temp.csv", x, ',')
 
 t = loadtable("temp.csv")
 ```
+
+!!! note 
+    `loadtable` and `loadndsparse` use `Missing` to represent missing values.  To load a CSV that instead uses `DataValue`, see [CSVFiles.jl](https://github.com/queryverse/CSVFiles.jl).
 
 ## Converting From Other Data Structures
 
