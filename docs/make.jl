@@ -9,8 +9,7 @@ makedocs(
    pages = [
         "index.md",
         "tutorial.md",
-        "loading_and_saving.md",
-        "data_structures.md",
+        "basics.md",
         # "aggregations.md",
         # "joins.md",
         "onlinestats.md",
