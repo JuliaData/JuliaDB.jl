@@ -1,4 +1,4 @@
-using Documenter
+using Documenter, JuliaDB, IndexedTables
 
 makedocs(
    modules = [JuliaDB, IndexedTables],

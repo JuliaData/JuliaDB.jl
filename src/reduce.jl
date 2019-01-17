@@ -119,7 +119,7 @@ _reducedim(f, x::DNDSparse, dims::Symbol, cache) = _reducedim(f, x, [dims], cach
 
 Like `reducedim`, except uses a function mapping a vector of values to a scalar instead of a 2-argument scalar function.
 
-See also [`reducedim`](@ref) and [`aggregate_vec`](@ref).
+See also [`reducedim`](@ref).
 """
 function reducedim_vec(f, x::DNDSparse, dims)
     keep = setdiff([1:ndims(x);], dims)

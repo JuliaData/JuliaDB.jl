@@ -1,3 +1,3 @@
 ```@autodocs
-modules = [JuliaDB, IndexedTables]
+Modules = [JuliaDB, IndexedTables]
 ```

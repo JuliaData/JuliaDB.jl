@@ -46,7 +46,7 @@ data on disk via the [`loadndsparse`](@ref) function.
 nd = ndsparse((x=x, y=y), (z=z,))
 nd[1, 'a']
 nd[10, 'j'].z
-nd[end]
+nd[1, :]
 ```
 
 ## Selectors
@@ -102,7 +102,7 @@ Pkg.add("RDatasets")
 
 ### Loading Data From CSV
 
-Loading a CSV file (or multiple files) into one of JuliaDB's [Data Structures](@ref) is accomplished via the [`loadtable`](@ref) and [`loadndsparse`](@ref) functions.  
+Loading a CSV file (or multiple files) into one of JuliaDB's tabular data structures is accomplished via the [`loadtable`](@ref) and [`loadndsparse`](@ref) functions.  
 
 ```@example loadsave
 using JuliaDB, DelimitedFiles

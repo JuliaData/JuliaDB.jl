@@ -1,12 +1,13 @@
 # Plotting
 
 ```@setup plot
+using Pkg, Random
 Pkg.add("StatPlots")
 Pkg.add("GR")
 using StatPlots
 ENV["GKSwstype"] = "100"
 gr()
-srand(1234)  # set random seed to get consistent plots
+Random.seed!(1234)  # set random seed to get consistent plots
 ```
 
 ## StatPlots

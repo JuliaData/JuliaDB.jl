@@ -25,8 +25,8 @@ using IndexedTables, Dagger, OnlineStats, Distributed, Serialization, Nullables,
 
 #-----------------------------------------------------------------------# exports
 export @cols, @dateformat_str, AbstractNDSparse, All, Between, ColDict, Columns, DColumns, 
-    IndexedTable, JuliaDB, Keys, ML, NA, NDSparse, Not, aggregate, aggregate_stats, 
-    aggregate_vec, asofjoin, chunks, colnames, column, columns, compute, convertdim, 
+    IndexedTable, JuliaDB, Keys, ML, NA, NDSparse, Not, aggregate_stats, 
+    asofjoin, chunks, colnames, column, columns, compute, convertdim, 
     csvread, distribute, dropmissing, fetch_timings!, flatten, glob, groupby, groupjoin, 
     groupreduce, ingest, ingest!, innerjoin, insert_row!, insertafter!, insertbefore!, 
     insertcol, insertcolafter, insertcolbefore, leftjoin, load, load_table, loadfiles, 
