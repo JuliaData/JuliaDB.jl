@@ -33,7 +33,6 @@ t[1]
 t[end]
 ```
 
-
 ## [`NDSparse`](@ref)
 
 An [`NDSparse`](@ref) has a similar underlying structure to [`IndexedTable`](@ref), but it

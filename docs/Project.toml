@@ -1,0 +1,6 @@
+[deps]
+DataValues = "e7dc6d0d-1eca-5fa6-8ad6-5aecde8b7ea5"
+IndexedTables = "6deec6e2-d858-57c5-ab9b-e6ca5bd20e43"
+JuliaDB = "a93385a2-3734-596a-9a66-3cfbb77141e6"
+OnlineStats = "a15396b6-48d5-5d58-9928-6d29437db91e"
+Plots = "91a5bcdd-55d7-5caf-9e0b-520d859cae80"

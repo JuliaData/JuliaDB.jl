@@ -55,7 +55,8 @@ png("mosaic.png"); nothing  # hide
 ### Histograms
 
 ```@example plot
-grp = groupreduce(KHist(20), t, :z, select = :x)
+grp = groupreduce(Hist(-5.1:5), t, :z, select = :x)
+plot(plot.(select(grp, 2))...)
 ```
 
 ### Convenience function for Partition and IndexedPartition
@@ -65,12 +66,14 @@ You can also use the [`partitionplot`](@ref) function, a slightly less verbose w
 ```@example plot
 # x by itself
 partitionplot(t, :x, stat = Extrema())
+savefig("partitionplot1.png"); nothing # hide
 ```
+![](partitionplot1.png)
 
 
 ```@example plot
 # y by x, grouped by z
-partitionplot(t, :x, :y, stat = Extrema(), by = z)
-savefig("plot3.png"); nothing # hide
+partitionplot(t, :x, :y, stat = Extrema(), by = :z)
+savefig("partitionplot2.png"); nothing # hide
 ```
-![](plot3.png)
+![](partitionplot2.png)

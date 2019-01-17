@@ -18,7 +18,7 @@ mask = [rand(Bool) for i in 1:1000]
 data = randn(1000)
 
 x = [mask[i] ? missing : data[i] for i in 1:1000]
-y = DataValueArray(data, mask)
+y = DataValueArray(data, mask);
 ```
 
 
