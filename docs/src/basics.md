@@ -63,28 +63,35 @@ of the following types:
 2. `Symbol` -- returns the column with this name.
 3. `Pair{Selection => Function}` -- selects and maps a function over the selection, returns the result.
 4. `AbstractArray` -- returns the array itself. This must be the same length as the table.
-5. `Tuple` of `Selection` -- returns a table containing a column for every selector in the tuple. The tuple may also contain the type `Pair{Symbol, Selection}`, which the selection a name. The most useful form of this when introducing a new column.
+5. `Tuple` of `Selection` -- returns a table containing a column for every selector in the tuple.
 6. `Regex` -- returns the columns with names that match the regular expression.
 7. `Type` -- returns columns with elements of the given type.
+8. `Not(Selection)` -- returns columns that are not included in the selection.
 
 ```@repl basics
-  t = table(1:10, randn(10), rand(Bool, 10); names = [:x, :y, :z])
+t = table(1:10, randn(10), rand(Bool, 10); names = [:x, :y, :z])
 
-  # select the :x vector
-  select(t, 1)
-  select(t, :x)
+# select the :x vector
+select(t, 1)
+select(t, :x)
 
-  # map a function to the :y vector
-  select(t, 2 => abs)
-  select(t, :y => x -> x > 0 ? x : -x)
+# map a function to the :y vector
+select(t, 2 => abs)
+select(t, :y => x -> x > 0 ? x : -x)
 
-  # select the table of :x and :z
-  select(t, (:x, :z))
-  select(t, r"(x|z)")
+# select the table of :x and :z
+select(t, (:x, :z))
+select(t, r"(x|z)")
 
-  # map a function to the table of :x and :y
-  select(t, (:x, :y) => row -> row[1] + row[2])
-  select(t, (1, :y) => row -> row.x + row.y)
+# map a function to the table of :x and :y
+select(t, (:x, :y) => row -> row[1] + row[2])
+select(t, (1, :y) => row -> row.x + row.y)
+
+# select columns that are subtypes of Integer
+select(t, Integer)
+
+# select columns that are not subtypes of Integer
+select(t, Not(Integer))
 ```
 
 ## Loading and Saving

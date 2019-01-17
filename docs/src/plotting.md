@@ -29,24 +29,34 @@ savefig("statplot.png"); nothing # hide
 
 For large datasets, it isn't feasible to render every data point.  The OnlineStats package provides a number of [data structures for big data visualization](http://joshday.github.io/OnlineStats.jl/latest/visualizations.html) that can be created via the [`reduce`](@ref) and [`groupreduce`](@ref) functions.  
 
-### Mosaic Plots
-
-A [mosaic plot](https://en.wikipedia.org/wiki/Mosaic_plot) visualizes the bivariate distribution of two categorical variables.  
-
+- Example data:
+  
 ```@example plot
 using JuliaDB, Plots, OnlineStats
 
 x = randn(10^6)
 y = x + randn(10^6)
-z = x .> .5
+z = x .> 1
 z2 = (x .+ y) .> 0
 t = table((x=x, y=y, z=z, z2=z2))
+```
 
+### Mosaic Plots
+
+A [mosaic plot](https://en.wikipedia.org/wiki/Mosaic_plot) visualizes the bivariate distribution of two categorical variables.  
+
+```@example plot
 o = reduce(Mosaic(Bool, Bool), t; select = (3, 4))
 plot(o)
 png("mosaic.png"); nothing  # hide
 ```
 ![](mosaic.png)
+
+### Histograms
+
+```@example plot
+grp = groupreduce(KHist(20), t, :z, select = :x)
+```
 
 ### Convenience function for Partition and IndexedPartition
 
