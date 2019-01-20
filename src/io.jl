@@ -165,7 +165,7 @@ Base.@deprecate ingest(files, output; kwargs...) loadndsparse(files; output=outp
 Base.@deprecate ingest!(files, output; kwargs...) loadndsparse(files; output=output, append=true, kwargs...)
 
 """
-`load(dir::AbstractString; tomemory)`
+`load(dir::AbstractString)`
 
 Load a saved `DNDSparse` from `dir` directory. Data can be saved
 using the `save` function.
