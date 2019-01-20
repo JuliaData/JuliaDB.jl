@@ -54,3 +54,34 @@ end
         end
     end
 end
+
+@testset "join with missing" begin 
+    y = rand(10)
+    z = rand(10)
+
+    # DIndexedTable
+    t  = table((x=1:10,   y=y), pkey=:x, chunks=2)
+    t2 = table((x=1:2:20, z=z), pkey=:x, chunks=2)
+
+    # DNDSparse
+    nd = ndsparse((x=1:10,), (y=y,), chunks=2)
+    nd2 = ndsparse((x=1:2:20,), (z=z,), chunks=2)
+
+    @testset "how = :left" begin
+        # Missing
+        z_left = Union{Float64,Missing}[missing for i in 1:10]
+        z_left[1:2:9] = z[1:5]
+        t_left = table((x = 1:10, y = y, z = z_left))
+        nd_left = ndsparse((x=1:10,), (y=y, z=z_left))
+        @test isequal(join(t, t2; how=:left), t_left)
+        @test isequal(join(nd, nd2; how=:left), nd_left)
+
+        # DataValue
+        z_left2 = [DataValue{Float64}() for i in 1:10]
+        z_left2[1:2:9] = z[1:5]
+        t_left2 = table((x=1:10, y = y, z = z_left2))
+        nd_left2 = ndsparse((x=1:10,), (y=y, z=z_left2))
+        @test isequal(join(t, t2, how=:left, missingtype=DataValue), t_left2)
+        @test isequal(join(nd, nd2, how=:left, missingtype=DataValue), nd_left2)
+    end
+end

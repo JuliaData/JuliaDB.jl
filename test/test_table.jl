@@ -195,12 +195,25 @@ import JuliaDB: pkeynames, pkeys, excludecols, select
     @test dropmissing(t) == table([0.7], [5], [7], names=[:t, :x, :y])
     @test isequal(
         dropmissing(t, :y),
-        table([0.5, 0.7], [missing, 5], [6, 7], names=[:t, :x, :y])
+        table([0.5, 0.7], [missing, 5], [6, 7], names=[:t, :x, :y], chunks=2)
     )
     @test isequal(
         dropmissing(t, (:t, :x)),
         table([.1,.7], [2,5], [missing,7], names=[:t,:x,:y], chunks=2)
     )
+    t2 = table([.1, .5, NA, .7], [2, NA, 4, 5], [NA, 6, NA, 7], names=[:t, :x, :y], chunks=2)
+    @test dropmissing(t2) == dropmissing(t)
+    @test isequal(
+        dropmissing(t2, :y),
+        table([0.5, 0.7], [NA, 5], [6, 7], names=[:t, :x, :y], chunks=2) 
+    )
+    @test isequal(
+        dropmissing(t2, (:t, :x)),
+        table([.1,.7], [2,5], [NA,7], names=[:t,:x,:y], chunks=2)
+    )
+    @test isequal(convertmissing(t, DataValue), t2)
+    @test isequal(convertmissing(t2, Missing), t)
+
     @test typeof(column(dropmissing(t, :x), :x)) <: Dagger.DArray{Int64,1}
     t = table(["a", "b", "c"], [0.01, 0.05, 0.07], [2, 1, 0], names=[:n, :t, :x], chunks=2)
     @test filter((p->p.x / p.t < 100), t) == table(String["b", "c"], [0.05, 0.07], [1, 0], names=Symbol[:n, :t, :x])

@@ -11,6 +11,12 @@ function dropmissing(t::DDataset, select=(colnames(t)...,))
     end |> fromchunks
 end
 
+function convertmissing(t::DDataset, missingtype)
+    delayedmap(t.chunks) do x
+        convertmissing(x, missingtype)
+    end |> fromchunks
+end
+
 function Base.filter(f, t::DDataset; select=isa(f, Union{Tuple, Pair}) ? nothing : valuenames(t))
     g = delayed(x -> filter(f, x; select=select))
     cache_thunks(fromchunks(map(g, t.chunks)))
@@ -35,7 +41,7 @@ If the mapping is many-to-one, `agg` is used to aggregate the results.
 `name` optionally specifies a name for the new dimension. `xlate` must be a
 monotonically increasing function.
 
-See also [`reduce`](@ref) and [`aggregate`](@ref)
+See also [`reduce`](@ref)
 """
 function convertdim(t::DNDSparse{K,V}, d::DimName, xlat;
                     agg=nothing, vecagg=nothing, name=nothing) where {K,V}

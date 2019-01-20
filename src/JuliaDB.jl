@@ -9,7 +9,8 @@ import IndexedTables: IndexedTable, table, NDSparse, ndsparse, Tup, groupjoin,
     naturaljoin, leftjoin, asofjoin, eltypes, astuple, colnames, pkeynames, valuenames,
     showtable, reducedim_vec, _convert, groupreduce, groupby, ApplyColwise, stack, 
     unstack, selectkeys, selectvalues, select, lowerselection, convertdim, excludecols, 
-    reindex, ColDict, AbstractIndexedTable, Dataset, promoted_similar, dropmissing
+    reindex, ColDict, AbstractIndexedTable, Dataset, promoted_similar, dropmissing,
+    convertmissing
 import TextParse: csvread
 import Dagger: compute, distribute, load, save, DomainBlocks, ArrayDomain, DArray,
     ArrayOp, domainchunks, chunks, Distribute, debug_compute, get_logs!, LocalEventLog,
@@ -24,15 +25,16 @@ using IndexedTables, Dagger, OnlineStats, Distributed, Serialization, Nullables,
 
 #-----------------------------------------------------------------------# exports
 export @cols, @dateformat_str, AbstractNDSparse, All, Between, ColDict, Columns, DColumns, 
-    IndexedTable, JuliaDB, Keys, ML, NA, NDSparse, Not, aggregate, aggregate_stats, 
-    aggregate_vec, asofjoin, chunks, colnames, column, columns, compute, convertdim, 
+    IndexedTable, JuliaDB, Keys, ML, NA, NDSparse, Not, aggregate_stats, 
+    asofjoin, chunks, colnames, column, columns, compute, convertdim, 
     csvread, distribute, dropmissing, fetch_timings!, flatten, glob, groupby, groupjoin, 
     groupreduce, ingest, ingest!, innerjoin, insert_row!, insertafter!, insertbefore!, 
     insertcol, insertcolafter, insertcolbefore, leftjoin, load, load_table, loadfiles, 
     loadndsparse, loadtable, merge, naturaljoin, ndsparse, pairs, partitionplot, 
     partitionplot!, popcol, pushcol, rechunk, rechunk_together, reducedim_vec, reindex, 
     renamecol, rows, save, select, selectkeys, selectvalues, setcol, stack, 
-    start_tracking_time, stop_tracking_time, summarize, table, tracktime, unstack
+    start_tracking_time, stop_tracking_time, summarize, table, tracktime, unstack,
+    convertmissing
 
 include("util.jl")
 include("serialize.jl")
