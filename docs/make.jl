@@ -8,13 +8,10 @@ makedocs(
    sitename = "JuliaDB.jl",
    pages = [
         "index.md",
-        "tutorial.md",
         "basics.md",
-        # "aggregations.md",
-        # "joins.md",
+        "tutorial.md",
         "onlinestats.md",
         "plotting.md",
-        # "out_of_core.md",
         "missing_values.md",
         "api.md",
    ]
