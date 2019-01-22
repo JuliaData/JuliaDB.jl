@@ -4,6 +4,8 @@ using JuliaDB
 
 # Joining Tables
 
+Table joins are accomplished through the [`join`](@ref) function.  
+
 ## Appending Tables with the Same Columns
 
 The [`merge`](@ref) function will combine tables while maintaining the sorting of the 
