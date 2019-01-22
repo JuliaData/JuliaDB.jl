@@ -56,10 +56,51 @@ png("mosaic.png"); nothing  # hide
 ### Histograms
 
 ```@example plot
-grp = groupreduce(Hist(-5.1:5), t, :z, select = :x)
-plot(plot.(select(grp, 2))...)
+grp = groupreduce(Hist(-5:.5:5), t, :z, select = :x)
+plot(plot.(select(grp, 2))...; link=:all)
+png("hist.png"); nothing # hide
 ```
+![](hist.png)
 
+```@example plot
+grp = groupreduce(KHist(20), t, :z, select = :x)
+plot(plot.(select(grp, 2))...; link = :all)
+png("hist2.png"); nothing # hide
+```
+![](hist2.png)
+
+### Partition and IndexedPartition
+
+- `Partition(stat, n)` summarizes a univariate data stream.
+    - The `stat` is fitted over `n` approximately equal-sized pieces.
+- `IndexedPartition(T, stat, n)` summarizes a bivariate data stream.
+    - The `stat` is fitted over `n` pieces covering the domain of another variable of type `T`.
+
+
+```@example plot
+o = reduce(Partition(KHist(10), 50), t; select=:y)
+plot(o)
+png("partition.png"); nothing # hide
+```
+![](partition.png)
+
+```@example plot
+o = reduce(IndexedPartition(Float64, KHist(10), 50), t; select=(:x, :y))
+plot(o)
+png("partition2.png"); nothing # hide
+```
+![](partition2.png)
+
+
+### GroupBy
+
+```@example plot
+o = reduce(GroupBy{Bool}(KHist(20)), t; select = (:z, :x))
+plot(o)
+png("groupby.png"); nothing # hide
+```
+![](groupby.png)
+  
 ### Convenience function for Partition and IndexedPartition
 
 You can also use the [`partitionplot`](@ref) function, a slightly less verbose way of plotting `Partition` and `IndexedPartition` objects.

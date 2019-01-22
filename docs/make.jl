@@ -10,6 +10,7 @@ makedocs(
         "index.md",
         "basics.md",
         "tutorial.md",
+        "joins.md",
         "onlinestats.md",
         "plotting.md",
         "missing_values.md",
