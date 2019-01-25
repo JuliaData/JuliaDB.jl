@@ -9,11 +9,12 @@ makedocs(
    pages = [
         "index.md",
         "basics.md",
-        "tutorial.md",
+        "operations.md",
         "joins.md",
         "onlinestats.md",
         "plotting.md",
         "missing_values.md",
+        "tutorial.md",
         "api.md",
    ]
 )

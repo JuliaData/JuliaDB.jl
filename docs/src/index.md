@@ -36,19 +36,13 @@ t = table(rand(Bool, 10), rand(10), pkey=1)
 
 ## Parallelism
 
-- The parallel/distributed features of JuliaDB are available by starting Julia with worker processes (`julia -p N`) or by running
+The parallel/distributed features of JuliaDB are available by either:
 
-```julia
-addprocs(N)
-```
+1. Starting Julia with `N` workers: `julia -p N`
+2. Calling `addprocs(N)` before `using JuliaDB`
 
-before running
-
-```julia
-using JuliaDB
-```
-
-- Multiple processes may not be benificial for datasets with less than a few million rows. Communication costs are eliminated on a single process, but of course you will only be using a single CPU.
+!!! note
+    Multiple processes may not be benificial for datasets with less than a few million rows.
 
 ## Additional Resources
 

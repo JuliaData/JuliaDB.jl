@@ -14,6 +14,12 @@ Here is a high level overview of tables in JuliaDB:
 - Tables are typed.
   - Changing a table in some way therefore requires returning a **new** table (underlying data is not copied).
   - JuliaDB has few mutating operations because a new table is necessary in most cases.
+  
+```@example 
+x = 1:10
+y = vcat(fill('a', 4), fill('b', 6))
+z = randn(10)
+```
 
 ## [`IndexedTable`](@ref)
 
@@ -24,10 +30,9 @@ keys (in this case columns `:x` and `:y`).
 An `IndexedTable` is created with data in Julia via the [`table`](@ref) function or with 
 data on disk via the [`loadtable`](@ref) function.
 
-```@example basics
-x = 1:10
-y = 'a':'j'
-z = randn(10)
+
+
+```@repl basics
 t = table((x=x, y=y, z=z); pkey = [:x, :y])
 t[1]
 t[end]
@@ -42,7 +47,7 @@ much like the primary keys of an `IndexedTable`.
 An `NDSparse` is created with data in Julia via the [`ndsparse`](@ref) function or with 
 data on disk via the [`loadndsparse`](@ref) function.
 
-```@example basics
+```@repl basics
 nd = ndsparse((x=x, y=y), (z=z,))
 nd[1, 'a']
 nd[10, 'j'].z
@@ -66,29 +71,43 @@ of the following types:
 6. `Regex` -- returns the columns with names that match the regular expression.
 7. `Type` -- returns columns with elements of the given type.
 8. `Not(Selection)` -- returns columns that are not included in the selection.
+9. `Between(first, last)` -- returns columns between `first` and `last`.
+10. `Keys()` -- return the primary key columns.
 
-```@repl basics
+```@example basics
 t = table(1:10, randn(10), rand(Bool, 10); names = [:x, :y, :z])
+```
 
+```@example basics
 # select the :x vector
 select(t, 1)
 select(t, :x)
+```
 
+```@example basics
 # map a function to the :y vector
 select(t, 2 => abs)
 select(t, :y => x -> x > 0 ? x : -x)
+```
 
+```@example basics
 # select the table of :x and :z
 select(t, (:x, :z))
 select(t, r"(x|z)")
+```
 
+```@example basics
 # map a function to the table of :x and :y
 select(t, (:x, :y) => row -> row[1] + row[2])
 select(t, (1, :y) => row -> row.x + row.y)
+```
 
+```@example basics
 # select columns that are subtypes of Integer
 select(t, Integer)
+```
 
+```@example basics
 # select columns that are not subtypes of Integer
 select(t, Not(Integer))
 ```
