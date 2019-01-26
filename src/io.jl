@@ -170,13 +170,13 @@ Base.@deprecate ingest!(files, output; kwargs...) loadndsparse(files; output=out
 Load a saved `DNDSparse` from `dir` directory. Data can be saved
 using the `save` function.
 """
-function load(f::AbstractString)
+function load(f::AbstractString; procs=workers())
     if isdir(f)
         x = open(joinpath(f, JULIADB_INDEXFILE)) do io
             deserialize(io)
         end
         _makerelative!(x, f)
-        _evenlydistribute!(x, workers())
+        _evenlydistribute!(x, procs)
         x
     elseif isfile(f)
         MemPool.unwrap_payload(open(deserialize, f))

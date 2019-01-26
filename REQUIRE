@@ -1,8 +1,8 @@
 julia 1.0
 IndexedTables 0.10.0
 TextParse 0.6.0
-MemPool 0.1.1
-Dagger 0.7.3
+MemPool 0.2.0
+Dagger 0.8.0
 Glob 1.2.0
 OnlineStats 0.17.0
 OnlineStatsBase
