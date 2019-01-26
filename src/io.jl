@@ -176,6 +176,7 @@ function load(f::AbstractString)
             deserialize(io)
         end
         _makerelative!(x, f)
+        _evenlydistribute!(x, workers())
         x
     elseif isfile(f)
         MemPool.unwrap_payload(open(deserialize, f))
@@ -219,6 +220,17 @@ function _makerelative!(t, dir::AbstractString)
         h = c.handle
         if isa(h, FileRef)
             c.handle = FileRef(joinpath(dir, h.file), h.size)
+        end
+    end
+end
+
+using MemPool
+
+# Fix to load n/p number of files per process
+function _evenlydistribute!(t, wrkrs)
+    for (r, w) in zip(t.chunks, Iterators.cycle(wrkrs))
+        if r.handle isa FileRef
+            r.handle.force_pid[] = w
         end
     end
 end
