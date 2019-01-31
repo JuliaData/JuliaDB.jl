@@ -15,11 +15,15 @@ Here is a high level overview of tables in JuliaDB:
   - Changing a table in some way therefore requires returning a **new** table (underlying data is not copied).
   - JuliaDB has few mutating operations because a new table is necessary in most cases.
   
-```@example 
+
+### Data for examples:
+
+```@example basics
 x = 1:10
 y = vcat(fill('a', 4), fill('b', 6))
-z = randn(10)
+z = randn(10);
 ```
+
 
 ## [`IndexedTable`](@ref)
 
@@ -29,8 +33,6 @@ keys (in this case columns `:x` and `:y`).
 
 An `IndexedTable` is created with data in Julia via the [`table`](@ref) function or with 
 data on disk via the [`loadtable`](@ref) function.
-
-
 
 ```@repl basics
 t = table((x=x, y=y, z=z); pkey = [:x, :y])

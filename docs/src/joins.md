@@ -2,7 +2,9 @@
 using JuliaDB
 ```
 
-# Joining Tables
+# Joins
+
+## Table Joins
 
 Table joins are accomplished through the [`join`](@ref) function.  
 

@@ -36,12 +36,12 @@ select(grp, (1, 2 => value))
 
 The `OnlineStats.Group` type is used for calculating statistics on multiple data streams.  A `Group` that computes the same `OnlineStat` can be created through integer multiplication:
 
-```@repl onlinestats
+```@example onlinestats
 reduce(3Mean(), t)
 ```
 
 Alternatively, a `Group` can be created by providing a collection of `OnlineStat`s.
 
-```@repl onlinestats
+```@example onlinestats
 reduce(Group(Extrema(Int), CountMap(Bool), Mean()), t)
 ```
