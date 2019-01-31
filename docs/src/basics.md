@@ -80,37 +80,36 @@ of the following types:
 t = table(1:10, randn(10), rand(Bool, 10); names = [:x, :y, :z])
 ```
 
-```@example basics
-# select the :x vector
+#### select the :x vector
+```@repl basics
 select(t, 1)
 select(t, :x)
 ```
 
-```@example basics
-# map a function to the :y vector
+#### map a function to the :y vector
+```@repl basics
 select(t, 2 => abs)
 select(t, :y => x -> x > 0 ? x : -x)
 ```
-
-```@example basics
-# select the table of :x and :z
+#### select the table of :x and :z
+```@repl basics
 select(t, (:x, :z))
 select(t, r"(x|z)")
 ```
 
-```@example basics
-# map a function to the table of :x and :y
+#### map a function to the table of :x and :y
+```@repl basics
 select(t, (:x, :y) => row -> row[1] + row[2])
 select(t, (1, :y) => row -> row.x + row.y)
 ```
 
-```@example basics
-# select columns that are subtypes of Integer
+#### select columns that are subtypes of Integer
+```@repl basics
 select(t, Integer)
 ```
 
-```@example basics
-# select columns that are not subtypes of Integer
+#### select columns that are not subtypes of Integer
+```@repl basics
 select(t, Not(Integer))
 ```
 
