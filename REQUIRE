@@ -6,6 +6,7 @@ Dagger 0.8.0
 Glob 1.2.0
 OnlineStats 0.17.0
 OnlineStatsBase
+OrderedCollections
 PooledArrays 0.4.1
 WeakRefStrings
 StatsBase

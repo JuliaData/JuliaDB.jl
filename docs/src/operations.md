@@ -27,8 +27,6 @@ Depth = 2
 
 ## [`reduce`](@ref) and [`groupreduce`](@ref)
 
-## [`pushcol`](@ref)
-
 ## [`stack`](@ref) and [`unstack`](@ref)
 
 ## [`summarize`](@ref)
