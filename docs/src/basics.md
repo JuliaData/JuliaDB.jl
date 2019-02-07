@@ -52,14 +52,14 @@ data on disk via the [`loadndsparse`](@ref) function.
 ```@repl basics
 nd = ndsparse((x=x, y=y), (z=z,))
 nd[1, 'a']
-nd[10, 'j'].z
+nd[10, 'a'].z
 nd[1, :]
 ```
 
 ## Selectors
 
 JuliaDB has a variety of ways to select columns.  These selection methods get used across
-many JuliaDB's functions: [`select`](@ref), [`reduce`](@ref), [`groupreduce`](@ref), 
+many of JuliaDB's functions: [`select`](@ref), [`reduce`](@ref), [`groupreduce`](@ref), 
 [`groupby`](@ref), [`join`](@ref), [`pushcol`](@ref), [`reindex`](@ref), and more.
 
 To demonstrate selection, we'll use the [`select`](@ref) function.  A selection can be any
@@ -80,35 +80,36 @@ of the following types:
 t = table(1:10, randn(10), rand(Bool, 10); names = [:x, :y, :z])
 ```
 
-#### select the :x vector
+#### Select the :x vector
 ```@repl basics
 select(t, 1)
 select(t, :x)
 ```
 
-#### map a function to the :y vector
+#### Map a function to the :y vector
 ```@repl basics
 select(t, 2 => abs)
 select(t, :y => x -> x > 0 ? x : -x)
 ```
-#### select the table of :x and :z
+
+#### Select the table of :x and :z
 ```@repl basics
 select(t, (:x, :z))
 select(t, r"(x|z)")
 ```
 
-#### map a function to the table of :x and :y
+#### Map a function to the table of :x and :y
 ```@repl basics
 select(t, (:x, :y) => row -> row[1] + row[2])
 select(t, (1, :y) => row -> row.x + row.y)
 ```
 
-#### select columns that are subtypes of Integer
+#### Select columns that are subtypes of Integer
 ```@repl basics
 select(t, Integer)
 ```
 
-#### select columns that are not subtypes of Integer
+#### Select columns that are not subtypes of Integer
 ```@repl basics
 select(t, Not(Integer))
 ```
