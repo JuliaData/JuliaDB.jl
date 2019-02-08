@@ -14,6 +14,7 @@ makedocs(
         "onlinestats.md",
         "plotting.md",
         "missing_values.md",
+        "out_of_core.md",
         "tutorial.md",
         "api.md",
    ]
