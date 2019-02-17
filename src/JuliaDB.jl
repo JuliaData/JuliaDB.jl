@@ -23,9 +23,6 @@ using IndexedTables, Dagger, OnlineStats, Distributed, Serialization, Nullables,
     DataValues, RecipesBase, TextParse, Glob
 
 
-import Observables, Widgets
-using Widgets: @nodeps, @widget, @layout!, @output!
-
 #-----------------------------------------------------------------------# exports
 export @cols, @dateformat_str, AbstractNDSparse, All, Between, ColDict, Columns, DColumns, 
     IndexedTable, JuliaDB, Keys, ML, NA, NDSparse, Not, aggregate_stats, 
