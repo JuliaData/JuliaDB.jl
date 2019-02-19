@@ -14,18 +14,18 @@ function mmread(::Type{DataValueArray}, io, mmap)
 end
 
 #-----------------------------------------------------------------------# PooledArray
-# function mmwrite(io::AbstractSerializer, xs::PooledArray)
-#     Serialization.serialize_type(io, MMSer{PooledArray})
+function mmwrite(io::AbstractSerializer, xs::PooledArray)
+    Serialization.serialize_type(io, MMSer{PooledArray})
     
-#     mmwrite(io, xs.pool)
-#     mmwrite(io, xs.refs)
-# end
+    mmwrite(io, xs.refs)
+    mmwrite(io, xs.invpool)
+end
 
-# function mmread(::Type{PooledArray}, io, mmap)
-#     pool = deserialize(io)
-#     refs = deserialize(io)
-#     PooledArray(PooledArrays.RefArray(refs), pool)
-# end
+function mmread(::Type{PooledArray}, io, mmap)
+    refs = deserialize(io)
+    invpool = deserialize(io)
+    PooledArray(PooledArrays.RefArray(refs), invpool)
+end
 
 #-----------------------------------------------------------------------# Columns
 
