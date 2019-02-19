@@ -333,15 +333,15 @@ var documenterSearchIndex = {"docs": [
     "page": "Plotting",
     "title": "Plotting",
     "category": "section",
-    "text": "using Pkg, Random\nPkg.add(\"StatPlots\")\nPkg.add(\"GR\")\nusing StatPlots\nENV[\"GKSwstype\"] = \"100\"\ngr()\nRandom.seed!(1234)  # set random seed to get consistent plots"
+    "text": "using Pkg, Random\nPkg.add(\"StatsPlots\")\nPkg.add(\"GR\")\nusing StatsPlots\nENV[\"GKSwstype\"] = \"100\"\ngr()\nRandom.seed!(1234)  # set random seed to get consistent plots"
 },
 
 {
-    "location": "plotting/#StatPlots-1",
+    "location": "plotting/#StatsPlots-1",
     "page": "Plotting",
-    "title": "StatPlots",
+    "title": "StatsPlots",
     "category": "section",
-    "text": "JuliaDB has all access to all the power and flexibility of Plots via StatPlots and the @df macro.using JuliaDB, StatPlots\n\nt = table((x = randn(100), y = randn(100)))\n\n@df t scatter(:x, :y)\nsavefig(\"statplot.png\"); nothing # hide(Image: )"
+    "text": "JuliaDB has all access to all the power and flexibility of Plots via StatsPlots and the @df macro.using JuliaDB, StatsPlots\n\nt = table((x = randn(100), y = randn(100)))\n\n@df t scatter(:x, :y)\nsavefig(\"statplot.png\"); nothing # hide(Image: )"
 },
 
 {
@@ -525,7 +525,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Tutorial",
     "title": "Visualizing your data",
     "category": "section",
-    "text": "The StatPlots and GroupedErrors package as well as native plotting recipes from JuliaDB using OnlineStats make a rich set of visualizations possible with an intuitive syntax.Use the @df macro to be able to refer to columns simply by their name. You can work with these symobls as if they are regular vectors. Here for example, we split data according to whether the distance is smaller or bigger than 1000.using StatPlots\ngr(fmt = :png) # choose the fast GR backend and set format to png: svg would probably crash with so many points\n@df flights scatter(:DepDelay, :ArrDelay, group = :Distance .> 1000, layout = 2, legend = :topleft)(Image: scatterflights)"
+    "text": "The StatsPlots and GroupedErrors package as well as native plotting recipes from JuliaDB using OnlineStats make a rich set of visualizations possible with an intuitive syntax.Use the @df macro to be able to refer to columns simply by their name. You can work with these symobls as if they are regular vectors. Here for example, we split data according to whether the distance is smaller or bigger than 1000.using StatsPlots\ngr(fmt = :png) # choose the fast GR backend and set format to png: svg would probably crash with so many points\n@df flights scatter(:DepDelay, :ArrDelay, group = :Distance .> 1000, layout = 2, legend = :topleft)(Image: scatterflights)"
 },
 
 {
