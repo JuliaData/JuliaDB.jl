@@ -2,21 +2,21 @@
 
 ```@setup plot
 using Pkg, Random
-Pkg.add("StatPlots")
+Pkg.add("StatsPlots")
 Pkg.add("GR")
-using StatPlots
+using StatsPlots
 ENV["GKSwstype"] = "100"
 gr()
 Random.seed!(1234)  # set random seed to get consistent plots
 ```
 
-## StatPlots
+## StatsPlots
 
 JuliaDB has all access to all the power and flexibility of [Plots](https://github.com/JuliaPlots/Plots.jl)
-via [StatPlots](https://github.com/JuliaPlots/StatPlots.jl) and the `@df` macro.
+via [StatsPlots](https://github.com/JuliaPlots/StatsPlots.jl) and the `@df` macro.
 
 ```@example plot
-using JuliaDB, StatPlots
+using JuliaDB, StatsPlots
 
 t = table((x = randn(100), y = randn(100)))
 

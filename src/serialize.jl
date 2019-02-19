@@ -1,33 +1,33 @@
+#-----------------------------------------------------------------------# DataValueArray
 
-# #### DataValueArray
-
-# function mmwrite(io::AbstractSerializer, xs::DataValueArray)
-#     Serialization.serialize_type(io, MMSer{DataValueArray})
+function mmwrite(io::AbstractSerializer, xs::DataValueArray)
+    Serialization.serialize_type(io, MMSer{DataValueArray})
     
-#     mmwrite(io, BitArray(xs.isna))
-#     mmwrite(io, xs.values)
-# end
-
-# function mmread(::Type{DataValueArray}, io, mmap)
-#     isnull = deserialize(io)
-#     vals = deserialize(io)
-#     DataValueArray(vals, isnull)
-# end
-
-function mmwrite(io::AbstractSerializer, xs::PooledArray)
-    Serialization.serialize_type(io, MMSer{PooledArray})
-    
-    mmwrite(io, xs.pool)
-    mmwrite(io, xs.refs)
+    mmwrite(io, BitArray(xs.isna))
+    mmwrite(io, xs.values)
 end
 
-function mmread(::Type{PooledArray}, io, mmap)
-    pool = deserialize(io)
-    refs = deserialize(io)
-    PooledArray(PooledArrays.RefArray(refs), pool)
+function mmread(::Type{DataValueArray}, io, mmap)
+    isnull = deserialize(io)
+    vals = deserialize(io)
+    DataValueArray(vals, isnull)
 end
 
-# Columns, NDSparse
+#-----------------------------------------------------------------------# PooledArray
+# function mmwrite(io::AbstractSerializer, xs::PooledArray)
+#     Serialization.serialize_type(io, MMSer{PooledArray})
+    
+#     mmwrite(io, xs.pool)
+#     mmwrite(io, xs.refs)
+# end
+
+# function mmread(::Type{PooledArray}, io, mmap)
+#     pool = deserialize(io)
+#     refs = deserialize(io)
+#     PooledArray(PooledArrays.RefArray(refs), pool)
+# end
+
+#-----------------------------------------------------------------------# Columns
 
 function mmwrite(io::AbstractSerializer, xs::Columns)
     Serialization.serialize_type(io, MMSer{Columns})
@@ -55,6 +55,7 @@ function mmread(::Type{Columns}, io, mmap)
     end
 end
 
+#-----------------------------------------------------------------------# NDSparse
 function mmwrite(io::AbstractSerializer, xs::NDSparse)
     Serialization.serialize_type(io, MMSer{NDSparse})
 
@@ -69,6 +70,7 @@ function mmread(::Type{NDSparse}, io, mmap)
     NDSparse(idx, data, presorted=true, copy=false)
 end
 
+#-----------------------------------------------------------------------# IndexedTable
 function mmwrite(io::AbstractSerializer, xs::IndexedTable)
     Serialization.serialize_type(io, MMSer{IndexedTable})
 

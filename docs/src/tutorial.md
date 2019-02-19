@@ -643,13 +643,13 @@ pushcol(y, :change, lengths .- lag(lengths))
 
 ## Visualizing your data
 
-The [StatPlots](https://github.com/JuliaPlots/StatPlots.jl) and [GroupedErrors](https://github.com/piever/GroupedErrors.jl) package as well as native plotting recipes from JuliaDB using [OnlineStats](https://github.com/joshday/OnlineStats.jl) make a rich set of visualizations possible with an intuitive syntax.
+The [StatsPlots](https://github.com/JuliaPlots/StatsPlots.jl) and [GroupedErrors](https://github.com/piever/GroupedErrors.jl) package as well as native plotting recipes from JuliaDB using [OnlineStats](https://github.com/joshday/OnlineStats.jl) make a rich set of visualizations possible with an intuitive syntax.
 
 Use the `@df` macro to be able to refer to columns simply by their name. You can work with these symobls as if they are regular vectors. Here for example, we split data according to whether the distance is smaller or bigger than `1000`.
 
 
 ```julia
-using StatPlots
+using StatsPlots
 gr(fmt = :png) # choose the fast GR backend and set format to png: svg would probably crash with so many points
 @df flights scatter(:DepDelay, :ArrDelay, group = :Distance .> 1000, layout = 2, legend = :topleft)
 ```
