@@ -7,7 +7,7 @@
 </p>
 
 
-#### JuliaDB is a package for working with large persistent data sets
+### JuliaDB is a package for working with large persistent data sets
 
 We recognized the need for an all-Julia, end-to-end tool that can
 
@@ -19,6 +19,6 @@ We recognized the need for an all-Julia, end-to-end tool that can
 We built JuliaDB to fill this void.
 
 
-#### Get Started
+### Get Started
 
 Introduce yourself to JuliaDB's features at [juliadb.org](juliadb.org) or jump into the documentation [here](https://juliacomputing.github.io/JuliaDB.jl/latest/)!
