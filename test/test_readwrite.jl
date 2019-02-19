@@ -4,7 +4,7 @@ function roundtrip(x, eq=(==), io=IOBuffer())
 end
 
 @testset "PooledArray/Vector{Union{T,Missing}}" begin
-    roundtrip(PooledArray([randstring(rand(1:10)) for i in 1:4]))
+    # roundtrip(PooledArray([randstring(rand(1:10)) for i in 1:4]))
     roundtrip([rand(Bool) ? rand() : missing for i in 1:50], isequal)
 end
 
