@@ -15,6 +15,7 @@ makedocs(
         "plotting.md",
         "missing_values.md",
         "out_of_core.md",
+        "ml.md",
         "tutorial.md",
         "api.md",
    ]
