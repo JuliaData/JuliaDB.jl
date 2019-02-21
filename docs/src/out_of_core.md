@@ -42,41 +42,24 @@ tbl = load("bin")
 
 ## [`reduce`](@ref) and [`groupreduce`](@ref) Operations
 
-`reduce` is the simplest out-of-core operation since it works pair-wise.
+`reduce` is the simplest out-of-core operation since it works pair-wise.  You can also perform group-by operations with a reducer via `groupreduce`.
 
+```@example outofcore
+using JuliaDB, OnlineStats
 
+x = rand(Bool, 100)
+y = x + randn(100)
 
-## Join to Big Table
+t = table((x=x, y=y))
 
-
-
-
-
-
-## `reduce` operations
-
-[`reduce`](@ref) is the most trivial out-of-core operation since it works pair-wise requiring a small, fixed amount of memory. For example, you can sum up the `foo` column using `reduce(+, tbl, select=:foo)`.
-
-The OnlineStats.jl package (which is shipped with JuliaDB) allows aggregating and merging statistics on data using a small fixed amount of memory as well. For example, you can find the mean of the `foo` column with this code:
-
-```
-using OnlineStats
-reduce(Mean(), tbl, select=:foo)
+groupreduce(+, t, :x; select = :y)
 ```
 
-Check out other [handy `OnlineStat`s](http://joshday.github.io/OnlineStats.jl/stable/stats_and_models.html). OnlineStats.jl also allows you to extract [histograms](http://joshday.github.io/OnlineStats.jl/stable/datasurrogates.html#IHistogram-1) or [partitioned stats](http://joshday.github.io/OnlineStats.jl/latest/visualizations.html) (i.e. stats on a fixed window of data, hence reducing the output size)
+You can also replace the reducer with any `OnlineStat` object (see [OnlineStats Integration](@ref) for more details):
 
-## `groupreduce` operations
-
-[`groupreduce`](@ref) performs _grouped_ reduction. As long as the number of unique groups in the selected grouping key are small enough, `groupreduce` works out-of-core. `groupreduce` can be performed with pair-wise functions or OnlineStats, as with `reduce`. For example, to find the mean of `foo` field for every unique `bar` and `baz` pairs, you can do:
-
-
+```@example outofcore
+groupreduce(Sum(), t, :x; select = :y)
 ```
-using OnlineStats
-groupreduce(Mean(), tbl, (:bar, :baz), select=:foo)
-```
-
-Note that [`groupby`](@ref) operations may involve an expensive data shuffling step as it requires data belonging to the same group to be on the same processor, and hence isn't generally out-of-core.
 
 ## Join to Big Table
 
