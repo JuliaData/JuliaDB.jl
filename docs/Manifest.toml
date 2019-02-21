@@ -185,9 +185,9 @@ version = "0.21.4"
 
 [[DoubleFloats]]
 deps = ["GenericLinearAlgebra", "LinearAlgebra", "Polynomials", "Random", "Test"]
-git-tree-sha1 = "10aedc55348b4635e464c0f519ad37705c5166e5"
+git-tree-sha1 = "3466d3735e0ca7f6fddf9f2c36ed9ac502941e9e"
 uuid = "497a8b3b-efae-58df-a0af-a86822472b78"
-version = "0.7.2"
+version = "0.7.3"
 
 [[EzXML]]
 deps = ["BinaryProvider", "Libdl", "Printf", "Test"]
@@ -215,9 +215,9 @@ version = "0.5.3"
 
 [[ForwardDiff]]
 deps = ["CommonSubexpressions", "DiffResults", "DiffRules", "InteractiveUtils", "LinearAlgebra", "NaNMath", "Random", "SparseArrays", "SpecialFunctions", "StaticArrays", "Test"]
-git-tree-sha1 = "e393bd3b9102659fb24fe88caedec41f2bc2e7de"
+git-tree-sha1 = "4c4d727f1b7e0092134fabfab6396b8945c1ea5b"
 uuid = "f6369f11-7733-5829-9624-2563aa707210"
-version = "0.10.2"
+version = "0.10.3"
 
 [[Future]]
 deps = ["Random"]
@@ -277,9 +277,9 @@ version = "0.20.0"
 
 [[JuliaDB]]
 deps = ["Dagger", "DataValues", "Distributed", "Glob", "IndexedTables", "MemPool", "Nullables", "OnlineStats", "OnlineStatsBase", "PooledArrays", "Printf", "RecipesBase", "Serialization", "Statistics", "StatsBase", "Test", "TextParse", "WeakRefStrings"]
-git-tree-sha1 = "c4cb07250d760ce2b6f9969e175447755feb612d"
+git-tree-sha1 = "c4980efe5a2c16b03570a9955eaa0699dd2626f0"
 uuid = "a93385a2-3734-596a-9a66-3cfbb77141e6"
-version = "0.11.0"
+version = "0.11.1"
 
 [[KernelDensity]]
 deps = ["Distributions", "FFTW", "Interpolations", "Optim", "StatsBase", "Test"]
@@ -602,9 +602,9 @@ version = "0.10.1"
 
 [[StructArrays]]
 deps = ["Requires", "Test"]
-git-tree-sha1 = "a04ebea1d50e1f5363c75d651369bf7671572202"
+git-tree-sha1 = "22ddb7f2c03be93de7fda25b32541485fc090014"
 uuid = "09ab397b-f2b6-538f-b94a-2f83cf4a842a"
-version = "0.2.0"
+version = "0.2.1"
 
 [[SuiteSparse]]
 deps = ["Libdl", "LinearAlgebra", "SparseArrays"]
