@@ -55,7 +55,7 @@ t = table((x=x, y=y))
 groupreduce(+, t, :x; select = :y)
 ```
 
-You can also replace the reducer with any `OnlineStat` object (see [OnlineStats Integration](@ref) for more details):
+You can replace the reducer with any `OnlineStat` object (see [OnlineStats Integration](@ref) for more details):
 
 ```@example outofcore
 groupreduce(Sum(), t, :x; select = :y)
