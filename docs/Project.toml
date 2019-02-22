@@ -1,5 +1,6 @@
 [deps]
 Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
+Flux = "587475ba-b771-5e3f-ad9e-33799f191a9c"
 GR = "28b8d3ca-fb5f-59d9-8090-bfdbd6d07a71"
 IndexedTables = "6deec6e2-d858-57c5-ab9b-e6ca5bd20e43"
 JuliaDB = "a93385a2-3734-596a-9a66-3cfbb77141e6"

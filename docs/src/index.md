@@ -4,10 +4,6 @@
 </center>
 ```
 
-```@setup
-@info "index.md"
-```
-
 # Overview
 
 **JuliaDB is a package for working with persistent data sets.**
