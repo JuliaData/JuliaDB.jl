@@ -1,7 +1,7 @@
 language: julia
 os:
   - linux
-  - osx
+  # - osx
 julia:
   - 1.0
   - 1.1
@@ -13,14 +13,14 @@ notifications:
   email: false
 after_success:
   - julia -e 'cd(Pkg.dir("JuliaDB")); Pkg.add("Coverage"); using Coverage; Codecov.submit(Codecov.process_folder())'
-  - julia -e 'Pkg.add("Documenter")'
+
 
 jobs:
   include:
     - stage: "Documentation"
-      julia: 1.0
+      julia: 1.1
       os: linux
       script:
-        - julia --project=docs/ -e 'using Pkg; Pkg.instantiate(); Pkg.develop(PackageSpec(path=pwd()))'
+        - julia --project=docs/ -e 'using Pkg; Pkg.develop(PackageSpec(path=pwd())); Pkg.instantiate();'
         - julia --project=docs/ docs/make.jl
       after_success: skip

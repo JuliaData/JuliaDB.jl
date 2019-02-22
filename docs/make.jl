@@ -1,7 +1,7 @@
 using Documenter, JuliaDB, IndexedTables
 
+@info "makedocs"
 makedocs(
-   modules = [JuliaDB, IndexedTables],
    clean = true,
    debug = true,
    format = Documenter.HTML(),
@@ -14,11 +14,14 @@ makedocs(
         "onlinestats.md",
         "plotting.md",
         "missing_values.md",
+        "out_of_core.md",
+        "ml.md",
         "tutorial.md",
         "api.md",
    ]
 )
 
+@info "deploydocs"
 deploydocs(
     repo = "github.com/JuliaComputing/JuliaDB.jl.git"
 )
