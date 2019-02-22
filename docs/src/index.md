@@ -4,6 +4,10 @@
 </center>
 ```
 
+```@setup
+@info "index.md"
+```
+
 # Overview
 
 **JuliaDB is a package for working with persistent data sets.**
@@ -23,11 +27,9 @@ JuliaDB provides distributed table and array datastructures with convenient func
 ## Quickstart
 
 ```julia
-# Install JuliaDB
 using Pkg
-pkg"add JuliaDB"
+Pkg.add("JuliaDB")
 
-# Load the JuliaDB Package
 using JuliaDB
 
 # Create a table where the first column is the "primary key"
