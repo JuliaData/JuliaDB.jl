@@ -1,7 +1,6 @@
 using Documenter, JuliaDB, IndexedTables
 
 makedocs(
-   modules = [JuliaDB, IndexedTables],
    clean = true,
    debug = true,
    format = Documenter.HTML(),
