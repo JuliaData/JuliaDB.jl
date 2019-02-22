@@ -171,6 +171,18 @@ git-tree-sha1 = "c24e9b6500c037673f0241a2783472b8c3d080c7"
 uuid = "31c24e10-a181-5473-b8eb-7969acd0382f"
 version = "0.16.4"
 
+[[DocStringExtensions]]
+deps = ["LibGit2", "Markdown", "Pkg", "Test"]
+git-tree-sha1 = "1df01539a1c952cef21f2d2d1c092c2bcf0177d7"
+uuid = "ffbed154-4ef7-542d-bbb7-c09d3a79fcae"
+version = "0.6.0"
+
+[[Documenter]]
+deps = ["Base64", "DocStringExtensions", "InteractiveUtils", "LibGit2", "Logging", "Markdown", "Pkg", "REPL", "Random", "Test", "Unicode"]
+git-tree-sha1 = "f5dd8036d6e6673d8f0f9b60cd844ebb89aec591"
+uuid = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
+version = "0.21.4"
+
 [[DoubleFloats]]
 deps = ["GenericLinearAlgebra", "LinearAlgebra", "Polynomials", "Random", "Test"]
 git-tree-sha1 = "3466d3735e0ca7f6fddf9f2c36ed9ac502941e9e"
