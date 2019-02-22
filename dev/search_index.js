@@ -21,7 +21,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Overview",
     "title": "Quickstart",
     "category": "section",
-    "text": "# Install JuliaDB\nusing Pkg\npkg\"add JuliaDB\"\n\n# Load the JuliaDB Package\nusing JuliaDB\n\n# Create a table where the first column is the \"primary key\"\nt = table(rand(Bool, 10), rand(10), pkey=1)"
+    "text": "using Pkg\nPkg.add(\"JuliaDB\")\n\nusing JuliaDB\n\n# Create a table where the first column is the \"primary key\"\nt = table(rand(Bool, 10), rand(10), pkey=1)"
 },
 
 {
@@ -406,6 +406,110 @@ var documenterSearchIndex = {"docs": [
     "title": "Missing Values",
     "category": "section",
     "text": "Julia has several different ways of representing missing data.  If a column of data may contain missing values, JuliaDB supports both missing value representations of Union{T, Missing} and DataValue{T}.While Union{T, Missing} is the default representation, functions that generate missing values (join) have a missingtype = Missing keyword argument that can be set to DataValue.The convertmissing function is used to switch the representation of missing values.using DataValues\nconvertmissing(table([1, NA]), Missing)\nconvertmissing(table([1, missing]), DataValue)The dropmissing function will remove rows that contain Missing or missing DataValues.dropmissing(table([1, NA]))\ndropmissing(table([1, missing]))"
+},
+
+{
+    "location": "out_of_core/#",
+    "page": "Out-of-core processing",
+    "title": "Out-of-core processing",
+    "category": "page",
+    "text": ""
+},
+
+{
+    "location": "out_of_core/#Out-of-core-processing-1",
+    "page": "Out-of-core processing",
+    "title": "Out-of-core processing",
+    "category": "section",
+    "text": "JuliaDB can load data that is too big to fit in memory (RAM) as well as run a subset of operations on big tables.  In particular, OnlineStats Integration works with reduce and groupreduce for running statistical analyses that traditionally would not be possible!"
+},
+
+{
+    "location": "out_of_core/#Processing-Scheme-1",
+    "page": "Out-of-core processing",
+    "title": "Processing Scheme",
+    "category": "section",
+    "text": "Data is loaded into a distributed dataset containing \"chunks\" that safely fit in memory. \nData is processed Distributed.nworkers() chunks at a time (each worker processes a chunk and then moves onto the next chunk).\nNote: This means Distributed.nworkers() * avg_size_of_chunk will be in RAM simultaneously.\nOutput data is accumulated in-memory.The limitations of this processing scheme is that only certain operations work out-of-core:loadtable\nloadndsparse\nload\nreduce\ngroupreduce\njoin (see Join to Big Table)"
+},
+
+{
+    "location": "out_of_core/#Loading-Data-1",
+    "page": "Out-of-core processing",
+    "title": "Loading Data",
+    "category": "section",
+    "text": "The loadtable and loadndsparse functions accept the keyword arguments output and chunks that specify the directory to save the data into and the number of chunks to be generated from the input files, respectively.Here\'s an example:loadtable(glob(\"*.csv\"), output=\"bin\", chunks=100; kwargs...)Suppose there are 800 .csv files in the current directory.  They will be read into 100 chunks (8 files per chunk).  Each worker process will load 8 files into memory, save the chunk into a single binary file in the bin directory, and move onto the next 8 files.note: Note\nDistributed.nworkers() * (number_of_csvs / chunks) needs to fit in memory simultaneously.Once data has been loaded in this way, you can reload the dataset (extremely fast) viatbl = load(\"bin\")"
+},
+
+{
+    "location": "out_of_core/#[reduce](@ref)-and-[groupreduce](@ref)-Operations-1",
+    "page": "Out-of-core processing",
+    "title": "reduce and groupreduce Operations",
+    "category": "section",
+    "text": "reduce is the simplest out-of-core operation since it works pair-wise.  You can also perform group-by operations with a reducer via groupreduce.using JuliaDB, OnlineStats\n\nx = rand(Bool, 100)\ny = x + randn(100)\n\nt = table((x=x, y=y))\n\ngroupreduce(+, t, :x; select = :y)You can replace the reducer with any OnlineStat object (see OnlineStats Integration for more details):groupreduce(Sum(), t, :x; select = :y)"
+},
+
+{
+    "location": "out_of_core/#Join-to-Big-Table-1",
+    "page": "Out-of-core processing",
+    "title": "Join to Big Table",
+    "category": "section",
+    "text": "join operations have limited out-of-core support. Specifically,join(bigtable, smalltable; broadcast=:right, how=:inner|:left|:anti)Here bigtable can be larger than memory, while Distributed.nworkers() copies of smalltable must fit in memory. Note that only :inner, :left, and :anti joins are supported (no :outer joins). In this operation, smalltable is first broadcast to all processors and bigtable is joined Distributed.nworkers() chunks at a time."
+},
+
+{
+    "location": "ml/#",
+    "page": "Feature Extraction",
+    "title": "Feature Extraction",
+    "category": "page",
+    "text": ""
+},
+
+{
+    "location": "ml/#Feature-Extraction-1",
+    "page": "Feature Extraction",
+    "title": "Feature Extraction",
+    "category": "section",
+    "text": "Machine learning models are composed of mathematical operations on matrices of numbers. However, data in the real world is often in tabular form containing more than just numbers. Hence, the first step in applying machine learning is to turn such tabular non-numeric data into a matrix of numbers. Such matrices are called \"feature matrices\". JuliaDB contains an ML module which has helper functions to extract feature matrices.In this document, we will turn the titanic dataset from Kaggle into numeric form and apply a machine learning model on it.using JuliaDB\n\ndownload(\"https://raw.githubusercontent.com/agconti/\"*\n          \"kaggle-titanic/master/data/train.csv\", \"train.csv\")\n\ntrain_table = loadtable(\"train.csv\", escapechar=\'\"\')\npopcol(popcol(popcol(train_table, :Name), :Ticket), :Cabin) # hide"
+},
+
+{
+    "location": "ml/#ML.schema-1",
+    "page": "Feature Extraction",
+    "title": "ML.schema",
+    "category": "section",
+    "text": "Schema is a programmatic description of the data in each column. It is a dictionary which maps each column (by name) to its schema type (mainly Continuous, and Categorical).ML.Continuous: data is drawn from the real number line (e.g. Age)\nML.Categorical: data is drawn from a fixed set of values (e.g. Sex)ML.schema(train_table) will go through the data and infer the types and distribution of data. Let\'s try it without any arguments on the titanic dataset:using JuliaDB: ML\n\nML.schema(train_table)Here is how the schema was inferred:Numeric fields were inferred to be Continuous, their mean and standard deviations were computed. This will later be used in normalizing the column in the feature matrix using the formula ((value - mean) / standard_deviation). This will bring all columns to the same \"scale\" making the training more effective.\nSome string columns are inferred to be Categorical (e.g. Sex, Embarked) - this means that the column is a PooledArray, and is drawn from a small \"pool\" of values. For example Sex is either \"male\" or \"female\"; Embarked is one of \"Q\", \"S\", \"C\" or \"\"\nSome string columns (e.g. Name) get the schema nothing – such columns usually contain unique identifying data, so are not useful in machine learning.\nThe age column was inferred as Maybe{Continuous} – this means that there are missing values in the column. The mean and standard deviation computed are for the non-missing values.You may note that Survived column contains only 1s and 0s to denote whether a passenger survived the disaster or not. However, our schema inferred the column to be Continuous. To not be overly presumptive ML.schema will assume all numeric columns are continuous by default. We can give the hint that the Survived column is categorical by passing the hints arguemnt as a dictionary of column name to schema type. Further, we will also treat Pclass (passenger class) as categorical and suppress Parch and SibSp fields.sch = ML.schema(train_table, hints=Dict(\n        :Pclass => ML.Categorical,\n        :Survived => ML.Categorical,\n        :Parch => nothing,\n        :SibSp => nothing,\n        :Fare => nothing,\n        )\n)"
+},
+
+{
+    "location": "ml/#Split-schema-into-input-and-output-1",
+    "page": "Feature Extraction",
+    "title": "Split schema into input and output",
+    "category": "section",
+    "text": "In a machine learning model, a subset of fields act as the input to the model, and one or more fields act as the output (predicted variables). For example, in the titanic dataset, you may want to predict whether a person will survive or not. So \"Survived\" field will be the output column. Using the ML.splitschema function, you can split the schema into input and output schema.input_sch, output_sch = ML.splitschema(sch, :Survived)"
+},
+
+{
+    "location": "ml/#Extracting-feature-matrix-1",
+    "page": "Feature Extraction",
+    "title": "Extracting feature matrix",
+    "category": "section",
+    "text": "Once the schema has been created, you can extract the feature matrix according to the given schema using ML.featuremat:train_input = ML.featuremat(input_sch, train_table)train_output = ML.featuremat(output_sch, train_table)"
+},
+
+{
+    "location": "ml/#Learning-1",
+    "page": "Feature Extraction",
+    "title": "Learning",
+    "category": "section",
+    "text": "Let us create a simple neural network to learn whether a passenger will survive or not using the Flux framework.ML.width(schema) will give the number of features in the schema we will use this in specifying the model size:using Flux\n\nmodel = Chain(\n  Dense(ML.width(input_sch), 32, relu),\n  Dense(32, ML.width(output_sch)),\n  softmax)\n\nloss(x, y) = Flux.mse(model(x), y)\nopt = Flux.ADAM(Flux.params(model))\nevalcb = Flux.throttle(() -> @show(loss(first(data)...)), 2);Train the data in 10 iterationsdata = [(train_input, train_output)]\nfor i = 1:10\n  Flux.train!(loss, data, opt, cb = evalcb)\nenddata given to the model is a vector of batches of input-output matrices. In this case we are training with just 1 batch."
+},
+
+{
+    "location": "ml/#Prediction-1",
+    "page": "Feature Extraction",
+    "title": "Prediction",
+    "category": "section",
+    "text": "Now let\'s load some testing data to use the model we learned to predict survival.\ndownload(\"https://raw.githubusercontent.com/agconti/\"*\n          \"kaggle-titanic/master/data/test.csv\", \"test.csv\")\n\ntest_table = loadtable(\"test.csv\", escapechar=\'\"\')\n\ntest_input = ML.featuremat(input_sch, test_table) ;Run the model on one observation:model(test_input[:, 1])The output has two numbers which add up to 1: the probability of not surviving vs that of surviving. It seems, according to our model, that this person is unlikely to survive on the titanic.You can also run the model on all observations by simply passing the whole feature matrix to model.model(test_input)"
 },
 
 {

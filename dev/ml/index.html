@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Feature Extraction · JuliaDB.jl</title><link href="https://cdnjs.cloudflare.com/ajax/libs/normalize/4.2.0/normalize.min.css" rel="stylesheet" type="text/css"/><link href="https://fonts.googleapis.com/css?family=Lato|Roboto+Mono" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.6.3/css/font-awesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/default.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL=".."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.2.0/require.min.js" data-main="../assets/documenter.js"></script><script src="../siteinfo.js"></script><script src="../../versions.js"></script><link href="../assets/documenter.css" rel="stylesheet" type="text/css"/></head><body><nav class="toc"><h1>JuliaDB.jl</h1><select id="version-selector" onChange="window.location.href=this.value" style="visibility: hidden"></select><form class="search" id="search-form" action="../search/"><input id="search-query" name="q" type="text" placeholder="Search docs"/></form><ul><li><a class="toctext" href="../">Overview</a></li><li><a class="toctext" href="../basics/">Basics</a></li><li><a class="toctext" href="../operations/">Table Operations</a></li><li><a class="toctext" href="../joins/">Joins</a></li><li><a class="toctext" href="../onlinestats/">OnlineStats Integration</a></li><li><a class="toctext" href="../plotting/">Plotting</a></li><li><a class="toctext" href="../missing_values/">Missing Values</a></li><li><a class="toctext" href="../out_of_core/">Out-of-core processing</a></li><li class="current"><a class="toctext" href>Feature Extraction</a><ul class="internal"><li><a class="toctext" href="#ML.schema-1">ML.schema</a></li><li><a class="toctext" href="#Split-schema-into-input-and-output-1">Split schema into input and output</a></li><li><a class="toctext" href="#Extracting-feature-matrix-1">Extracting feature matrix</a></li><li><a class="toctext" href="#Learning-1">Learning</a></li><li><a class="toctext" href="#Prediction-1">Prediction</a></li></ul></li><li><a class="toctext" href="../tutorial/">Tutorial</a></li><li><a class="toctext" href="../api/">API</a></li></ul></nav><article id="docs"><header><nav><ul><li><a href>Feature Extraction</a></li></ul><a class="edit-page" href="https://github.com/JuliaComputing/JuliaDB.jl/blob/master/docs/src/ml.md"><span class="fa"></span> Edit on GitHub</a></nav><hr/><div id="topbar"><span>Feature Extraction</span><a class="fa fa-bars" href="#"></a></div></header><h1><a class="nav-anchor" id="Feature-Extraction-1" href="#Feature-Extraction-1">Feature Extraction</a></h1><p>Machine learning models are composed of mathematical operations on matrices of numbers. However, data in the real world is often in tabular form containing more than just numbers. Hence, the first step in applying machine learning is to turn such tabular non-numeric data into a matrix of numbers. Such matrices are called &quot;feature matrices&quot;. JuliaDB contains an <code>ML</code> module which has helper functions to extract feature matrices.</p><p>In this document, we will turn the <a href="https://www.kaggle.com/c/titanic">titanic dataset from Kaggle</a> into numeric form and apply a machine learning model on it.</p><div><pre><code class="language-julia">using JuliaDB
+
+download(&quot;https://raw.githubusercontent.com/agconti/&quot;*
+          &quot;kaggle-titanic/master/data/train.csv&quot;, &quot;train.csv&quot;)
+
+train_table = loadtable(&quot;train.csv&quot;, escapechar=&#39;&quot;&#39;)</code></pre><pre><code class="language-none">  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                 Dload  Upload   Total   Spent    Left  Speed
+  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0100 60302  100 60302    0     0   300k      0 --:--:-- --:--:-- --:--:--  301k
+Table with 891 rows, 9 columns:
+Columns:
+#  colname      type
+───────────────────────────────────────
+1  PassengerId  Int64
+2  Survived     Int64
+3  Pclass       Int64
+4  Sex          String
+5  Age          Union{Missing, Float64}
+6  SibSp        Int64
+7  Parch        Int64
+8  Fare         Float64
+9  Embarked     String</code></pre></div><h2><a class="nav-anchor" id="ML.schema-1" href="#ML.schema-1">ML.schema</a></h2><p>Schema is a programmatic description of the data in each column. It is a dictionary which maps each column (by name) to its schema type (mainly <code>Continuous</code>, and <code>Categorical</code>).</p><ul><li><code>ML.Continuous</code>: data is drawn from the real number line (e.g. Age)</li><li><code>ML.Categorical</code>: data is drawn from a fixed set of values (e.g. Sex)</li></ul><p><code>ML.schema(train_table)</code> will go through the data and infer the types and distribution of data. Let&#39;s try it without any arguments on the titanic dataset:</p><div><pre><code class="language-julia">using JuliaDB: ML
+
+ML.schema(train_table)</code></pre><pre><code class="language-none">Dict{Symbol,Any} with 12 entries:
+  :SibSp       =&gt; Continous(μ=0.5230078563411893, σ=1.1027434322934322)
+  :Embarked    =&gt; nothing
+  :PassengerId =&gt; Continous(μ=446.0, σ=257.3538420152301)
+  :Cabin       =&gt; nothing
+  :Age         =&gt; Maybe{Continuous}(Continous(μ=29.69911764705884, σ=14.5264973…
+  :Survived    =&gt; Continous(μ=0.3838383838383839, σ=0.4865924542648576)
+  :Parch       =&gt; Continous(μ=0.3815937149270483, σ=0.8060572211299485)
+  :Pclass      =&gt; Continous(μ=2.3086419753086447, σ=0.8360712409770491)
+  :Ticket      =&gt; nothing
+  :Sex         =&gt; nothing
+  :Name        =&gt; nothing
+  :Fare        =&gt; Continous(μ=32.20420796857465, σ=49.693428597180855)</code></pre></div><p>Here is how the schema was inferred:</p><ul><li>Numeric fields were inferred to be <code>Continuous</code>, their mean and standard deviations were computed. This will later be used in normalizing the column in the feature matrix using the formula <code>((value - mean) / standard_deviation)</code>. This will bring all columns to the same &quot;scale&quot; making the training more effective.</li><li>Some string columns are inferred to be <code>Categorical</code> (e.g. Sex, Embarked) - this means that the column is a <a href="https://github.com/JuliaComputing/PooledArrays.jl">PooledArray</a>, and is drawn from a small &quot;pool&quot; of values. For example Sex is either &quot;male&quot; or &quot;female&quot;; Embarked is one of &quot;Q&quot;, &quot;S&quot;, &quot;C&quot; or &quot;&quot;</li><li>Some string columns (e.g. Name) get the schema <code>nothing</code> – such columns usually contain unique identifying data, so are not useful in machine learning.</li><li>The age column was inferred as <code>Maybe{Continuous}</code> – this means that there are missing values in the column. The mean and standard deviation computed are for the non-missing values.</li></ul><p>You may note that <code>Survived</code> column contains only 1s and 0s to denote whether a passenger survived the disaster or not. However, our schema inferred the column to be <code>Continuous</code>. To not be overly presumptive <code>ML.schema</code> will assume all numeric columns are continuous by default. We can give the hint that the Survived column is categorical by passing the <code>hints</code> arguemnt as a dictionary of column name to schema type. Further, we will also treat <code>Pclass</code> (passenger class) as categorical and suppress <code>Parch</code> and <code>SibSp</code> fields.</p><div><pre><code class="language-julia">sch = ML.schema(train_table, hints=Dict(
+        :Pclass =&gt; ML.Categorical,
+        :Survived =&gt; ML.Categorical,
+        :Parch =&gt; nothing,
+        :SibSp =&gt; nothing,
+        :Fare =&gt; nothing,
+        )
+)</code></pre><pre><code class="language-none">Dict{Symbol,Any} with 12 entries:
+  :SibSp       =&gt; nothing
+  :Embarked    =&gt; nothing
+  :PassengerId =&gt; Continous(μ=446.0, σ=257.3538420152301)
+  :Cabin       =&gt; nothing
+  :Age         =&gt; Maybe{Continuous}(Continous(μ=29.69911764705884, σ=14.5264973…
+  :Survived    =&gt; Categorical([0, 1])
+  :Parch       =&gt; nothing
+  :Pclass      =&gt; Categorical([3, 1, 2])
+  :Ticket      =&gt; nothing
+  :Sex         =&gt; nothing
+  :Name        =&gt; nothing
+  :Fare        =&gt; nothing</code></pre></div><h2><a class="nav-anchor" id="Split-schema-into-input-and-output-1" href="#Split-schema-into-input-and-output-1">Split schema into input and output</a></h2><p>In a machine learning model, a subset of fields act as the input to the model, and one or more fields act as the output (predicted variables). For example, in the titanic dataset, you may want to predict whether a person will survive or not. So &quot;Survived&quot; field will be the output column. Using the <code>ML.splitschema</code> function, you can split the schema into input and output schema.</p><div><pre><code class="language-julia">input_sch, output_sch = ML.splitschema(sch, :Survived)</code></pre><pre><code class="language-none">┌ Warning: In `filter(f, dict)`, `f` is now passed a single pair instead of two arguments.
+│   caller = splitschema(::Dict{Symbol,Any}, ::Symbol) at ml.jl:155
+└ @ JuliaDB.ML ~/build/JuliaComputing/JuliaDB.jl/src/ml.jl:155
+┌ Warning: In `filter(f, dict)`, `f` is now passed a single pair instead of two arguments.
+│   caller = splitschema(::Dict{Symbol,Any}, ::Symbol) at ml.jl:155
+└ @ JuliaDB.ML ~/build/JuliaComputing/JuliaDB.jl/src/ml.jl:155
+(Dict{Symbol,Any}(:SibSp=&gt;nothing,:Embarked=&gt;nothing,:PassengerId=&gt;Continous(μ=446.0, σ=257.3538420152301),:Cabin=&gt;nothing,:Age=&gt;Maybe{Continuous}(Continous(μ=29.69911764705884, σ=14.526497332334051)),:Parch=&gt;nothing,:Pclass=&gt;Categorical([3, 1, 2]),:Ticket=&gt;nothing,:Sex=&gt;nothing,:Name=&gt;nothing…), Dict{Symbol,Any}(:Survived=&gt;Categorical([0, 1])))</code></pre></div><h2><a class="nav-anchor" id="Extracting-feature-matrix-1" href="#Extracting-feature-matrix-1">Extracting feature matrix</a></h2><p>Once the schema has been created, you can extract the feature matrix according to the given schema using <code>ML.featuremat</code>:</p><div><pre><code class="language-julia">train_input = ML.featuremat(input_sch, train_table)</code></pre><pre><code class="language-none">6×891 LinearAlgebra.Adjoint{Float32,Array{Float32,2}}:
+ -1.72914   -1.72525  -1.72137   -1.71748   …  1.72137   1.72525   1.72914
+  0.0        0.0       0.0        0.0          1.0       0.0       0.0
+ -0.530005   0.57143  -0.254646   0.364911     0.0      -0.254646  0.158392
+  1.0        0.0       1.0        0.0          1.0       0.0       1.0
+  0.0        1.0       0.0        1.0          0.0       1.0       0.0
+  0.0        0.0       0.0        0.0       …  0.0       0.0       0.0</code></pre></div><div><pre><code class="language-julia">train_output = ML.featuremat(output_sch, train_table)</code></pre><pre><code class="language-none">2×891 LinearAlgebra.Adjoint{Float32,Array{Float32,2}}:
+ 1.0  0.0  0.0  0.0  1.0  1.0  1.0  1.0  …  1.0  1.0  1.0  0.0  1.0  0.0  1.0
+ 0.0  1.0  1.0  1.0  0.0  0.0  0.0  0.0     0.0  0.0  0.0  1.0  0.0  1.0  0.0</code></pre></div><h2><a class="nav-anchor" id="Learning-1" href="#Learning-1">Learning</a></h2><p>Let us create a simple neural network to learn whether a passenger will survive or not using the <a href="https://fluxml.github.io/">Flux</a> framework.</p><p><code>ML.width(schema)</code> will give the number of features in the <code>schema</code> we will use this in specifying the model size:</p><div><pre><code class="language-julia">using Flux
+
+model = Chain(
+  Dense(ML.width(input_sch), 32, relu),
+  Dense(32, ML.width(output_sch)),
+  softmax)
+
+loss(x, y) = Flux.mse(model(x), y)
+opt = Flux.ADAM(Flux.params(model))
+evalcb = Flux.throttle(() -&gt; @show(loss(first(data)...)), 2);</code></pre><pre><code class="language-none">loaded
+┌ Warning: ADAM(params) is deprecated; use ADAM(η::Float64) instead
+│   caller = top-level scope at none:0
+└ @ Core none:0
+(::getfield(Flux, Symbol(&quot;#throttled#18&quot;)){getfield(Flux, Symbol(&quot;##throttled#10#14&quot;)){Bool,Bool,getfield(Main.ex-titanic, Symbol(&quot;##1#2&quot;)),Int64}}) (generic function with 1 method)</code></pre></div><p>Train the data in 10 iterations</p><div><pre><code class="language-julia">data = [(train_input, train_output)]
+for i = 1:10
+  Flux.train!(loss, data, opt, cb = evalcb)
+end</code></pre><pre><code class="language-none">┌ Warning: train!(loss, data, opt) is deprecated; use train!(loss, params, data, opt) instead
+│   caller = ip:0x0
+└ @ Core :-1
+loss(first(data)...) = 0.2408222f0 (tracked)</code></pre></div><p><code>data</code> given to the model is a vector of batches of input-output matrices. In this case we are training with just 1 batch.</p><h2><a class="nav-anchor" id="Prediction-1" href="#Prediction-1">Prediction</a></h2><p>Now let&#39;s load some testing data to use the model we learned to predict survival.</p><div><pre><code class="language-julia">download(&quot;https://raw.githubusercontent.com/agconti/&quot;*
+          &quot;kaggle-titanic/master/data/test.csv&quot;, &quot;test.csv&quot;)
+
+test_table = loadtable(&quot;test.csv&quot;, escapechar=&#39;&quot;&#39;)
+
+test_input = ML.featuremat(input_sch, test_table) ;</code></pre><pre><code class="language-none">  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                 Dload  Upload   Total   Spent    Left  Speed
+  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0  6 28210    6  1918    0     0  13940      0  0:00:02 --:--:--  0:00:02 13898100 28210  100 28210    0     0   185k      0 --:--:-- --:--:-- --:--:--  184k
+6×418 LinearAlgebra.Adjoint{Float32,Array{Float32,2}}:
+ 1.73302   1.73691  1.74079   1.74468   …  3.3417   3.34559  3.34947  3.35336
+ 0.0       0.0      0.0       0.0          0.0      0.0      1.0      1.0
+ 0.330491  1.19099  2.22358  -0.185806     0.64027  0.60585  0.0      0.0
+ 1.0       1.0      0.0       1.0          0.0      1.0      1.0      1.0
+ 0.0       0.0      0.0       0.0          1.0      0.0      0.0      0.0
+ 0.0       0.0      1.0       0.0       …  0.0      0.0      0.0      0.0</code></pre></div><p>Run the model on one observation:</p><div><pre><code class="language-julia">model(test_input[:, 1])</code></pre><pre><code class="language-none">Tracked 2-element Array{Float32,1}:
+ 0.5623357f0
+ 0.4376643f0</code></pre></div><p>The output has two numbers which add up to 1: the probability of not surviving vs that of surviving. It seems, according to our model, that this person is unlikely to survive on the titanic.</p><p>You can also run the model on all observations by simply passing the whole feature matrix to <code>model</code>.</p><div><pre><code class="language-julia">model(test_input)</code></pre><pre><code class="language-none">Tracked 2×418 Array{Float32,2}:
+ 0.562336  0.551073  0.689212  0.561214  …  0.556128  0.656088  0.656113
+ 0.437664  0.448927  0.310788  0.438786     0.443872  0.343912  0.343887</code></pre></div><footer><hr/><a class="previous" href="../out_of_core/"><span class="direction">Previous</span><span class="title">Out-of-core processing</span></a><a class="next" href="../tutorial/"><span class="direction">Next</span><span class="title">Tutorial</span></a></footer></article></body></html>
