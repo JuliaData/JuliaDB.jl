@@ -135,7 +135,7 @@ function _loadtable_serial(T, file::Union{IO, AbstractString, AbstractArray};
         nullableidx = findall(x->eltype(x) <: Union{DataValue,Nullable} || Missing <: eltype(x), indexvecs)
         if !isempty(nullableidx)
             badcol_names = header[_indexcols[nullableidx]]
-            warn("Indexed columns may contain Nullables or NAs. Column(s) with nullables: $(join(badcol_names, ", ", " and ")). This will result in wrong sorting.")
+            @warn("Indexed columns may contain Nullables or NAs. Column(s) with nullables: $(join(badcol_names, ", ", " and ")). This will result in wrong sorting.")
         end
 
         index = Columns(Tuple(indexvecs); names=indexcolnames)

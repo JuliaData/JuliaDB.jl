@@ -1,5 +1,6 @@
 ```@setup dv
-using JuliaDB
+using JuliaDB, Pkg
+Pkg.add("DataValues")
 ```
 
 # Missing Values
