@@ -397,7 +397,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Missing Values",
     "title": "Missing Values",
     "category": "page",
-    "text": "using JuliaDB"
+    "text": "using JuliaDB, Pkg\nPkg.add(\"DataValues\")"
 },
 
 {
