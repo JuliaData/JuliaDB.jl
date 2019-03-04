@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Plotting · JuliaDB.jl</title><link href="https://cdnjs.cloudflare.com/ajax/libs/normalize/4.2.0/normalize.min.css" rel="stylesheet" type="text/css"/><link href="https://fonts.googleapis.com/css?family=Lato|Roboto+Mono" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.6.3/css/font-awesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/default.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL=".."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.2.0/require.min.js" data-main="../assets/documenter.js"></script><script src="../siteinfo.js"></script><script src="../../versions.js"></script><link href="../assets/documenter.css" rel="stylesheet" type="text/css"/></head><body><nav class="toc"><h1>JuliaDB.jl</h1><select id="version-selector" onChange="window.location.href=this.value" style="visibility: hidden"></select><form class="search" id="search-form" action="../search/"><input id="search-query" name="q" type="text" placeholder="Search docs"/></form><ul><li><a class="toctext" href="../">Overview</a></li><li><a class="toctext" href="../basics/">Basics</a></li><li><a class="toctext" href="../operations/">Table Operations</a></li><li><a class="toctext" href="../joins/">Joins</a></li><li><a class="toctext" href="../onlinestats/">OnlineStats Integration</a></li><li class="current"><a class="toctext" href>Plotting</a><ul class="internal"><li><a class="toctext" href="#StatsPlots-1">StatsPlots</a></li><li><a class="toctext" href="#Plotting-Big-Data-1">Plotting Big Data</a></li></ul></li><li><a class="toctext" href="../missing_values/">Missing Values</a></li><li><a class="toctext" href="../out_of_core/">Out-of-core processing</a></li><li><a class="toctext" href="../ml/">Feature Extraction</a></li><li><a class="toctext" href="../tutorial/">Tutorial</a></li><li><a class="toctext" href="../api/">API</a></li></ul></nav><article id="docs"><header><nav><ul><li><a href>Plotting</a></li></ul><a class="edit-page" href="https://github.com/JuliaComputing/JuliaDB.jl/blob/master/docs/src/plotting.md"><span class="fa"></span> Edit on GitHub</a></nav><hr/><div id="topbar"><span>Plotting</span><a class="fa fa-bars" href="#"></a></div></header><h1><a class="nav-anchor" id="Plotting-1" href="#Plotting-1">Plotting</a></h1><div></div><h2><a class="nav-anchor" id="StatsPlots-1" href="#StatsPlots-1">StatsPlots</a></h2><p>JuliaDB has all access to all the power and flexibility of <a href="https://github.com/JuliaPlots/Plots.jl">Plots</a> via <a href="https://github.com/JuliaPlots/StatsPlots.jl">StatsPlots</a> and the <code>@df</code> macro.</p><div><pre><code class="language-julia">using JuliaDB, StatsPlots
+
+t = table((x = randn(100), y = randn(100)))
+
+@df t scatter(:x, :y)</code></pre></div><p><img src="../statplot.png" alt/></p><h2><a class="nav-anchor" id="Plotting-Big-Data-1" href="#Plotting-Big-Data-1">Plotting Big Data</a></h2><p>For large datasets, it isn&#39;t feasible to render every data point.  The OnlineStats package provides a number of <a href="http://joshday.github.io/OnlineStats.jl/latest/visualizations.html">data structures for big data visualization</a> that can be created via the <a href="../api/#Base.reduce-Tuple{Any,IndexedTable}"><code>reduce</code></a> and <a href="../api/#IndexedTables.groupreduce"><code>groupreduce</code></a> functions.  </p><ul><li>Example data:</li></ul><div><pre><code class="language-julia">using JuliaDB, Plots, OnlineStats
+
+x = randn(10^6)
+y = x + randn(10^6)
+z = x .&gt; 1
+z2 = (x .+ y) .&gt; 0
+t = table((x=x, y=y, z=z, z2=z2))</code></pre><pre><code class="language-none">Table with 1000000 rows, 4 columns:
+x           y           z      z2
+────────────────────────────────────
+1.48494     2.19288     true   true
+1.23969     0.536499    true   true
+1.06159     1.42904     true   true
+0.176156    0.249636    false  true
+0.714251    -0.0450475  false  true
+-0.0682377  -1.35414    false  false
+0.05331     -0.823936   false  false
+1.86        1.45448     true   true
+0.855915    2.66493     false  true
+⋮
+-1.75701    -0.285743   false  false
+0.356983    -0.459484   false  false
+-1.13729    -0.7288     false  false
+1.82383     2.88267     true   true
+-1.57593    -2.79145    false  false
+-1.93871    -0.447352   false  false
+-0.800527   -0.392614   false  false
+-0.384413   -2.00444    false  false</code></pre></div><h3><a class="nav-anchor" id="Mosaic-Plots-1" href="#Mosaic-Plots-1">Mosaic Plots</a></h3><p>A <a href="https://en.wikipedia.org/wiki/Mosaic_plot">mosaic plot</a> visualizes the bivariate distribution of two categorical variables.  </p><div><pre><code class="language-julia">o = reduce(Mosaic(Bool, Bool), t; select = (3, 4))
+plot(o)</code></pre></div><p><img src="../mosaic.png" alt/></p><h3><a class="nav-anchor" id="Histograms-1" href="#Histograms-1">Histograms</a></h3><div><pre><code class="language-julia">grp = groupreduce(Hist(-5:.5:5), t, :z, select = :x)
+plot(plot.(select(grp, 2))...; link=:all)</code></pre></div><p><img src="../hist.png" alt/></p><div><pre><code class="language-julia">grp = groupreduce(KHist(20), t, :z, select = :x)
+plot(plot.(select(grp, 2))...; link = :all)</code></pre></div><p><img src="../hist2.png" alt/></p><h3><a class="nav-anchor" id="Partition-and-IndexedPartition-1" href="#Partition-and-IndexedPartition-1">Partition and IndexedPartition</a></h3><ul><li><code>Partition(stat, n)</code> summarizes a univariate data stream.<ul><li>The <code>stat</code> is fitted over <code>n</code> approximately equal-sized pieces.</li></ul></li><li><code>IndexedPartition(T, stat, n)</code> summarizes a bivariate data stream.<ul><li>The <code>stat</code> is fitted over <code>n</code> pieces covering the domain of another variable of type <code>T</code>.</li></ul></li></ul><div><pre><code class="language-julia">o = reduce(Partition(KHist(10), 50), t; select=:y)
+plot(o)</code></pre></div><p><img src="../partition.png" alt/></p><div><pre><code class="language-julia">o = reduce(IndexedPartition(Float64, KHist(10), 50), t; select=(:x, :y))
+plot(o)</code></pre></div><p><img src="../partition2.png" alt/></p><h3><a class="nav-anchor" id="GroupBy-1" href="#GroupBy-1">GroupBy</a></h3><div><pre><code class="language-julia">o = reduce(GroupBy{Bool}(KHist(20)), t; select = (:z, :x))
+plot(o)</code></pre></div><p><img src="../groupby.png" alt/></p><h3><a class="nav-anchor" id="Convenience-function-for-Partition-and-IndexedPartition-1" href="#Convenience-function-for-Partition-and-IndexedPartition-1">Convenience function for Partition and IndexedPartition</a></h3><p>You can also use the <a href="../api/#JuliaDB.partitionplot"><code>partitionplot</code></a> function, a slightly less verbose way of plotting <code>Partition</code> and <code>IndexedPartition</code> objects.</p><div><pre><code class="language-julia"># x by itself
+partitionplot(t, :x, stat = Extrema())</code></pre></div><p><img src="../partitionplot1.png" alt/></p><div><pre><code class="language-julia"># y by x, grouped by z
+partitionplot(t, :x, :y, stat = Extrema(), by = :z)</code></pre></div><p><img src="../partitionplot2.png" alt/></p><footer><hr/><a class="previous" href="../onlinestats/"><span class="direction">Previous</span><span class="title">OnlineStats Integration</span></a><a class="next" href="../missing_values/"><span class="direction">Next</span><span class="title">Missing Values</span></a></footer></article></body></html>
