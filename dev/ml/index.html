@@ -6,7 +6,7 @@ download(&quot;https://raw.githubusercontent.com/agconti/&quot;*
 
 train_table = loadtable(&quot;train.csv&quot;, escapechar=&#39;&quot;&#39;)</code></pre><pre><code class="language-none">  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
                                  Dload  Upload   Total   Spent    Left  Speed
-  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0100 60302  100 60302    0     0   326k      0 --:--:-- --:--:-- --:--:--  327k
+  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0100 60302  100 60302    0     0   339k      0 --:--:-- --:--:-- --:--:--  340k
 Table with 891 rows, 9 columns:
 Columns:
 #  colname      type
@@ -85,14 +85,14 @@ for i = 1:10
 end</code></pre><pre><code class="language-none">┌ Warning: train!(loss, data, opt) is deprecated; use train!(loss, params, data, opt) instead
 │   caller = ip:0x0
 └ @ Core :-1
-loss(first(data)...) = 0.27117705f0 (tracked)</code></pre></div><p><code>data</code> given to the model is a vector of batches of input-output matrices. In this case we are training with just 1 batch.</p><h2><a class="nav-anchor" id="Prediction-1" href="#Prediction-1">Prediction</a></h2><p>Now let&#39;s load some testing data to use the model we learned to predict survival.</p><div><pre><code class="language-julia">download(&quot;https://raw.githubusercontent.com/agconti/&quot;*
+loss(first(data)...) = 0.30828816f0 (tracked)</code></pre></div><p><code>data</code> given to the model is a vector of batches of input-output matrices. In this case we are training with just 1 batch.</p><h2><a class="nav-anchor" id="Prediction-1" href="#Prediction-1">Prediction</a></h2><p>Now let&#39;s load some testing data to use the model we learned to predict survival.</p><div><pre><code class="language-julia">download(&quot;https://raw.githubusercontent.com/agconti/&quot;*
           &quot;kaggle-titanic/master/data/test.csv&quot;, &quot;test.csv&quot;)
 
 test_table = loadtable(&quot;test.csv&quot;, escapechar=&#39;&quot;&#39;)
 
 test_input = ML.featuremat(input_sch, test_table) ;</code></pre><pre><code class="language-none">  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
                                  Dload  Upload   Total   Spent    Left  Speed
-  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0100 28210  100 28210    0     0   158k      0 --:--:-- --:--:-- --:--:--  158k
+  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0100 28210  100 28210    0     0   202k      0 --:--:-- --:--:-- --:--:--  204k
 6×418 LinearAlgebra.Adjoint{Float32,Array{Float32,2}}:
  1.73302   1.73691  1.74079   1.74468   …  3.3417   3.34559  3.34947  3.35336
  0.0       0.0      0.0       0.0          0.0      0.0      1.0      1.0
@@ -100,7 +100,7 @@ test_input = ML.featuremat(input_sch, test_table) ;</code></pre><pre><code class
  1.0       1.0      0.0       1.0          0.0      1.0      1.0      1.0
  0.0       0.0      0.0       0.0          1.0      0.0      0.0      0.0
  0.0       0.0      1.0       0.0       …  0.0      0.0      0.0      0.0</code></pre></div><p>Run the model on one observation:</p><div><pre><code class="language-julia">model(test_input[:, 1])</code></pre><pre><code class="language-none">Tracked 2-element Array{Float32,1}:
- 0.7064098f0
- 0.2935902f0</code></pre></div><p>The output has two numbers which add up to 1: the probability of not surviving vs that of surviving. It seems, according to our model, that this person is unlikely to survive on the titanic.</p><p>You can also run the model on all observations by simply passing the whole feature matrix to <code>model</code>.</p><div><pre><code class="language-julia">model(test_input)</code></pre><pre><code class="language-none">Tracked 2×418 Array{Float32,2}:
- 0.70641  0.55278  0.47109  0.761762  …  0.815897  0.916655   0.916804
- 0.29359  0.44722  0.52891  0.238238     0.184103  0.0833448  0.0831959</code></pre></div><footer><hr/><a class="previous" href="../out_of_core/"><span class="direction">Previous</span><span class="title">Out-of-core processing</span></a><a class="next" href="../tutorial/"><span class="direction">Next</span><span class="title">Tutorial</span></a></footer></article></body></html>
+ 0.6731746f0
+ 0.32682535f0</code></pre></div><p>The output has two numbers which add up to 1: the probability of not surviving vs that of surviving. It seems, according to our model, that this person is unlikely to survive on the titanic.</p><p>You can also run the model on all observations by simply passing the whole feature matrix to <code>model</code>.</p><div><pre><code class="language-julia">model(test_input)</code></pre><pre><code class="language-none">Tracked 2×418 Array{Float32,2}:
+ 0.673175  0.649581  0.60642  0.692419  …  0.778182  0.747478  0.747761
+ 0.326825  0.350419  0.39358  0.307581     0.221818  0.252522  0.252239</code></pre></div><footer><hr/><a class="previous" href="../out_of_core/"><span class="direction">Previous</span><span class="title">Out-of-core processing</span></a><a class="next" href="../tutorial/"><span class="direction">Next</span><span class="title">Tutorial</span></a></footer></article></body></html>
