@@ -218,13 +218,10 @@ end
 function _makerelative!(t, dir::AbstractString)
     foreach(t.chunks) do c
         h = c.handle
-        @info "_makerelative! handle: $h"
         if isa(h, FileRef)
-            @info "set handle to FileRef"
             c.handle = FileRef(joinpath(dir, h.file), h.size)
         end
     end
-    @info "finished foreach"
 end
 
 using MemPool
