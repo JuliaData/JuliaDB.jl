@@ -173,6 +173,7 @@ function fromchunks(::Type{<:IndexedTable}, chunks::AbstractArray;
 end
 
 function promote_eltypes(ts::AbstractArray)
+    ts = filter(!isempty, ts)
     t = eltype(ts[1])
     for i = 2:length(ts)
         t = _promote_type(t, eltype(ts[i]))
@@ -181,6 +182,7 @@ function promote_eltypes(ts::AbstractArray)
 end
 
 function promote_eltype_chunktypes(ts::AbstractArray)
+    ts = filter(!isempty∘last∘domain, ts)
     t = eltype(chunktype(ts[1]))
     for i = 2:length(ts)
         t = _promote_type(t, eltype(chunktype(ts[i])))
