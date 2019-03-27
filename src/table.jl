@@ -172,22 +172,18 @@ function fromchunks(::Type{<:IndexedTable}, chunks::AbstractArray;
     DIndexedTable{T, K}(pkey, domains, chunks[nzidxs])
 end
 
+has_empty_values(domain::Pair{<:Any, <:EmptySpace}) = true
+has_empty_values(domain::EmptySpace) = true
+has_empty_values(domain) = false
+
 function promote_eltypes(ts::AbstractArray)
-    ts = filter(!isempty, ts)
-    t = eltype(ts[1])
-    for i = 2:length(ts)
-        t = _promote_type(t, eltype(ts[i]))
-    end
-    return t
+    nonempty_domains = Iterators.filter(!has_empty_values, ts)
+    mapreduce(eltype, _promote_type, nonempty_domains, init = Union{})
 end
 
 function promote_eltype_chunktypes(ts::AbstractArray)
-    ts = filter(!isempty∘last∘domain, ts)
-    t = eltype(chunktype(ts[1]))
-    for i = 2:length(ts)
-        t = _promote_type(t, eltype(chunktype(ts[i])))
-    end
-    return t
+    nonempty_chunks = Iterators.filter(!has_empty_values∘domain, ts)
+    mapreduce(eltype∘chunktype, _promote_type, nonempty_chunks, init = Union{})
 end
 
 """

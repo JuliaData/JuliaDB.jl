@@ -409,6 +409,8 @@ end
 
 _promote_type(T,S) = promote_type(T,S)
 _promote_type(T::Type{<:IndexTuple}, S::Type{<:IndexTuple}) = map_params(_promote_type, T, S)
+_promote_type(T::Type{<:IndexTuple}, ::Type{Union{}}) = T
+_promote_type(::Type{Union{}}, S::Type{<:IndexTuple}) = S
 
 function getkvtypes(xs::AbstractArray)
     kvtypes = getkvtypes.(chunktype.(xs))
