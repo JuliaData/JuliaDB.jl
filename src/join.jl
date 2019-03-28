@@ -1,13 +1,9 @@
 ## Table
 
 function rechunk_together(left, right, lkey, rkey,
-                          lselect=excludecols(left, lkey), rselect=excludecols(right, rkey); chunks=nworkers(), keepkeys=false)
+                          lselect=excludecols(left, lkey), rselect=excludecols(right, rkey); chunks=nworkers())
     # we will assume that right has to be aligned to left
-    if keepkeys
-        l = reindex(left, lkey, (pkeynames(left), lselect))
-    else
-        l = reindex(left, lkey, lselect)
-    end
+    l = reindex(left, lkey, lselect)
     r = reindex(right, rkey, rselect)
 
     if has_overlaps(l.domains, closed=true)
@@ -33,7 +29,6 @@ function Base.join(f, left::DDataset, right::DDataset;
                    lselect=left isa DNDSparse ? valuenames(left) : excludecols(left, lkey),
                    rselect=right isa DNDSparse ? valuenames(right) : excludecols(right, rkey),
                    broadcast=nothing,
-                   keepkeys=false,
                    chunks=nworkers(),
                    kwargs...)
     cl = compute(left)
@@ -62,7 +57,7 @@ function Base.join(f, left::DDataset, right::DDataset;
         l = cl
     else
         l, r = rechunk_together(left, right, lkey, rkey, lselect, rselect,
-                                chunks=chunks, keepkeys=keepkeys)
+                                chunks=chunks)
     end
 
     i = 1
@@ -73,16 +68,10 @@ function Base.join(f, left::DDataset, right::DDataset;
     lempty = delayed(empty!∘copy)(l.chunks[end])
 
     function joinchunks(x, y)
-        res=if keepkeys && broadcast === nothing
-            vs = rows(x, excludecols(x, pkeynames(x)))
-            k = columns(vs)[1]
-            v = columns(vs)[2]
-            join(f, convert(IndexedTables.collectiontype(x), k, v),
-                 y, lkey=lkey, keepkeys=true, how=how; kwargs...)
-        elseif broadcast !== nothing
+        res = if broadcast !== nothing
             join(f, x, y, lkey=lkey, rkey=rkey,
                  lselect=lselect, rselect=rselect,
-                 keepkeys=keepkeys, how=how; kwargs...)
+                 how=how; kwargs...)
         else
             join(f, x, y, how=how; kwargs...)
         end

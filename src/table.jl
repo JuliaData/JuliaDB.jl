@@ -173,19 +173,13 @@ function fromchunks(::Type{<:IndexedTable}, chunks::AbstractArray;
 end
 
 function promote_eltypes(ts::AbstractArray)
-    t = eltype(ts[1])
-    for i = 2:length(ts)
-        t = _promote_type(t, eltype(ts[i]))
-    end
-    return t
+    nonempty_domains = Iterators.filter(!has_empty_values, ts)
+    mapreduce(eltype, _promote_type, nonempty_domains, init = Union{})
 end
 
 function promote_eltype_chunktypes(ts::AbstractArray)
-    t = eltype(chunktype(ts[1]))
-    for i = 2:length(ts)
-        t = _promote_type(t, eltype(chunktype(ts[i])))
-    end
-    return t
+    nonempty_chunks = Iterators.filter(!has_empty_values∘domain, ts)
+    mapreduce(eltype∘chunktype, _promote_type, nonempty_chunks, init = Union{})
 end
 
 """

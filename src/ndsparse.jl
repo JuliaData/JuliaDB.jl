@@ -210,6 +210,10 @@ Base.map(f, dt::DNDSparse) = mapchunks(c->map(f, c), dt)
 
 struct EmptySpace{T} end
 
+has_empty_values(domain::Pair{<:Any, <:EmptySpace}) = true
+has_empty_values(domain::EmptySpace) = true
+has_empty_values(domain) = false
+
 # Teach dagger how to automatically figure out the
 # metadata (in dagger parlance "domain") about an NDSparse chunk.
 function Dagger.domain(nd::NDSparse)
@@ -409,6 +413,8 @@ end
 
 _promote_type(T,S) = promote_type(T,S)
 _promote_type(T::Type{<:IndexTuple}, S::Type{<:IndexTuple}) = map_params(_promote_type, T, S)
+_promote_type(T::Type{<:IndexTuple}, ::Type{Union{}}) = T
+_promote_type(::Type{Union{}}, S::Type{<:IndexTuple}) = S
 
 function getkvtypes(xs::AbstractArray)
     kvtypes = getkvtypes.(chunktype.(xs))
