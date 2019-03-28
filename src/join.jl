@@ -154,9 +154,11 @@ rows from `left` and `right` are combined using `op`. If `op` returns a tuple or
 NamedTuple, and `ascolumns` is set to true, the output table will contain the tuple
 elements as separate data columns instead as a single column of resultant tuples.
 """
-function naturaljoin(op, left::DNDSparse, right::DNDSparse)
+function naturaljoin(op, left::DNDSparse{I1}, right::DNDSparse{I2}) where {I1, I2}
     out_domains = Any[]
     out_chunks = Any[]
+
+    I = promote_type(I1, I2)        # output index type
 
     # if the output data type is a tuple and `columns` arg is true,
     # we want the output to be a Columns rather than an array of tuples
@@ -183,7 +185,9 @@ function naturaljoin(op, left::DNDSparse, right::DNDSparse)
 
         append!(out_domains, overlapping_domains)
     end
-    return cache_thunks(fromchunks(NDSparse, out_chunks, domains=out_domains))
+    computed_chunks = map(t -> compute(get_context(), t), out_chunks)
+    D = promote_eltype_chunktypes(computed_chunks)
+    return DNDSparse{I, D}(out_domains, computed_chunks)
 end
 
 Base.map(f, x::DNDSparse{I}, y::DNDSparse{I}) where {I} = naturaljoin(x, y, f)
