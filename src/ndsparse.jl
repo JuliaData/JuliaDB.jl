@@ -344,13 +344,10 @@ function has_overlaps(domains, dims::AbstractVector)
     _has_overlaps(fs, ls, true)
 end
 
-function with_overlaps(f, t::DDataset, closed=false)
-    domains = t.domains
-    chunks = t.chunks
+with_overlaps(f, t::DDataset, closed=false) =
+    isempty(t.domains) ? t : with_overlaps(f, t.domains, t.chunks, closed)
 
-    if isempty(domains)
-        return t
-    end
+function with_overlaps(f, domains::AbstractVector, chunks::AbstractVector, closed=false)
 
     if !issorted(domains, by=first)
         perm = sortperm(domains, by = first)

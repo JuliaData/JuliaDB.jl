@@ -154,13 +154,9 @@ rows from `left` and `right` are combined using `op`. If `op` returns a tuple or
 NamedTuple, and `ascolumns` is set to true, the output table will contain the tuple
 elements as separate data columns instead as a single column of resultant tuples.
 """
-function naturaljoin(op, left::DNDSparse{I1,D1},
-                     right::DNDSparse{I2,D2}) where {I1, I2, D1, D2}
+function naturaljoin(op, left::DNDSparse, right::DNDSparse)
     out_domains = Any[]
     out_chunks = Any[]
-
-    I = promote_type(I1, I2)        # output index type
-    D = IndexedTables._promote_op(op, D1, D2) # output data type
 
     # if the output data type is a tuple and `columns` arg is true,
     # we want the output to be a Columns rather than an array of tuples
@@ -187,8 +183,7 @@ function naturaljoin(op, left::DNDSparse{I1,D1},
 
         append!(out_domains, overlapping_domains)
     end
-
-    return cache_thunks(DNDSparse{I, D}(out_domains, out_chunks))
+    return cache_thunks(fromchunks(NDSparse, out_chunks, domains=out_domains))
 end
 
 Base.map(f, x::DNDSparse{I}, y::DNDSparse{I}) where {I} = naturaljoin(x, y, f)
@@ -321,9 +316,7 @@ function broadcast(f, A::DNDSparse{K1,V1}, B::DNDSparse{K2,V2}; dimmap=nothing) 
             end
         end
     end
-    V = IndexedTables._promote_op(f, V1, V2)
-    t1 = DNDSparse{K1, V}(out_domains, out_chunks)
-    with_overlaps(t1) do chunks
+    with_overlaps(out_domains, out_chunks) do chunks
         treereduce(delayed(_merge), chunks)
     end
 end
@@ -346,6 +339,3 @@ end
 Base.@deprecate naturaljoin(left::DNDSparse, right::DNDSparse, op::Function) naturaljoin(op, left::DNDSparse, right::DNDSparse)
 
 Base.@deprecate leftjoin(left::DNDSparse, right::DNDSparse, op::Function) leftjoin(op, left, right)
-
-
-
