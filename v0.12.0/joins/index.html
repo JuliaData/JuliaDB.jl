@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Joins · JuliaDB.jl</title><link href="https://cdnjs.cloudflare.com/ajax/libs/normalize/4.2.0/normalize.min.css" rel="stylesheet" type="text/css"/><link href="https://fonts.googleapis.com/css?family=Lato|Roboto+Mono" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.6.3/css/font-awesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/default.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL=".."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.2.0/require.min.js" data-main="../assets/documenter.js"></script><script src="../siteinfo.js"></script><script src="../../versions.js"></script><link href="../assets/documenter.css" rel="stylesheet" type="text/css"/></head><body><nav class="toc"><h1>JuliaDB.jl</h1><select id="version-selector" onChange="window.location.href=this.value" style="visibility: hidden"></select><form class="search" id="search-form" action="../search/"><input id="search-query" name="q" type="text" placeholder="Search docs"/></form><ul><li><a class="toctext" href="../">Overview</a></li><li><a class="toctext" href="../basics/">Basics</a></li><li><a class="toctext" href="../operations/">Table Operations</a></li><li class="current"><a class="toctext" href>Joins</a><ul class="internal"><li><a class="toctext" href="#Table-Joins-1">Table Joins</a></li><li><a class="toctext" href="#Appending-Tables-with-the-Same-Columns-1">Appending Tables with the Same Columns</a></li></ul></li><li><a class="toctext" href="../onlinestats/">OnlineStats Integration</a></li><li><a class="toctext" href="../plotting/">Plotting</a></li><li><a class="toctext" href="../missing_values/">Missing Values</a></li><li><a class="toctext" href="../out_of_core/">Out-of-core processing</a></li><li><a class="toctext" href="../ml/">Feature Extraction</a></li><li><a class="toctext" href="../tutorial/">Tutorial</a></li><li><a class="toctext" href="../api/">API</a></li></ul></nav><article id="docs"><header><nav><ul><li><a href>Joins</a></li></ul><a class="edit-page" href="https://github.com/JuliaComputing/JuliaDB.jl/blob/master/docs/src/joins.md"><span class="fa"></span> Edit on GitHub</a></nav><hr/><div id="topbar"><span>Joins</span><a class="fa fa-bars" href="#"></a></div></header><div></div><h1><a class="nav-anchor" id="Joins-1" href="#Joins-1">Joins</a></h1><h2><a class="nav-anchor" id="Table-Joins-1" href="#Table-Joins-1">Table Joins</a></h2><p>Table joins are accomplished through the <a href="../api/#Base.join-Tuple{Any,Union{IndexedTable, NDSparse},Union{IndexedTable, NDSparse}}"><code>join</code></a> function.  </p><h2><a class="nav-anchor" id="Appending-Tables-with-the-Same-Columns-1" href="#Appending-Tables-with-the-Same-Columns-1">Appending Tables with the Same Columns</a></h2><p>The <a href="../api/#Base.merge-Tuple{Union{IndexedTable, NDSparse},Any}"><code>merge</code></a> function will combine tables while maintaining the sorting of the  primary key(s).</p><pre><code class="language-julia-repl">julia&gt; t1 = table(1:5, rand(5); pkey=1)
+Table with 5 rows, 2 columns:
+1  2
+───────────
+1  0.230959
+2  0.124248
+3  0.705429
+4  0.129762
+5  0.944281
+
+julia&gt; t2 = table(6:10, rand(5); pkey=1)
+Table with 5 rows, 2 columns:
+1   2
+────────────
+6   0.9815
+7   0.244207
+8   0.102784
+9   0.755946
+10  0.292959
+
+julia&gt; merge(t1, t2)
+Table with 10 rows, 2 columns:
+1   2
+────────────
+1   0.230959
+2   0.124248
+3   0.705429
+4   0.129762
+5   0.944281
+6   0.9815
+7   0.244207
+8   0.102784
+9   0.755946
+10  0.292959</code></pre><footer><hr/><a class="previous" href="../operations/"><span class="direction">Previous</span><span class="title">Table Operations</span></a><a class="next" href="../onlinestats/"><span class="direction">Next</span><span class="title">OnlineStats Integration</span></a></footer></article></body></html>
