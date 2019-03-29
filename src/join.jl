@@ -185,7 +185,7 @@ function naturaljoin(op, left::DNDSparse{I1}, right::DNDSparse{I2}) where {I1, I
 
         append!(out_domains, overlapping_domains)
     end
-    computed_chunks = map(t -> compute(get_context(), t), out_chunks)
+    computed_chunks = fromchunks(out_chunks)
     D = promote_eltype_chunktypes(computed_chunks)
     return DNDSparse{I, D}(out_domains, computed_chunks)
 end
