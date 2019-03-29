@@ -154,11 +154,9 @@ rows from `left` and `right` are combined using `op`. If `op` returns a tuple or
 NamedTuple, and `ascolumns` is set to true, the output table will contain the tuple
 elements as separate data columns instead as a single column of resultant tuples.
 """
-function naturaljoin(op, left::DNDSparse{I1}, right::DNDSparse{I2}) where {I1, I2}
+function naturaljoin(op, left::DNDSparse, right::DNDSparse)
     out_domains = Any[]
     out_chunks = Any[]
-
-    I = promote_type(I1, I2)        # output index type
 
     # if the output data type is a tuple and `columns` arg is true,
     # we want the output to be a Columns rather than an array of tuples
@@ -185,9 +183,7 @@ function naturaljoin(op, left::DNDSparse{I1}, right::DNDSparse{I2}) where {I1, I
 
         append!(out_domains, overlapping_domains)
     end
-    computed_chunks = fromchunks(out_chunks)
-    D = promote_eltype_chunktypes(computed_chunks)
-    return DNDSparse{I, D}(out_domains, computed_chunks)
+    return fromchunks(out_chunks, domains = out_domains)
 end
 
 Base.map(f, x::DNDSparse{I}, y::DNDSparse{I}) where {I} = naturaljoin(x, y, f)
@@ -287,7 +283,7 @@ function bcast_narrow_space(d, idxs, fst, lst)
     IndexSpace(intv, box, Nullable{Int}())
 end
 
-function broadcast(f, A::DNDSparse{K1,V1}, B::DNDSparse{K2,V2}; dimmap=nothing) where {K1,K2,V1,V2}
+function broadcast(f, A::DNDSparse, B::DNDSparse; dimmap=nothing)
     if ndims(A) < ndims(B)
         broadcast((x,y)->f(y,x), B, A; dimmap=dimmap)
     end
