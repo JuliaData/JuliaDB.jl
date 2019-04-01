@@ -21,4 +21,4 @@ We built JuliaDB to fill this void.
 
 ### Get Started
 
-Introduce yourself to JuliaDB's features at [juliadb.org](juliadb.org) or jump into the documentation [here](https://juliacomputing.github.io/JuliaDB.jl/latest/)!
+Introduce yourself to JuliaDB's features at [juliadb.org](https://juliadb.org) or jump into the documentation [here](https://juliacomputing.github.io/JuliaDB.jl/latest/)!
