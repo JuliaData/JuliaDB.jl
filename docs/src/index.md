@@ -40,7 +40,7 @@ The parallel/distributed features of JuliaDB are available by either:
 2. Calling `addprocs(N)` before `using JuliaDB`
 
 !!! note
-    Multiple processes may not be benificial for datasets with less than a few million rows.
+    Multiple processes may not be beneficial for datasets with less than a few million rows.
 
 ## Additional Resources
 
