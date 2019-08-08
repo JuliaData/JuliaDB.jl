@@ -13,7 +13,7 @@ We recognized the need for an all-Julia, end-to-end tool that can
 1. Load multi-dimensional datasets quickly and incrementally.
 2. Index the data and perform filter, aggregate, sort and join operations.
 3. Save results and load them efficiently later.
-4. Readily use Julia's built-in [parallelism](https://docs.julialang.org/en/stable/manual/parallel-computing/) to fully utilize any machine or cluster.
+4. Readily use Julia's built-in [parallelism](https://docs.julialang.org/en/v1/manual/parallel-computing/) to fully utilize any machine or cluster.
 
 We built JuliaDB to fill this void.
 
