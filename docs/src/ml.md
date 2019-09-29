@@ -11,7 +11,7 @@ download("https://raw.githubusercontent.com/agconti/"*
           "kaggle-titanic/master/data/train.csv", "train.csv")
 
 train_table = loadtable("train.csv", escapechar='"')
-popcol(popcol(popcol(train_table, :Name), :Ticket), :Cabin) # hide
+select(train_table, Not((:Name, :Ticket, :Cabin))) # hide
 ```
 
 ## ML.schema

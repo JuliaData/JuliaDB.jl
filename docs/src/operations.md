@@ -11,13 +11,11 @@ Depth = 2
 
 ## Column Operations
 
-- [`setcol`](@ref)
-- [`pushcol`](@ref)
-- [`popcol`](@ref)
-- [`insertcol`](@ref)
-- [`insertcolafter`](@ref)
-- [`insertcolbefore`](@ref)
-- [`renamecol`](@ref)
+- [`transform`](@ref)
+- [`insertcols`](@ref)
+- [`insertcolsafter`](@ref)
+- [`insertcolsbefore`](@ref)
+- [`rename`](@ref)
 
 ## [`filter`](@ref)
 
@@ -27,7 +25,7 @@ Depth = 2
 
 ## [`reduce`](@ref) and [`groupreduce`](@ref)
 
-## [`pushcol`](@ref)
+## [`transform`](@ref)
 
 ## [`stack`](@ref) and [`unstack`](@ref)
 

@@ -60,7 +60,7 @@ nd[1, :]
 
 JuliaDB has a variety of ways to select columns.  These selection methods get used across
 many JuliaDB's functions: [`select`](@ref), [`reduce`](@ref), [`groupreduce`](@ref), 
-[`groupby`](@ref), [`join`](@ref), [`pushcol`](@ref), [`reindex`](@ref), and more.
+[`groupby`](@ref), [`join`](@ref), [`transform`](@ref), [`reindex`](@ref), and more.
 
 To demonstrate selection, we'll use the [`select`](@ref) function.  A selection can be any
 of the following types:
