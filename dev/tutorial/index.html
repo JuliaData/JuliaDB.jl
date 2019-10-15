@@ -153,7 +153,7 @@ UniqueCarrier  DepDelay
  498.5106382978723
  445.57377049180326
  424.6875
- 460.6779661016949</code></pre><h2><a class="nav-anchor" id="Add-new-variables-1" href="#Add-new-variables-1">Add new variables</a></h2><p>Use the <code>pushcol</code> function to add a column to an existing dataset:</p><pre><code class="language-julia">pushcol(flights, :Speed, speed)</code></pre><p>If you need to add the new column to the existing dataset:</p><pre><code class="language-julia">flights = pushcol(flights, :Speed, speed)</code></pre><h2><a class="nav-anchor" id="Reduce-variables-to-values-1" href="#Reduce-variables-to-values-1">Reduce variables to values</a></h2><p>To get the average delay, we first filter away datapoints where <code>ArrDelay</code> is missing, then group by <code>:Dest</code>, select <code>:ArrDelay</code> and compute the mean:</p><pre><code class="language-julia">using Statistics
+ 460.6779661016949</code></pre><h2><a class="nav-anchor" id="Add-new-variables-1" href="#Add-new-variables-1">Add new variables</a></h2><p>Use the <code>transform</code> function to add a column to an existing dataset:</p><pre><code class="language-julia">transform(flights, :Speed =&gt; speed)</code></pre><p>If you need to add the new column to the existing dataset:</p><pre><code class="language-julia">flights = transform(flights, :Speed =&gt; speed)</code></pre><h2><a class="nav-anchor" id="Reduce-variables-to-values-1" href="#Reduce-variables-to-values-1">Reduce variables to values</a></h2><p>To get the average delay, we first filter away datapoints where <code>ArrDelay</code> is missing, then group by <code>:Dest</code>, select <code>:ArrDelay</code> and compute the mean:</p><pre><code class="language-julia">using Statistics
 
 groupby(mean ∘ skipmissing, flights, :Dest, select = :ArrDelay)</code></pre><pre><code class="language-none">Table with 116 rows, 2 columns:
 Dest   avg_delay
@@ -373,7 +373,7 @@ UniqueCarrier  Month  DayofMonth  DepDelay
 &quot;YV&quot;           4      30          46</code></pre><p>For each month, calculate the number of flights and the change from the previous month</p><pre><code class="language-julia">using ShiftedArrays
 y = groupby(length, flights, :Month)
 lengths = columns(y, :length)
-pushcol(y, :change, lengths .- lag(lengths))</code></pre><pre><code class="language-none">Table with 12 rows, 3 columns:
+transform(y, :change =&gt; lengths .- lag(lengths))</code></pre><pre><code class="language-none">Table with 12 rows, 3 columns:
 Month  length  change
 ─────────────────────
 1      18910   missing
