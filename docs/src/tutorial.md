@@ -284,18 +284,18 @@ speed = map(i -> i.Distance / i.AirTime * 60, flights)
 
 ## Add new variables
 
-Use the `pushcol` function to add a column to an existing dataset:
+Use the `transform` function to add a column to an existing dataset:
 
 
 ```julia
-pushcol(flights, :Speed, speed)
+transform(flights, :Speed => speed)
 ```
 
 If you need to add the new column to the existing dataset:
 
 
 ```julia
-flights = pushcol(flights, :Speed, speed)
+flights = transform(flights, :Speed => speed)
 ```
 
 ## Reduce variables to values
@@ -621,7 +621,7 @@ For each month, calculate the number of flights and the change from the previous
 using ShiftedArrays
 y = groupby(length, flights, :Month)
 lengths = columns(y, :length)
-pushcol(y, :change, lengths .- lag(lengths))
+transform(y, :change => lengths .- lag(lengths))
 ```
 
     Table with 12 rows, 3 columns:

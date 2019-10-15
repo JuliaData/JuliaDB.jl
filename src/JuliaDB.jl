@@ -29,11 +29,11 @@ export @cols, @dateformat_str, AbstractNDSparse, All, Between, ColDict, Columns,
     asofjoin, chunks, colnames, column, columns, compute, convertdim, 
     csvread, distribute, dropmissing, fetch_timings!, flatten, glob, groupby, groupjoin, 
     groupreduce, ingest, ingest!, innerjoin, insert_row!, insertafter!, insertbefore!, 
-    insertcol, insertcolafter, insertcolbefore, leftjoin, load, load_table, loadfiles, 
+    insertcols, insertcolsafter, insertcolsbefore, leftjoin, load, load_table, loadfiles, 
     loadndsparse, loadtable, merge, naturaljoin, ndsparse, pairs, partitionplot, 
-    partitionplot!, popcol, pushcol, rechunk, rechunk_together, reducedim_vec, reindex, 
-    renamecol, rows, save, select, selectkeys, selectvalues, setcol, stack, 
-    start_tracking_time, stop_tracking_time, summarize, table, tracktime, unstack,
+    partitionplot!, rechunk, rechunk_together, reducedim_vec, reindex, 
+    rename, rows, save, select, selectkeys, selectvalues, stack, 
+    start_tracking_time, stop_tracking_time, summarize, table, tracktime, transform, unstack,
     convertmissing
 
 include("util.jl")

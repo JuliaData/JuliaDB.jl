@@ -24,7 +24,7 @@ WeakRefStrings = "ea10d353-3f73-51f8-a26c-33c1cb351aa5"
 [compat]
 Dagger = "≥ 0.8.0"
 Glob = "≥ 1.2.0"
-IndexedTables = "≥ 0.10.0"
+IndexedTables = "≥ 0.12.1"
 MemPool = "≥ 0.2.0"
 OnlineStats = "≥ 0.17.0"
 PooledArrays = "≥ 0.4.1"
