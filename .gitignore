@@ -3,3 +3,4 @@
 *.jl.mem
 .*~
 .*.sw?
+Manifest.toml

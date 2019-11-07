@@ -10,7 +10,7 @@ import IndexedTables: IndexedTable, table, NDSparse, ndsparse, Tup, groupjoin,
     showtable, reducedim_vec, _convert, groupreduce, groupby, ApplyColwise, stack, 
     unstack, selectkeys, selectvalues, select, lowerselection, convertdim, excludecols, 
     reindex, ColDict, AbstractIndexedTable, Dataset, promoted_similar, dropmissing,
-    convertmissing
+    convertmissing, transform
 import TextParse: csvread
 import Dagger: compute, distribute, load, save, DomainBlocks, ArrayDomain, DArray,
     ArrayOp, domainchunks, chunks, Distribute, debug_compute, get_logs!, LocalEventLog,
