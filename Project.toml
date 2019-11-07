@@ -1,5 +1,6 @@
 name = "JuliaDB"
 uuid = "a93385a2-3734-596a-9a66-3cfbb77141e6"
+version = "0.13.0"
 
 [deps]
 Dagger = "d58978e5-989f-55fb-8d15-ea34adc7bf54"
