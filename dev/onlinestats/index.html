@@ -4,24 +4,24 @@
 julia&gt; t = table(1:100, rand(Bool, 100), randn(100));
 
 julia&gt; reduce(Mean(), t; select = 3)
-Mean: n=100 | value=-0.20044
+Mean: n=100 | value=0.159962
 
 julia&gt; grp = groupreduce(Mean(), t, 2; select=3)
 Table with 2 rows, 2 columns:
 1      2
-───────────────────────────────────
-false  Mean: n=50 | value=-0.194467
-true   Mean: n=50 | value=-0.206414
+────────────────────────────────────
+false  Mean: n=38 | value=-0.0610545
+true   Mean: n=62 | value=0.295423
 
 julia&gt; select(grp, (1, 2 =&gt; value))
 Table with 2 rows, 2 columns:
 1      2
-────────────────
-false  -0.194467
-true   -0.206414</code></pre><div class="admonition note"><div class="admonition-title">Note</div><div class="admonition-text"><p>The <code>OnlineStats.value</code> function extracts the value of the statistic.  E.g. <code>value(Mean())</code>.</p></div></div><h3><a class="nav-anchor" id="Calculating-Statistics-on-Multiple-Columns.-1" href="#Calculating-Statistics-on-Multiple-Columns.-1">Calculating Statistics on Multiple Columns.</a></h3><p>The <code>OnlineStats.Group</code> type is used for calculating statistics on multiple data streams.  A <code>Group</code> that computes the same <code>OnlineStat</code> can be created through integer multiplication:</p><pre><code class="language-julia">reduce(3Mean(), t)</code></pre><pre><code class="language-none">Group
+─────────────────
+false  -0.0610545
+true   0.295423</code></pre><div class="admonition note"><div class="admonition-title">Note</div><div class="admonition-text"><p>The <code>OnlineStats.value</code> function extracts the value of the statistic.  E.g. <code>value(Mean())</code>.</p></div></div><h3><a class="nav-anchor" id="Calculating-Statistics-on-Multiple-Columns.-1" href="#Calculating-Statistics-on-Multiple-Columns.-1">Calculating Statistics on Multiple Columns.</a></h3><p>The <code>OnlineStats.Group</code> type is used for calculating statistics on multiple data streams.  A <code>Group</code> that computes the same <code>OnlineStat</code> can be created through integer multiplication:</p><pre><code class="language-julia">reduce(3Mean(), t)</code></pre><pre><code class="language-none">Group
   ├── Mean: n=100 | value=50.5
-  ├── Mean: n=100 | value=0.5
-  └── Mean: n=100 | value=-0.20044</code></pre><p>Alternatively, a <code>Group</code> can be created by providing a collection of <code>OnlineStat</code>s.</p><pre><code class="language-julia">reduce(Group(Extrema(Int), CountMap(Bool), Mean()), t)</code></pre><pre><code class="language-none">Group
+  ├── Mean: n=100 | value=0.62
+  └── Mean: n=100 | value=0.159962</code></pre><p>Alternatively, a <code>Group</code> can be created by providing a collection of <code>OnlineStat</code>s.</p><pre><code class="language-julia">reduce(Group(Extrema(Int), CountMap(Bool), Mean()), t)</code></pre><pre><code class="language-none">Group
   ├── Extrema: n=100 | value=(1, 100)
-  ├── CountMap: n=100 | value=OrderedCollections.OrderedDict(true=&gt;50,false=&gt;50)
-  └── Mean: n=100 | value=-0.20044</code></pre><footer><hr/><a class="previous" href="../joins/"><span class="direction">Previous</span><span class="title">Joins</span></a><a class="next" href="../plotting/"><span class="direction">Next</span><span class="title">Plotting</span></a></footer></article></body></html>
+  ├── CountMap: n=100 | value=OrderedCollections.OrderedDict(false=&gt;38,true=&gt;62)
+  └── Mean: n=100 | value=0.159962</code></pre><footer><hr/><a class="previous" href="../joins/"><span class="direction">Previous</span><span class="title">Joins</span></a><a class="next" href="../plotting/"><span class="direction">Next</span><span class="title">Plotting</span></a></footer></article></body></html>
