@@ -45,7 +45,7 @@ function prettify_filename(f)
     return f
 end
 
-function _loadtable_serial(T, file::Union{IO, AbstractString, AbstractArray};
+function _loadtable_serial(T, file::Union{IO, AbstractString, AbstractArray, Tuple};
                       delim=',',
                       indexcols=[],
                       datacols=nothing,
@@ -80,37 +80,24 @@ function _loadtable_serial(T, file::Union{IO, AbstractString, AbstractArray};
         samecols = map(x->map(string, x), samecols)
     end
 
-    if nblocks > 1
-        if !(file isa AbstractArray)
-            file = [file,]
-        end
-        cols = nothing
-        header = nothing
+    if file isa Tuple
+        _file, bidx, header = file
+        # TODO: Make this more efficient in block-io.jl
+        bios = blocks(_file, '\n', nblocks)
+        b = bios[bidx]
         header_exists = get(kwargs, :header_exists, true) && !drop_header
-        skiplines_begin = get(kwargs, :skiplines_begin, 0) + Int(drop_header)
-        for f in file
-            bios = blocks(f, '\n', nblocks)
-            _count = 0
-            for (idx,b) in enumerate(bios)
-                _cols, _header = csvread(b, delim;
-                                         samecols=samecols,
-                                         kwargs...,
-                                         header_exists=(header_exists && idx==1),
-                                         skiplines_begin=skiplines_begin)
-                if header === nothing
-                    header = _header
-                    cols = _cols
-                else
-                    # Ignore trailing newline
-                    length(_cols) == 0 && continue
-                    @assert length(_cols) == length(cols)
-                    # TODO: Make this more efficient
-                    cols = vcat.(cols, _cols)
-                end
-                _count += length(_cols[1])
-            end
-            push!(count, _count)
+        skiplines_begin = get(kwargs, :skiplines_begin, 0) +
+                          (bidx==1 ? Int(drop_header) : 0)
+        cols, _header = csvread(b, delim;
+                               samecols=samecols,
+                               kwargs...,
+                               header_exists=(header_exists && bidx==1),
+                               skiplines_begin=skiplines_begin)
+        close.(bios)
+        if haskey(kwargs, :colnames)
+            header = string.(kwargs[:colnames])
         end
+        push!(count, length(cols))
     else
         if file isa AbstractArray
             cols, header, count = csvread(file, delim;
@@ -132,6 +119,8 @@ function _loadtable_serial(T, file::Union{IO, AbstractString, AbstractArray};
         end
         if isa(file, AbstractArray)
             namecol = reduce(vcat, fill.(f.(file), count))
+        elseif isa(file, Tuple)
+            namecol = fill(f(file[1]), length(cols[1]))
         else
             namecol = fill(f(file), length(cols[1]))
         end
@@ -218,20 +207,15 @@ function _loadtable_serial(T, file::Union{IO, AbstractString, AbstractArray};
     end
 end
 
-function lookupbyheader(header, key)
-    if isa(key, Symbol)
-        return lookupbyheader(header, string(key))
-    elseif isa(key, String)
-        return findfirst(x->x==key, header)
-    elseif isa(key, Int)
-        return 0 < key <= length(header) ? key : nothing
-    elseif isa(key, Tuple) || isa(key, Vector)
-        for k in key
-            x = lookupbyheader(header, k)
-            x != 0 && return x
-        end
-        return nothing
+lookupbyheader(header, key::Symbol) = lookupbyheader(header, string(key))
+lookupbyheader(header, key::String) = findfirst(x->x==key, header)
+lookupbyheader(header, key::Int) = 0 < key <= length(header) ? key : nothing
+function lookupbyheader(header, key::Union{Tuple, Vector})
+    for k in key
+        x = lookupbyheader(header, k)
+        x !== nothing && return x
     end
+    return nothing
 end
 
 canonical_name(n::Symbol) = n

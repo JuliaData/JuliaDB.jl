@@ -127,6 +127,32 @@ function _loadtable(T, files::Union{AbstractVector,String};
         filegroups = filter(!isempty, map(x->files[x], chunks))
     end
 
+    nblocks = get(opts, :nblocks, nworkers())
+    if nblocks > 1
+        # Use blocked reader
+        blockgroups = []
+        for _files in filegroups
+            for file in _files
+                # Break individual files into blocks
+                bios = blocks(file, '\n', nblocks)
+                # Extract header
+                # FIXME: Use csvread instead!
+                header_str = open(file, "r") do hdrio
+                    readline(hdrio)
+                end
+                header = replace.(string.(split(header_str, ',')),
+                                  Ref(r"\s" => ""))
+                for (idx,block) in enumerate(bios)
+                    block.l > 0 && push!(blockgroups, (file, idx, header))
+                    close(block)
+                end
+            end
+        end
+    else
+        # Use normal (non-blocked) reader
+        blockgroups = filegroups
+    end
+
     loadgroup = delayed() do group
         _loadtable_serial(T, group; indexcols=indexcols, opts...)[1]
     end
@@ -137,7 +163,7 @@ function _loadtable(T, files::Union{AbstractVector,String};
         prevchunks = []
     end
 
-    y = fromchunks(map(loadgroup, filegroups),
+    y = fromchunks(map(loadgroup, blockgroups),
                    output=output, fnoffset=length(prevchunks))
     x = fromchunks(vcat(prevchunks, y.chunks))
 
