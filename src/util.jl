@@ -54,8 +54,8 @@ function _loadtable_serial(T, file::Union{IO, AbstractString, AbstractArray, Tup
                       presorted=false,
                       copy=false,
                       csvread=TextParse.csvread,
-                      nblocks=nworkers(),
                       drop_header=false,
+                      blocksize=1024*1024*1024,
                       kwargs...)
 
     count = Int[]
@@ -83,6 +83,8 @@ function _loadtable_serial(T, file::Union{IO, AbstractString, AbstractArray, Tup
     if file isa Tuple
         _file, bidx, header = file
         # TODO: Make this more efficient in block-io.jl
+        fsize = filesize(_file)
+        nblocks = max(div(fsize, blocksize), 1)
         bios = blocks(_file, '\n', nblocks)
         b = bios[bidx]
         header_exists = get(kwargs, :header_exists, true) && !drop_header

@@ -56,6 +56,7 @@ Load a [table](@ref Table) from CSV files.
 - `type_detect_rows`: number of rows to use to infer the initial `colparsers` defaults to 20.
 - `nastrings::Vector{String}` -- strings that are to be considered missing values. (defaults to `TextParse.NA_STRINGS`)
 - `skiplines_begin::Char` -- skip some lines in the beginning of each file. (doesn't skip by default)
+- `blocksize::Int` -- max size (in bytes) of each block. Files larger than this will be split into blocks of this size or less if blocked reading is enabled. Disable by setting to 0. (defaults to 1GB)
 
 - `usecache::Bool`: (vestigial)
 """
@@ -90,6 +91,7 @@ function _loadtable(T, files::Union{AbstractVector,String};
                     indexcols=[],
                     distributed=chunks != nothing || length(procs()) > 1,
                     usecache=false,
+                    blocksize=1024*1024*1024,
                     opts...)
 
     if isa(files, String)
@@ -127,13 +129,14 @@ function _loadtable(T, files::Union{AbstractVector,String};
         filegroups = filter(!isempty, map(x->files[x], chunks))
     end
 
-    nblocks = get(opts, :nblocks, nworkers())
-    if nblocks > 1
+    if blocksize > 0
         # Use blocked reader
         blockgroups = []
         for _files in filegroups
             for file in _files
-                # Break individual files into blocks
+                # Break file into blocks of size `blocksize` or less
+                fsize = filesize(file)
+                nblocks = max(div(fsize, blocksize), 1)
                 bios = blocks(file, '\n', nblocks)
                 # Extract header
                 # FIXME: Use csvread instead!
