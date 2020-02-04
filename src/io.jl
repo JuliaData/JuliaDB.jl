@@ -83,12 +83,37 @@ function loadndsparse(files::Union{AbstractVector,String}; opts...)
     _loadtable(NDSparse, files; opts...)
 end
 
+function setup_csvargs(;samecols=nothing,
+                        datacols=nothing,
+                        indexcols=nothing)
+    if indexcols !== nothing
+        if indexcols isa Union{Int, Symbol}
+            indexcols = (indexcols,)
+        end
+        samecols = collect(Iterators.filter(x->isa(x, Union{Tuple, AbstractArray}),
+                                            indexcols))
+    end
+    if datacols !== nothing
+        if datacols isa Union{Int, Symbol}
+            datacols = (datacols,)
+        end
+        append!(samecols, collect(Iterators.filter(x->isa(x, Union{Tuple, AbstractArray}),
+                                                   datacols)))
+    end
+
+    if samecols !== nothing
+        samecols = map(x->map(string, x), samecols)
+    end
+    return samecols, indexcols, datacols
+end
+
 # Can load both NDSparse and table
 function _loadtable(T, files::Union{AbstractVector,String};
                     chunks=nothing,
                     output=nothing,
                     append=false,
                     indexcols=[],
+                    datacols=nothing,
                     distributed=chunks != nothing || length(procs()) > 1,
                     usecache=false,
                     blocksize=1024*1024*1024,
@@ -129,6 +154,9 @@ function _loadtable(T, files::Union{AbstractVector,String};
         filegroups = filter(!isempty, map(x->files[x], chunks))
     end
 
+    samecols, indexcols, datacols = setup_csvargs(;indexcols=indexcols,
+                                                   datacols=datacols)
+
     if blocksize > 0
         # Use blocked reader
         blockgroups = []
@@ -138,13 +166,20 @@ function _loadtable(T, files::Union{AbstractVector,String};
                 fsize = filesize(file)
                 nblocks = max(div(fsize, blocksize), 1)
                 bios = blocks(file, '\n', nblocks)
+
                 # Extract header
-                # FIXME: Use csvread instead!
-                header_str = open(file, "r") do hdrio
-                    readline(hdrio)
+                if haskey(opts, :colnames)
+                    header = string.(opts[:colnames])
+                else
+                    # Filter out opts that csvread won't like
+                    _opts = filter(x->!(x[1] in (:drop_header,:datacols,:nrows,:filenamecol,:delim)), opts)
+                    csvread = get(opts, :csvread, TextParse.csvread)
+                    delim = get(opts, :delim, ',')
+                    _, header = csvread(file, delim;
+                                        _opts...,
+                                        samecols=samecols,
+                                        nrows=1)
                 end
-                header = replace.(string.(split(header_str, ',')),
-                                  Ref(r"\s" => ""))
                 for (idx,block) in enumerate(bios)
                     block.l > 0 && push!(blockgroups, (file, idx, header))
                     close(block)
@@ -157,7 +192,11 @@ function _loadtable(T, files::Union{AbstractVector,String};
     end
 
     loadgroup = delayed() do group
-        _loadtable_serial(T, group; indexcols=indexcols, opts...)[1]
+        _loadtable_serial(T, group;
+                          opts...,
+                          samecols=samecols,
+                          indexcols=indexcols,
+                          datacols=datacols)[1]
     end
 
     if output !== nothing && append

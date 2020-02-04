@@ -45,10 +45,12 @@ function prettify_filename(f)
     return f
 end
 
+
 function _loadtable_serial(T, file::Union{IO, AbstractString, AbstractArray, Tuple};
                       delim=',',
                       indexcols=[],
                       datacols=nothing,
+                      samecols=nothing,
                       filenamecol=nothing,
                       agg=nothing,
                       presorted=false,
@@ -59,26 +61,6 @@ function _loadtable_serial(T, file::Union{IO, AbstractString, AbstractArray, Tup
                       kwargs...)
 
     count = Int[]
-
-    samecols = nothing
-    if indexcols !== nothing
-        if indexcols isa Union{Int, Symbol}
-            indexcols = (indexcols,)
-        end
-        samecols = collect(Iterators.filter(x->isa(x, Union{Tuple, AbstractArray}),
-                                            indexcols))
-    end
-    if datacols !== nothing
-        if datacols isa Union{Int, Symbol}
-            datacols = (datacols,)
-        end
-        append!(samecols, collect(Iterators.filter(x->isa(x, Union{Tuple, AbstractArray}),
-                                                   datacols)))
-    end
-
-    if samecols !== nothing
-        samecols = map(x->map(string, x), samecols)
-    end
 
     if file isa Tuple
         _file, bidx, header = file
