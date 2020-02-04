@@ -181,7 +181,7 @@ function _loadtable(T, files::Union{AbstractVector,String};
                                         nrows=1)
                 end
                 for (idx,block) in enumerate(bios)
-                    block.l > 0 && push!(blockgroups, (file, idx, header))
+                    block.l > 0 && push!(blockgroups, (file, idx, block.r, header))
                     close(block)
                 end
             end

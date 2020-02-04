@@ -13,39 +13,39 @@ struct BlockIO <: IO
     s::IO
     r::UnitRange
     l::Int
+end
 
-    function find_end_pos(bio::BlockIO, end_byte::Char)
-        seekend(bio)
-        try
-            while(!eof(bio.s) && (end_byte != read(bio, Char))) continue end
-        catch
-        end
-        position(bio.s)
+function find_end_pos(bio::BlockIO, end_byte::Char)
+    seekend(bio)
+    try
+        while(!eof(bio.s) && (end_byte != read(bio, Char))) continue end
+    catch
     end
+    position(bio.s)
+end
 
-    function find_start_pos(bio::BlockIO, end_byte::Char)
-        (bio.r.start == 1) && (return bio.r.start)
-        seekstart(bio)
-        !eof(bio.s) && while(end_byte != read(bio, Char)) continue end
-        position(bio.s)+1
+function find_start_pos(bio::BlockIO, end_byte::Char)
+    (bio.r.start == 1) && (return bio.r.start)
+    seekstart(bio)
+    !eof(bio.s) && while(end_byte != read(bio, Char)) continue end
+    position(bio.s)+1
+end
+
+function BlockIO(s::IO, r::UnitRange, match_ends::Union{Char,Nothing}=nothing)
+    # TODO: use mark when available
+    seekend(s)
+    ep = position(s)
+
+    r = min(r.start,ep+1):min(r.start+length(r)-1,ep)
+    bio = BlockIO(s, r, length(r))
+    if match_ends !== nothing
+        p1 = find_start_pos(bio, match_ends)
+        p2 = find_end_pos(bio, match_ends)
+        r = p1:p2
+        bio = BlockIO(s, r, length(r))
     end
-
-    function BlockIO(s::IO, r::UnitRange, match_ends::Union{Char,Nothing}=nothing)
-        # TODO: use mark when available
-        seekend(s)
-        ep = position(s)
-
-        r = min(r.start,ep+1):min(r.start+length(r)-1,ep)
-        bio = new(s, r, length(r))
-        if(nothing != match_ends)
-            p1 = find_start_pos(bio, match_ends)
-            p2 = find_end_pos(bio, match_ends)
-            r = p1:p2
-            bio = new(s, r, length(r))
-        end
-        seekstart(bio)
-        bio
-    end
+    seekstart(bio)
+    bio
 end
 
 BlockIO(bio::BlockIO, match_ends::Union{Char,Nothing}=nothing) = BlockIO(bio.s, bio.r, match_ends)

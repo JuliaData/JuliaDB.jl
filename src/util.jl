@@ -63,12 +63,8 @@ function _loadtable_serial(T, file::Union{IO, AbstractString, AbstractArray, Tup
     count = Int[]
 
     if file isa Tuple
-        _file, bidx, header = file
-        # TODO: Make this more efficient in block-io.jl
-        fsize = filesize(_file)
-        nblocks = max(div(fsize, blocksize), 1)
-        bios = blocks(_file, '\n', nblocks)
-        b = bios[bidx]
+        _file, bidx, brange, header = file
+        b = BlockIO(open(_file), brange, length(brange))
         header_exists = get(kwargs, :header_exists, true) && !drop_header
         skiplines_begin = get(kwargs, :skiplines_begin, 0) +
                           (bidx==1 ? Int(drop_header) : 0)
@@ -77,7 +73,7 @@ function _loadtable_serial(T, file::Union{IO, AbstractString, AbstractArray, Tup
                                kwargs...,
                                header_exists=(header_exists && bidx==1),
                                skiplines_begin=skiplines_begin)
-        close.(bios)
+        close(b)
         if haskey(kwargs, :colnames)
             header = string.(kwargs[:colnames])
         end
