@@ -29,6 +29,7 @@ IndexedTables = "≥ 0.12.1"
 MemPool = "≥ 0.2.0"
 OnlineStats = "≥ 1.0.0"
 PooledArrays = "≥ 0.4.1"
+StatsBase = "0.33"
 TextParse = "≥ 0.6.0"
 julia = "≥ 1.0.0"
 
