@@ -1,0 +1,32 @@
+name: reverse_CI_Dagger
+on:
+  pull_request:
+    branches:
+      - master
+  push:
+    branches:
+      - master
+    tags: '*'
+jobs:
+  reverse_CI_Dagger:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        version:
+          - '1.0'
+          - '1'
+          - 'nightly'
+        os:
+          - ubuntu-latest
+        arch:
+          - x64
+    steps:
+      - uses: actions/checkout@v2
+      - uses: julia-actions/setup-julia@v1
+        with:
+          version: ${{ matrix.version }}
+          arch: ${{ matrix.arch }}
+      - run: julia -e 'import Pkg; pkg_juliadb = Pkg.PackageSpec(path = pwd()); pkg_dagger = Pkg.PackageSpec(url = "https://github.com/JuliaParallel/Dagger.jl.git"); pkgs = Pkg.Types.PackageSpec[pkg_juliadb, pkg_dagger]; Pkg.develop(pkgs)'
+      - run: julia -e 'import Pkg; Pkg.status()'
+      - run: julia -e 'import Pkg; Pkg.test("Dagger")'
