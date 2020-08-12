@@ -2,7 +2,7 @@
 
 <p align="center">
 <a href="https://juliadata.github.io/JuliaDB.jl/latest/" target="_blank"><img src="https://img.shields.io/badge/docs-latest-blue.svg" alt="Latest documentation"></a>
-<a href="https://travis-ci.org/JuliaData/JuliaDB.jl" target="_blank"><img src="https://camo.githubusercontent.com/bd3887b7ff22081a1ab567075dc99f23a082cb94/68747470733a2f2f7472617669732d63692e6f72672f4a756c6961436f6d707574696e672f4a756c696144422e6a6c2e7376673f6272616e63683d6d6173746572" alt="Travis CI"></a>
+<a href="https://travis-ci.org/JuliaData/JuliaDB.jl" target="_blank"><img src="https://travis-ci.org/JuliaData/JuliaDB.jl.svg?branch=master" alt="Travis CI"></a>
 <a href="https://codecov.io/gh/JuliaData/JuliaDB.jl" target="_blank"><img src="https://codecov.io/gh/JuliaData/JuliaDB.jl/branch/master/graph/badge.svg" alt="Code Coverage"></a>
 </p>
 
