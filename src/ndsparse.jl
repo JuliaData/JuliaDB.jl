@@ -481,7 +481,7 @@ If `keeplength` is false, this means that the lengths of the output
 chunks is unknown before [`compute`](@ref). This function is used
 internally by many DNDSparse operations.
 """
-function mapchunks(f, t::DNDSparse{K,V}; keeplengths=true) where {K,V}
+function mapchunks(f, t::DNDSparse{K}; keeplengths=true) where {K}
     chunks = map(delayed(f), t.chunks)
     R = promote_type( collect.(map( delayed(eltype), chunks ) )...)
     if keeplengths
