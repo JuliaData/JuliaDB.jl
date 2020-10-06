@@ -12,7 +12,7 @@ matrix:
 notifications:
   email: false
 script:
-  - julia --color=yes -e 'using Pkg; if VERSION >= v\"1.1.0-rc1\"; Pkg.build(verbose=true); else Pkg.build(); end'
+  - julia --color=yes -e 'using Pkg; if VERSION >= v"1.1.0-rc1"; Pkg.build(verbose=true); else Pkg.build(); end'
   - julia --color=yes -e 'using Pkg; Pkg.precompile()'
   - julia --check-bounds=yes --color=yes -e 'using Pkg; Pkg.test(coverage=true)'
 
