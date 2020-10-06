@@ -33,5 +33,5 @@
     @test collect(pairs(y)) == [(a=1,b=1)=>3, (a=1,b=2)=>4]
 
     x = ndsparse(([1,2], [3,4]), (x=[0,1],), chunks=2)
-    @test ndsparse(keys(x), JuliaDB.transform(values(x), :y => [1,2])) == ndsparse(([1,2], [3,4]), (x=[0,1], y=[1,2]))
+    @test ndsparse(keys(x), transform(values(x), :y => [1,2])) == ndsparse(([1,2], [3,4]), (x=[0,1], y=[1,2]))
 end
