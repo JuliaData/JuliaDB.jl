@@ -120,6 +120,9 @@ import JuliaDB: pkeynames, pkeys, excludecols, select, transform
     x = ndsparse((["ko", "ko", "xrx", "xrx"], Date.(["2017-11-11", "2017-11-12", "2017-11-11", "2017-11-12"])), [1, 2, 3, 4], chunks=2)
     y = ndsparse((["ko", "ko", "xrx", "xrx"], Date.(["2017-11-12", "2017-11-13", "2017-11-10", "2017-11-13"])), [5, 6, 7, 8], chunks=2)
     @test asofjoin(x, y) == ndsparse((String["ko", "ko", "xrx", "xrx"], Date.(["2017-11-11", "2017-11-12", "2017-11-11", "2017-11-12"])), [1, 5, 7, 7])
+
+    println("<HEARTBEAT>")
+
     a = table([1, 3, 5], [1, 2, 3], names=[:x, :y], pkey=:x, chunks=2)
     b = table([2, 3, 4], [1, 2, 3], names=[:x, :y], pkey=:x, chunks=2)
     @test merge(a, b) == table([1, 2, 3, 3, 4, 5], [1, 1, 2, 2, 3, 3], names=Symbol[:x, :y])
