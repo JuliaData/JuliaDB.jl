@@ -37,6 +37,9 @@ import JuliaDB: pkeynames, pkeys, excludecols, select, transform
     @test table(Columns(([1, 2, 3], [4, 5, 6]))) == a
     @test table(Columns(x=[1, 2, 3], y=[4, 5, 6])) == b
     @test b == table(b)
+
+    println("<HEARTBEAT>")
+
     b = table([2, 3, 1], [4, 5, 6], names=[:x, :y], pkey=:x, chunks=2)
     b = table([2, 1, 2, 1], [2, 3, 1, 3], [4, 5, 6, 7], names=[:x, :y, :z], pkey=(:x, :y), chunks=2)
     t = table([1, 2], [3, 4], chunks=2)
