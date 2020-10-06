@@ -11,6 +11,14 @@ matrix:
     - julia: nightly
 notifications:
   email: false
+script:
+  # build
+  - julia --color=yes -e "using Pkg; if VERSION >= v\"1.1.0-rc1\"; Pkg.build(verbose=true); else Pkg.build(); end"
+  # build
+  - julia --color=yes -e "using Pkg; Pkg.precompile()"
+  # run tests
+  - julia --check-bounds=yes --color=yes -e "using Pkg; Pkg.test(coverage=true)"
+
 after_success:
   - julia -e 'cd(Pkg.dir("JuliaDB")); Pkg.add("Coverage"); using Coverage; Codecov.submit(Codecov.process_folder())'
 
