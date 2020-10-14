@@ -37,6 +37,9 @@ import JuliaDB: pkeynames, pkeys, excludecols, select, transform
     @test table(Columns(([1, 2, 3], [4, 5, 6]))) == a
     @test table(Columns(x=[1, 2, 3], y=[4, 5, 6])) == b
     @test b == table(b)
+
+    println("<HEARTBEAT>")
+
     b = table([2, 3, 1], [4, 5, 6], names=[:x, :y], pkey=:x, chunks=2)
     b = table([2, 1, 2, 1], [2, 3, 1, 3], [4, 5, 6, 7], names=[:x, :y, :z], pkey=(:x, :y), chunks=2)
     t = table([1, 2], [3, 4], chunks=2)
@@ -120,6 +123,9 @@ import JuliaDB: pkeynames, pkeys, excludecols, select, transform
     x = ndsparse((["ko", "ko", "xrx", "xrx"], Date.(["2017-11-11", "2017-11-12", "2017-11-11", "2017-11-12"])), [1, 2, 3, 4], chunks=2)
     y = ndsparse((["ko", "ko", "xrx", "xrx"], Date.(["2017-11-12", "2017-11-13", "2017-11-10", "2017-11-13"])), [5, 6, 7, 8], chunks=2)
     @test asofjoin(x, y) == ndsparse((String["ko", "ko", "xrx", "xrx"], Date.(["2017-11-11", "2017-11-12", "2017-11-11", "2017-11-12"])), [1, 5, 7, 7])
+
+    println("<HEARTBEAT>")
+
     a = table([1, 3, 5], [1, 2, 3], names=[:x, :y], pkey=:x, chunks=2)
     b = table([2, 3, 4], [1, 2, 3], names=[:x, :y], pkey=:x, chunks=2)
     @test merge(a, b) == table([1, 2, 3, 3, 4, 5], [1, 1, 2, 2, 3, 3], names=Symbol[:x, :y])
@@ -166,6 +172,9 @@ import JuliaDB: pkeynames, pkeys, excludecols, select, transform
                         [1, 1, 4, 8, 9, 27, 16, 64];
                         names = [:x, :var, :val], pkey = :x)
     @test unstack(long; variable = :var, value = :val) == t
+
+    println("<HEARTBEAT>")
+
     x = ndsparse((x = [1, 1, 1, 2, 2, 2], y = [1, 2, 2, 1, 2, 2], z = [1, 1, 2, 1, 1, 2]), [1, 2, 3, 4, 5, 6], chunks=2)
     @test reduce(+, x, dims=1) == ndsparse((y = [1, 2, 2], z = [1, 1, 2]), [5, 7, 9])
     @test reduce(+, x, dims=(1, 3)) == ndsparse((y = [1, 2],), [5, 16])
