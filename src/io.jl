@@ -137,16 +137,8 @@ function _loadtable(T, files::Union{AbstractVector,String};
         prevchunks = []
     end
 
-    y = fromchunks(map(loadgroup, filegroups),
-                   output=output, fnoffset=length(prevchunks))
-    x = fromchunks(vcat(prevchunks, y.chunks))
-
-    if output !== nothing
-        open(joinpath(output, JULIADB_INDEXFILE), "w") do io
-            serialize(io, x)
-        end
-        _makerelative!(x, output)
-    end
+    x = _merge!(prevchunks, map(loadgroup, filegroups);
+                output=output)
 
     if x isa DNDSparse && isempty(indexcols)
         # implicit index
@@ -159,6 +151,38 @@ function _loadtable(T, files::Union{AbstractVector,String};
         return x
     end
 end
+
+function _merge!(prevchunks, newchunks; output)
+    y = JuliaDB.fromchunks(newchunks,
+                           output = output,               # save with
+                           fnoffset = length(prevchunks)) # correct index
+    x = JuliaDB.fromchunks(vcat(prevchunks, y.chunks))
+
+    if output !== nothing
+        open(joinpath(output, JuliaDB.JULIADB_INDEXFILE), "w") do io
+            JuliaDB.serialize(io, x)
+        end
+        JuliaDB._makerelative!(x, output)
+    end
+    x
+end
+
+"""
+    Base.merge!(dst::JuliaDB.DNDSparse,src::NDSparse; output=nothing)
+
+Write `JuliaDB` in chunks:
+Persistently merge `src` as a new chunk in `dst`, technically with `JuliaDB.fromchunks` with `output` and `fnoffset`.
+If `output` directory is provided, `serialize` the index.
+"""
+function Base.merge!(dst::DNDSparse, src::NDSparse; output=nothing)
+    newchunks = dndsparse(src, chunks=1).chunks
+    _merge!(dst.chunks, newchunks; output=output)
+end
+# dispatch a `chunks` function converting to `dndsparse`?
+function Base.merge!(dst::DNDSparse, src::DNDSparse; output=nothing)
+    _merge!(dst.chunks, src.chunks; output=output)
+end
+
 
 Base.@deprecate ingest(files, output; kwargs...) loadndsparse(files; output=output, kwargs...)
 
