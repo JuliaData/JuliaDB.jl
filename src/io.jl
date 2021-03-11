@@ -56,6 +56,7 @@ Load a [table](@ref Table) from CSV files.
 - `type_detect_rows`: number of rows to use to infer the initial `colparsers` defaults to 20.
 - `nastrings::Vector{String}` -- strings that are to be considered missing values. (defaults to `TextParse.NA_STRINGS`)
 - `skiplines_begin::Char` -- skip some lines in the beginning of each file. (doesn't skip by default)
+- `blocksize::Int` -- max size (in bytes) of each block. Files larger than this will be split into blocks of this size or less if blocked reading is enabled. Disable by setting to 0. (defaults to 1GB)
 
 - `usecache::Bool`: (vestigial)
 """
@@ -82,14 +83,40 @@ function loadndsparse(files::Union{AbstractVector,String}; opts...)
     _loadtable(NDSparse, files; opts...)
 end
 
+function setup_csvargs(;samecols=nothing,
+                        datacols=nothing,
+                        indexcols=nothing)
+    if indexcols !== nothing
+        if indexcols isa Union{Int, Symbol}
+            indexcols = (indexcols,)
+        end
+        samecols = collect(Iterators.filter(x->isa(x, Union{Tuple, AbstractArray}),
+                                            indexcols))
+    end
+    if datacols !== nothing
+        if datacols isa Union{Int, Symbol}
+            datacols = (datacols,)
+        end
+        append!(samecols, collect(Iterators.filter(x->isa(x, Union{Tuple, AbstractArray}),
+                                                   datacols)))
+    end
+
+    if samecols !== nothing
+        samecols = map(x->map(string, x), samecols)
+    end
+    return samecols, indexcols, datacols
+end
+
 # Can load both NDSparse and table
 function _loadtable(T, files::Union{AbstractVector,String};
                     chunks=nothing,
                     output=nothing,
                     append=false,
                     indexcols=[],
+                    datacols=nothing,
                     distributed=chunks != nothing || length(procs()) > 1,
                     usecache=false,
+                    blocksize=1024*1024*1024,
                     opts...)
 
     if isa(files, String)
@@ -127,8 +154,49 @@ function _loadtable(T, files::Union{AbstractVector,String};
         filegroups = filter(!isempty, map(x->files[x], chunks))
     end
 
+    samecols, indexcols, datacols = setup_csvargs(;indexcols=indexcols,
+                                                   datacols=datacols)
+
+    if blocksize > 0
+        # Use blocked reader
+        blockgroups = []
+        for _files in filegroups
+            for file in _files
+                # Break file into blocks of size `blocksize` or less
+                fsize = filesize(file)
+                nblocks = max(div(fsize, blocksize), 1)
+                bios = blocks(file, '\n', nblocks)
+
+                # Extract header
+                if haskey(opts, :colnames)
+                    header = string.(opts[:colnames])
+                else
+                    # Filter out opts that csvread won't like
+                    _opts = filter(x->!(x[1] in (:drop_header,:datacols,:nrows,:filenamecol,:delim)), opts)
+                    csvread = get(opts, :csvread, TextParse.csvread)
+                    delim = get(opts, :delim, ',')
+                    _, header = csvread(file, delim;
+                                        _opts...,
+                                        samecols=samecols,
+                                        nrows=1)
+                end
+                for (idx,block) in enumerate(bios)
+                    block.l > 0 && push!(blockgroups, (file, idx, block.r, header))
+                    close(block)
+                end
+            end
+        end
+    else
+        # Use normal (non-blocked) reader
+        blockgroups = filegroups
+    end
+
     loadgroup = delayed() do group
-        _loadtable_serial(T, group; indexcols=indexcols, opts...)[1]
+        _loadtable_serial(T, group;
+                          opts...,
+                          samecols=samecols,
+                          indexcols=indexcols,
+                          datacols=datacols)[1]
     end
 
     if output !== nothing && append
@@ -137,7 +205,7 @@ function _loadtable(T, files::Union{AbstractVector,String};
         prevchunks = []
     end
 
-    y = fromchunks(map(loadgroup, filegroups),
+    y = fromchunks(map(loadgroup, blockgroups),
                    output=output, fnoffset=length(prevchunks))
     x = fromchunks(vcat(prevchunks, y.chunks))
 

@@ -45,46 +45,47 @@ function prettify_filename(f)
     return f
 end
 
-function _loadtable_serial(T, file::Union{IO, AbstractString, AbstractArray};
+
+function _loadtable_serial(T, file::Union{IO, AbstractString, AbstractArray, Tuple};
                       delim=',',
                       indexcols=[],
                       datacols=nothing,
+                      samecols=nothing,
                       filenamecol=nothing,
                       agg=nothing,
                       presorted=false,
                       copy=false,
                       csvread=TextParse.csvread,
+                      drop_header=false,
+                      blocksize=1024*1024*1024,
                       kwargs...)
 
-    #println("LOADING ", file)
     count = Int[]
 
-    samecols = nothing
-    if indexcols !== nothing
-        if indexcols isa Union{Int, Symbol}
-            indexcols = (indexcols,)
+    if file isa Tuple
+        _file, bidx, brange, header = file
+        b = BlockIO(open(_file), brange, length(brange))
+        header_exists = get(kwargs, :header_exists, true) && !drop_header
+        skiplines_begin = get(kwargs, :skiplines_begin, 0) +
+                          (bidx==1 ? Int(drop_header) : 0)
+        cols, _header = csvread(b, delim;
+                               samecols=samecols,
+                               kwargs...,
+                               header_exists=(header_exists && bidx==1),
+                               skiplines_begin=skiplines_begin)
+        close(b)
+        if haskey(kwargs, :colnames)
+            header = string.(kwargs[:colnames])
         end
-        samecols = collect(Iterators.filter(x->isa(x, Union{Tuple, AbstractArray}),
-                                            indexcols))
-    end
-    if datacols !== nothing
-        if datacols isa Union{Int, Symbol}
-            datacols = (datacols,)
-        end
-        append!(samecols, collect(Iterators.filter(x->isa(x, Union{Tuple, AbstractArray}),
-                                                   datacols)))
-    end
-
-    if samecols !== nothing
-        samecols = map(x->map(string, x), samecols)
-    end
-
-    if isa(file, AbstractArray)
-        cols, header, count = csvread(file, delim;
-                                      samecols=samecols,
-                                      kwargs...)
+        push!(count, length(cols))
     else
-        cols, header = csvread(file, delim; kwargs...)
+        if file isa AbstractArray
+            cols, header, count = csvread(file, delim;
+                                          samecols=samecols,
+                                          kwargs...)
+        else
+            cols, header = csvread(file, delim; kwargs...)
+        end
     end
 
     header = map(string, header)
@@ -98,6 +99,8 @@ function _loadtable_serial(T, file::Union{IO, AbstractString, AbstractArray};
         end
         if isa(file, AbstractArray)
             namecol = reduce(vcat, fill.(f.(file), count))
+        elseif isa(file, Tuple)
+            namecol = fill(f(file[1]), length(cols[1]))
         else
             namecol = fill(f(file), length(cols[1]))
         end
@@ -184,20 +187,15 @@ function _loadtable_serial(T, file::Union{IO, AbstractString, AbstractArray};
     end
 end
 
-function lookupbyheader(header, key)
-    if isa(key, Symbol)
-        return lookupbyheader(header, string(key))
-    elseif isa(key, String)
-        return findfirst(x->x==key, header)
-    elseif isa(key, Int)
-        return 0 < key <= length(header) ? key : nothing
-    elseif isa(key, Tuple) || isa(key, Vector)
-        for k in key
-            x = lookupbyheader(header, k)
-            x != 0 && return x
-        end
-        return nothing
+lookupbyheader(header, key::Symbol) = lookupbyheader(header, string(key))
+lookupbyheader(header, key::String) = findfirst(x->x==key, header)
+lookupbyheader(header, key::Int) = 0 < key <= length(header) ? key : nothing
+function lookupbyheader(header, key::Union{Tuple, Vector})
+    for k in key
+        x = lookupbyheader(header, k)
+        x !== nothing && return x
     end
+    return nothing
 end
 
 canonical_name(n::Symbol) = n

@@ -99,7 +99,7 @@ import Dagger: Chunk
     @test collect(dt) == spdata_unordered
 
     # test specifying column names
-    dt = loadndsparse(files[1:2], indexcols=[:a,:b], colnames=[:a,:b,:c,:d,:e,:f,:g], usecache=false, header_exists=false, chunks=2)
+    dt = loadndsparse(files[1:2], indexcols=[:a,:b], colnames=[:a,:b,:c,:d,:e,:f,:g], usecache=false, drop_header=true, chunks=2)
     nds = collect(dt)
     @test haskey(columns(nds.index), :a)
     @test haskey(columns(nds.index), :b)
