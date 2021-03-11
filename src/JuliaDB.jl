@@ -1,14 +1,14 @@
 module JuliaDB
 
-import Base: collect, join, keys, values, iterate, broadcast, merge, reduce, mapslices, 
+import Base: collect, join, keys, values, iterate, broadcast, merge, reduce, mapslices,
     ==
 import Base.Broadcast: broadcasted
 import Base.Iterators: PartitionIterator
 import IndexedTables: IndexedTable, table, NDSparse, ndsparse, Tup, groupjoin,
     DimName, Columns, column, columns, rows, pkeys, pairs, Tup, namedtuple, flatten,
     naturaljoin, leftjoin, asofjoin, eltypes, astuple, colnames, pkeynames, valuenames,
-    showtable, reducedim_vec, _convert, groupreduce, groupby, ApplyColwise, stack, 
-    unstack, selectkeys, selectvalues, select, lowerselection, convertdim, excludecols, 
+    showtable, reducedim_vec, _convert, groupreduce, groupby, ApplyColwise, stack,
+    unstack, selectkeys, selectvalues, select, lowerselection, convertdim, excludecols,
     reindex, ColDict, AbstractIndexedTable, Dataset, promoted_similar, dropmissing,
     convertmissing, transform
 import TextParse: csvread
@@ -17,22 +17,25 @@ import Dagger: compute, distribute, load, save, DomainBlocks, ArrayDomain, DArra
     chunktype, tochunk, distribute, Context, treereduce, dsort_chunks
 import Serialization: serialize, deserialize
 import MemPool: mmwrite, mmread, MMSer, approx_size
- 
-using IndexedTables, Dagger, OnlineStats, Distributed, Serialization, Nullables, Printf, 
-    Statistics, PooledArrays, WeakRefStrings, MemPool, StatsBase, OnlineStatsBase,
+
+using IndexedTables, Dagger, Distributed, Serialization, Nullables, Printf,
+    Statistics, PooledArrays, WeakRefStrings, MemPool, StatsBase,
     DataValues, RecipesBase, TextParse, Glob
+
+using OnlineStats: OnlineStat
+# using OnlineStatsBase
 
 
 #-----------------------------------------------------------------------# exports
-export @cols, @dateformat_str, AbstractNDSparse, All, Between, ColDict, Columns, DColumns, 
-    IndexedTable, JuliaDB, Keys, ML, NA, NDSparse, Not, aggregate_stats, 
-    asofjoin, chunks, colnames, column, columns, compute, convertdim, 
-    csvread, distribute, dropmissing, fetch_timings!, flatten, glob, groupby, groupjoin, 
-    groupreduce, ingest, ingest!, innerjoin, insert_row!, insertafter!, insertbefore!, 
-    insertcols, insertcolsafter, insertcolsbefore, leftjoin, load, load_table, loadfiles, 
-    loadndsparse, loadtable, merge, naturaljoin, ndsparse, pairs, partitionplot, 
-    partitionplot!, rechunk, rechunk_together, reducedim_vec, reindex, 
-    rename, rows, save, select, selectkeys, selectvalues, stack, 
+export @cols, @dateformat_str, AbstractNDSparse, All, Between, ColDict, Columns, DColumns,
+    IndexedTable, JuliaDB, Keys, ML, NA, NDSparse, Not, aggregate_stats,
+    asofjoin, chunks, colnames, column, columns, compute, convertdim,
+    csvread, distribute, dropmissing, fetch_timings!, flatten, glob, groupby, groupjoin,
+    groupreduce, ingest, ingest!, innerjoin, insert_row!, insertafter!, insertbefore!,
+    insertcols, insertcolsafter, insertcolsbefore, leftjoin, load, load_table, loadfiles,
+    loadndsparse, loadtable, merge, naturaljoin, ndsparse, pairs, partitionplot,
+    partitionplot!, rechunk, rechunk_together, reducedim_vec, reindex,
+    rename, rows, save, select, selectkeys, selectvalues, stack,
     start_tracking_time, stop_tracking_time, summarize, table, tracktime, transform, unstack,
     convertmissing
 

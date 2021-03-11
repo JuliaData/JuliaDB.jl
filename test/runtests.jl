@@ -2,8 +2,10 @@ using Distributed
 include("testenv.jl")
 addprocs_with_testenv(2)
 
-using JuliaDB, Test, TextParse, IndexedTables, PooledArrays, Dagger, OnlineStats,
+using JuliaDB, Test, TextParse, IndexedTables, PooledArrays, Dagger,
     Statistics, MemPool, Random, Serialization, Dagger, Dates, WeakRefStrings, DataValues
+
+using OnlineStats: CountMap, Mean, Variance, Series, fit!, value
 
 include("test_iteration.jl")
 include("test_util.jl")
