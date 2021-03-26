@@ -10,10 +10,13 @@
 
     mj1 = merge(t1,t2)
     mj2 = merge(t2,t1)
-
+    nn = Ref{Int}()
+    nn2 = Ref{Int}()
     for n=1:5
+        nn[] = n
         d1 = distribute(t1, n)
         for n2 = 1:5
+            nn2[] = n2
             d2 = distribute(t2, n2)
             @test isequal(collect(innerjoin(d1, d2)), j1)
             @test isequal(collect(innerjoin(+, d1, d2)), j2)

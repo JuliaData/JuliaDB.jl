@@ -209,7 +209,11 @@ function _repeated(x, n)
 end
 
 function approx_size(cs::Columns)
-    sum(map(approx_size, astuple(columns(cs))))
+    @static if VERSION < v"1.6"
+        sum(map(approx_size, astuple(columns(cs))))
+    else
+        sum(map(approx_size, astuple(columns(cs))); init=0)
+    end
 end
 
 function approx_size(t::NDSparse)
