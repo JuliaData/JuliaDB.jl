@@ -240,6 +240,7 @@ function _map_params(f, T, S)
 end
 
 _map_params(f, T::Type{Tuple{}},S::Type{Tuple{}}) = ()
+_map_params(f, T::Type{NamedTuple{(), Tuple{}}},S::Type{NamedTuple{(), Tuple{}}}) = ()
 
 map_params(f, ::Type{T}, ::Type{S}) where {T,S} = f(T,S)
 @inline _tuple_type_head(::Type{T}) where {T<:Tuple} = Base.tuple_type_head(T)

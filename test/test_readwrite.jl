@@ -24,7 +24,7 @@ end
 end
 
 
-path = joinpath(dirname(@__FILE__), "..","test", "sample")
+path = joinpath(dirname(pathof(JuliaDB)), "..","test", "sample")
 files = glob("*.csv", path)
 const spdata_dist = loadndsparse(files, type_detect_rows=4,
                               indexcols=1:2, usecache=false, chunks=2)
@@ -41,7 +41,7 @@ const spdata = loadndsparse(files;
                             distributed=false,
                             header_exists=true,
                             indexcols=1:2)
-files = glob("*.csv", "sample")
+files = glob("*.csv", path)
 shuffle_files = shuffle(files)
 const spdata_unordered = loadndsparse(shuffle_files;
                                       distributed=false,
