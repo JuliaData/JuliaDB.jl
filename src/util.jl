@@ -240,6 +240,11 @@ function _map_params(f, T, S)
 end
 
 _map_params(f, T::Type{Tuple{}},S::Type{Tuple{}}) = ()
+_map_params(f, T::Type{NamedTuple{(), Tuple{}}},S::Type{NamedTuple{(), Tuple{}}}) = ()
+
+if !hasmethod(Base.reduce_empty, Tuple{typeof(Base.add_sum), Union{}})
+    @noinline Base.reduce_empty(::typeof(Base.add_sum), ::Type{Union{}}) = throw(ArgumentError("reducing over an empty collection is not allowed"))
+end
 
 map_params(f, ::Type{T}, ::Type{S}) where {T,S} = f(T,S)
 @inline _tuple_type_head(::Type{T}) where {T<:Tuple} = Base.tuple_type_head(T)

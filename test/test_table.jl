@@ -12,16 +12,16 @@ import JuliaDB: pkeynames, pkeys, excludecols, select, transform
                     end), t, :x, select=:z) == table([1, 2], [6, 15], names=Symbol[:x, :y])
     @test groupreduce(:y => (+), t, :x, select=:z) == table([1, 2], [6, 15], names=Symbol[:x, :y])
     x = ndsparse(["a", "b"], [3, 4], chunks=2)
-    @test (keytype(x), eltype(x)) == (Tuple{String}, Int64)
+    @test (keytype(x), eltype(x)) == (Tuple{String}, Int)
     x = ndsparse((date = Date.(2014:2017),), [4:7;], chunks=2)
     @test x[Date("2015-01-01")] == 5
-    @test (keytype(x), eltype(x)) == (Tuple{Date}, Int64)
+    @test (keytype(x), eltype(x)) == (Tuple{Date}, Int)
     x = ndsparse((["a", "b"], [3, 4]), [5, 6], chunks=2)
-    @test (keytype(x), eltype(x)) == (Tuple{String,Int64}, Int64)
+    @test (keytype(x), eltype(x)) == (Tuple{String,Int}, Int)
     @test x["a", 3] == 5
     x = ndsparse((["a", "b"], [3, 4]), ([5, 6], [7.0, 8.0]), chunks=2)
     x = ndsparse((x = ["a", "a", "b"], y = [3, 4, 4]), (p = [5, 6, 7], q = [8.0, 9.0, 10.0]), chunks=2)
-    @test (keytype(x), eltype(x)) == (Tuple{String,Int64}, NamedTuple{(:p,:q),Tuple{Int64,Float64}})
+    @test (keytype(x), eltype(x)) == (Tuple{String,Int}, NamedTuple{(:p,:q),Tuple{Int,Float64}})
     @test x["a", :] == ndsparse((y = [3, 4],), Columns((p = [5, 6], q = [8.0, 9.0])))
     x = ndsparse([1, 2], [3, 4], chunks=2)
     @test pkeynames(x) == (1,)
@@ -223,7 +223,7 @@ import JuliaDB: pkeynames, pkeys, excludecols, select, transform
     @test isequal(convertmissing(t, DataValue), t2)
     @test isequal(convertmissing(t2, Missing), t)
 
-    @test typeof(column(dropmissing(t, :x), :x)) <: Dagger.DArray{Int64,1}
+    @test typeof(column(dropmissing(t, :x), :x)) <: Dagger.DArray{Int,1}
     t = table(["a", "b", "c"], [0.01, 0.05, 0.07], [2, 1, 0], names=[:n, :t, :x], chunks=2)
     @test filter((p->p.x / p.t < 100), t) == table(String["b", "c"], [0.05, 0.07], [1, 0], names=Symbol[:n, :t, :x])
     x = ndsparse((n = ["a", "b", "c"], t = [0.01, 0.05, 0.07]), [2, 1, 0], chunks=2)
