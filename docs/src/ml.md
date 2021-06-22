@@ -10,7 +10,7 @@ using JuliaDB
 download("https://raw.githubusercontent.com/agconti/"*
           "kaggle-titanic/master/data/train.csv", "train.csv")
 
-train_table = loadtable("train.csv", escapechar='"')
+train_table = dropmissing(loadtable("train.csv", escapechar='"'))
 select(train_table, Not((:Name, :Ticket, :Cabin))) # hide
 ```
 
@@ -42,9 +42,6 @@ You may note that `Survived` column contains only 1s and 0s to denote whether a 
 sch = ML.schema(train_table, hints=Dict(
         :Pclass => ML.Categorical,
         :Survived => ML.Categorical,
-        :Parch => nothing,
-        :SibSp => nothing,
-        :Fare => nothing,
         )
 )
 ```
@@ -62,11 +59,11 @@ input_sch, output_sch = ML.splitschema(sch, :Survived)
 Once the schema has been created, you can extract the feature matrix according to the given schema using `ML.featuremat`:
 
 ```@example titanic
-train_input = ML.featuremat(input_sch, train_table)
+train_input = ML.featuremat(input_sch, collect(train_table))
 ```
 
 ```@example titanic
-train_output = ML.featuremat(output_sch, train_table)
+train_output = ML.featuremat(output_sch, collect(train_table))
 ```
 
 ## Learning
@@ -84,7 +81,7 @@ model = Chain(
   softmax)
 
 loss(x, y) = Flux.mse(model(x), y)
-opt = Flux.ADAM(Flux.params(model))
+opt = Flux.ADAM()
 evalcb = Flux.throttle(() -> @show(loss(first(data)...)), 2);
 ```
 
@@ -93,7 +90,7 @@ Train the data in 10 iterations
 ```@example titanic
 data = [(train_input, train_output)]
 for i = 1:10
-  Flux.train!(loss, data, opt, cb = evalcb)
+  Flux.train!(loss, Flux.params(model),data, opt, cb = evalcb)
 end
 ```
 
@@ -108,9 +105,9 @@ Now let's load some testing data to use the model we learned to predict survival
 download("https://raw.githubusercontent.com/agconti/"*
           "kaggle-titanic/master/data/test.csv", "test.csv")
 
-test_table = loadtable("test.csv", escapechar='"')
+test_table = dropmissing(loadtable("test.csv", escapechar='"'))
 
-test_input = ML.featuremat(input_sch, test_table) ;
+test_input = ML.featuremat(input_sch, collect(test_table)) ;
 ```
 
 Run the model on one observation:
