@@ -75,6 +75,8 @@ Let us create a simple neural network to learn whether a passenger will survive 
 ```@example titanic
 using Flux
 
+data = [(train_input, train_output)]
+
 model = Chain(
   Dense(ML.width(input_sch), 32, relu),
   Dense(32, ML.width(output_sch)),
@@ -88,7 +90,6 @@ evalcb = Flux.throttle(() -> @show(loss(first(data)...)), 2);
 Train the data in 10 iterations
 
 ```@example titanic
-data = [(train_input, train_output)]
 for i = 1:10
   Flux.train!(loss, Flux.params(model),data, opt, cb = evalcb)
 end
