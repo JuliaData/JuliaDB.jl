@@ -32,7 +32,7 @@ export @cols, @dateformat_str, AbstractNDSparse, All, Between, ColDict, Columns,
     insertcols, insertcolsafter, insertcolsbefore, leftjoin, load, load_table, loadfiles, 
     loadndsparse, loadtable, merge, naturaljoin, ndsparse, pairs, partitionplot, 
     partitionplot!, rechunk, rechunk_together, reducedim_vec, reindex, 
-    rename, rows, save, select, selectkeys, selectvalues, stack, 
+    rename, resetindex, rows, save, select, selectkeys, selectvalues, stack, 
     start_tracking_time, stop_tracking_time, summarize, table, tracktime, transform, unstack,
     convertmissing
 

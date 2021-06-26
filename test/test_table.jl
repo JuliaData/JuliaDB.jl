@@ -241,4 +241,9 @@ import JuliaDB: pkeynames, pkeys, excludecols, select, transform
         (x_m = 3.0, y_m = 2.0, x_s = 2.0, y_s = 0.0)
     b = table(["a","a","b","b"], [1,3,5,7], [2,2,2,2], names = [:x, :y, :z], pkey = :x, chunks = 2)
     @test summarize(mean, b) == table(["a","b"], [2.0,6.0], [2.0,2.0], names = [:x, :y, :z], pkey = :x)
+
+    t = table(["a", "b"], [0.1, 0.2], [0.3, 0.4], names = [:a, :b, :c], pkey = :a)
+    @test !isempty(pkeys(t))
+    resetindex(t)
+    @test isempty(pkeys(t))
 end

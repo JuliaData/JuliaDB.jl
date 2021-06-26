@@ -246,6 +246,8 @@ end
 
 _merge(x::IndexedTable, y::IndexedTable...) = _merge((a,b) -> merge(a, b), x, y...)
 
+resetindex(t::AbstractIndexedTable) = empty!(t.pkey)
+
 function Base.show(io::IO, big::DIndexedTable)
     h, w = displaysize(io)
     showrows = h - 5 # This will trigger an ellipsis when there's
