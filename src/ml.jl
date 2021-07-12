@@ -153,8 +153,8 @@ function featuremat!(A, schemas::Schema, t::Dataset)
 end
 
 splitschema(xs::Schema, ks...) =
-    filter((k,v) -> k ∉ ks, xs),
-    filter((k,v) -> k ∈ ks, xs)
+    filter(k -> k.first ∉ ks, xs),
+    filter(k -> k.first ∈ ks, xs)
 
 function featuremat(sch, xs)
     featuremat!(zeros(Float32, length(xs), width(sch)), sch, xs)'
