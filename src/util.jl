@@ -253,6 +253,7 @@ Base.@pure function map_params(f, ::Type{T}, ::Type{S}) where {T<:Tuple,S<:Tuple
     Tuple{_map_params(f, T,S)...}
 end
 
+_tuple_type_head(T::Type{NamedTuple{(), Tuple{}}}) = Union{}
 _tuple_type_head(T::Type{NT}) where {NT<: NamedTuple} = fieldtype(NT, 1)
 
 Base.@pure function _tuple_type_tail(T::Type{NamedTuple{n,ts}}) where {n,ts}
