@@ -210,7 +210,12 @@ end
 
 function approx_size(cs::Columns)
     @static if VERSION < v"1.6"
-        sum(map(approx_size, astuple(columns(cs))))
+        # sum does not have an init argument in older versions of Julia
+        # but occasionally this function may be called with empty columns(cs)
+        # and unless Base.reduce_empty is defined for the type, this will fail.
+        # by setting an init value in reduce we avoid this, the same way we do in
+        # sum below.
+        reduce(+, map(approx_size, astuple(columns(cs))), init=0)
     else
         sum(map(approx_size, astuple(columns(cs))); init=0)
     end
