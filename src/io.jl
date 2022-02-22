@@ -240,7 +240,7 @@ deserialize(io::AbstractSerializer, DT::Type{DIndexedTable{T,K}}) where {T,K} = 
 function _deser(io::AbstractSerializer, t)
     nf = fieldcount(t)
     x = ccall(:jl_new_struct_uninit, Any, (Any,), t)
-    t.mutable && Serialization.deserialize_cycle(io, x)
+    ismutabletype(t) && Serialization.deserialize_cycle(io, x)
     for i in 1:nf
         tag = Int32(read(io.io, UInt8)::UInt8)
         if tag != Serialization.UNDEFREF_TAG
