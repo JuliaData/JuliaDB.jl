@@ -235,6 +235,15 @@ function _evenlydistribute!(t, wrkrs)
     end
 end
 
+ismutabletype = if VERSION < v"1.7"
+    function ismutabletype(@nospecialize(t::Type))
+        t = unwrap_unionall(t)
+        return isa(t, DataType) && t.name.flags & 0x2 == 0x2
+    end
+else
+    Base.ismutabletype
+end
+
 deserialize(io::AbstractSerializer, DT::Type{DNDSparse{K,V}}) where {K,V} = _deser(io, DT)
 deserialize(io::AbstractSerializer, DT::Type{DIndexedTable{T,K}}) where {T,K} = _deser(io, DT)
 function _deser(io::AbstractSerializer, t)
