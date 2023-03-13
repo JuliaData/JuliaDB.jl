@@ -1,3 +1,5 @@
+## JuliaDB is unmaintained. Please consider using [DataFrames](https://github.com/JuliaData/DataFrames.jl) or [DTables](https://github.com/JuliaParallel/DTables.jl)
+
 <p align="center"><a href="http://juliadb.org" target="_blank"><img width="128" src="https://user-images.githubusercontent.com/25916/36773410-843e61b0-1c7f-11e8-818b-3edb08da8f41.png" alt="JuliaDB logo"></a></p>
 
 <p align="center">
