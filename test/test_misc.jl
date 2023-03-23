@@ -28,7 +28,7 @@ end
 @testset  "printing" begin
     x = distribute(NDSparse([1], [1]), 1)
     @test repr(x) == """
-    1-d Distributed NDSparse with 1 values (Int64) in 1 chunks:
+    1-d Distributed NDSparse with 1 values ($Int) in 1 chunks:
     1 │
     ──┼──
     1 │ 1"""
