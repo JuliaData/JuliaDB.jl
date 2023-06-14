@@ -23,7 +23,7 @@ TextParse = "e0df1984-e451-5cb5-8b61-797a481e67e3"
 WeakRefStrings = "ea10d353-3f73-51f8-a26c-33c1cb351aa5"
 
 [compat]
-Dagger = "0.8,0.9,0.10,0.11"
+Dagger = "0.8,0.9,0.10,0.11, 0.17"
 DataValues = "0.4.12"
 Glob = "1"
 IndexedTables = "0.12.4,1"
